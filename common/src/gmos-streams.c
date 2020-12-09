@@ -312,14 +312,12 @@ static void gmosStreamCommonRead (gmosStream_t* stream,
         if (remainingBytes < copySize) {
             copySize = remainingBytes;
         }
-        if (copySize > 0) {
-            copyPtr = segment->data.bytes + stream->readOffset;
-            STREAM_COPY (targetPtr, copyPtr, copySize);
-            remainingBytes -= copySize;
-            targetPtr += copySize;
-            stream->readOffset += copySize;
-            stream->bufferSize -= copySize;
-        }
+        copyPtr = segment->data.bytes + stream->readOffset;
+        STREAM_COPY (targetPtr, copyPtr, copySize);
+        remainingBytes -= copySize;
+        targetPtr += copySize;
+        stream->readOffset += copySize;
+        stream->bufferSize -= copySize;
 
         // Release the current memory pool segment if required. If this
         // is the last segment, the segment list will take the null
