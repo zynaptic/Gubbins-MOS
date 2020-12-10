@@ -285,7 +285,8 @@ void gmosSchedulerTaskStart (gmosTaskState_t* newTask)
  */
 void gmosSchedulerTaskResume (gmosTaskState_t* resumedTask)
 {
-    if (resumedTask->taskState != TASK_STATE_READY) {
+    if ((resumedTask->taskState != TASK_STATE_READY) &&
+        (resumedTask->taskState != TASK_STATE_ACTIVE)) {
         gmosSchedulerRemoveTask (resumedTask);
         gmosSchedulerMakeTaskReady (resumedTask);
     }
