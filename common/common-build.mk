@@ -33,7 +33,8 @@ COMMON_OBJ_FILE_NAMES = \
 	gmos-scheduler.o \
 	gmos-mempool.o \
 	gmos-streams.o \
-	gmos-events.o
+	gmos-events.o \
+	gmos-driver-i2c.o
 
 # Specify the local build directory.
 LOCAL_DIR = ${GMOS_BUILD_DIR}/common
