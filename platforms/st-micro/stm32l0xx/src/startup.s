@@ -88,14 +88,20 @@ gmosPalArmInitZeroDataLoop:
     BNE   gmosPalArmInitZeroData
 
     // Initialise the microcontroller.
+gmosPalArmInitSystemSetup:
     BL    gmosPalSystemSetup
 
-    // Call the main application entry point.
-gmosPalArmInitStartApplication:
-    BL    main
+    // Initialise the common platform components.
+    BL    gmosMempoolInit
 
-    // Enter an infinite loop if main returns.
-gmosPalArmInitExitLoop:
-    B     gmosPalArmInitExitLoop
+    // Initialise the platform abstraction layer.
+    BL    gmosPalInit
+
+    // Initialise the application code.
+gmosPalArmInitStartApplication:
+    BL    gmosAppInit
+
+    // Enter the scheduler loop. This should never return.
+    BL    gmosSchedulerStart
 
 .size gmosPalArmReset, .-gmosPalArmReset

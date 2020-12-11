@@ -48,9 +48,8 @@ typedef enum {
 } gmosPalLogLevel_t;
 
 /**
- * Initialises the platform abstraction layer on startup. This should
- * be called exactly once prior to using any of the other platform
- * abstraction layer functions.
+ * Initialises the platform abstraction layer on startup. This is called
+ * automatically during system initialisation.
  */
 void gmosPalInit (void);
 

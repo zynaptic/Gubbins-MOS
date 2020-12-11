@@ -59,25 +59,17 @@ static bool lifecycleHandler (gmosLifecycleStatus_t lifecycleStatus)
 static gmosLifecycleMonitor_t lifecycleMonitor = {lifecycleHandler};
 
 /*
- * Sets up the demo application and then starts the main scheduler loop.
+ * Sets up the demo application. The main scheduler loop will
+ * automatically be started on returning from this function.
  */
-int main (void) {
-
-    // Initialise the platform abstraction layer.
-    gmosPalInit ();
-
-    // Initialise the memory pool.
-    gmosMempoolInit ();
+void gmosAppInit (void) {
 
     // Print some information to the debug log.
     GMOS_LOG (LOG_INFO,
-        "Starting GubbinsMOS demo application for STM32L0XX devices");
+        "Initialising GubbinsMOS demo application for STM32L0XX devices");
 
     // Add callbacks for monitoring the scheduler lifecycle.
     if (GMOS_DEMO_APP_LOG_LIFECYCLE_INFO) {
         gmosLifecycleAddMonitor (&lifecycleMonitor);
     }
-
-    // Enter the main scheduler loop.
-    gmosSchedulerStart ();
 }

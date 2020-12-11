@@ -50,9 +50,8 @@ typedef struct gmosMempoolSegment_t {
 } gmosMempoolSegment_t;
 
 /**
- * Initialises the memory pool. This should be called exactly once on
- * system initialisation to set up the memory pool prior to using any
- * other memory pool functions.
+ * Initialises the memory pool. This is called automatically during
+ * system initialisation to set up the memory pool.
  */
 void gmosMempoolInit (void);
 
