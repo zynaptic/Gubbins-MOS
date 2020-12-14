@@ -34,4 +34,10 @@
  */
 #define GMOS_DEMO_APP_LOG_LIFECYCLE_INFO true
 
+/*
+ * Specifies the interval between temperature sensor samples as an
+ * integer number of seconds.
+ */
+#define GMOS_DEMO_APP_TEMP_SAMPLE_INTERVAL 15
+
 #endif // GMOS_APP_CONFIG_H

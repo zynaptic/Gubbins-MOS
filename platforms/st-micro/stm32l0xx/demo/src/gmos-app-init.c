@@ -24,6 +24,17 @@
 #include "gmos-platform.h"
 #include "gmos-scheduler.h"
 #include "gmos-mempool.h"
+#include "gmos-driver-i2c.h"
+#include "stm32-driver-i2c.h"
+
+/*
+ * Initialise the LM75B I2C sensor using the specified I2C bus.
+ */
+void demoTempSensorInit (gmosDriverI2CBus_t* i2cBus);
+
+// Allocate the I2C1 bus data structure.
+static gmosDriverI2CBus_t i2cBus;
+static gmosPalI2CBusState_t i2cBusState;
 
 /*
  * Implements a scheduler lifecycle handler that just prints lifecycle
@@ -72,4 +83,11 @@ void gmosAppInit (void) {
     if (GMOS_DEMO_APP_LOG_LIFECYCLE_INFO) {
         gmosLifecycleAddMonitor (&lifecycleMonitor);
     }
+
+    // Initialise the I2C bus.
+    gmosDriverI2CBusInit (&i2cBus, &i2cBusState,
+        &gmosPalI2CBusConfig_STM32L0X0_I2C1);
+
+    // Initialise the LM75B I2C temperature sensor.
+    demoTempSensorInit (&i2cBus);
 }

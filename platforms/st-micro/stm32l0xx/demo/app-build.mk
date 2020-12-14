@@ -32,7 +32,8 @@ APP_HEADER_DIRS = \
 
 # List all the application object files that need to be built.
 APP_OBJ_FILE_NAMES = \
-	gmos-app-init.o
+	gmos-app-init.o \
+	demo-i2c-lm75b.o
 
 # Specify the local build directory.
 LOCAL_DIR = ${GMOS_BUILD_DIR}/app
