@@ -67,7 +67,7 @@ static bool lifecycleHandler (gmosLifecycleStatus_t lifecycleStatus)
 
 // Allocate and initialise the lifecycle monitor data structure that is
 // used to register the lifecycle handler.
-static gmosLifecycleMonitor_t lifecycleMonitor = {lifecycleHandler};
+static gmosLifecycleMonitor_t lifecycleMonitor;
 
 /*
  * Sets up the demo application. The main scheduler loop will
@@ -81,7 +81,7 @@ void gmosAppInit (void) {
 
     // Add callbacks for monitoring the scheduler lifecycle.
     if (GMOS_DEMO_APP_LOG_LIFECYCLE_INFO) {
-        gmosLifecycleAddMonitor (&lifecycleMonitor);
+        gmosLifecycleAddMonitor (&lifecycleMonitor, lifecycleHandler);
     }
 
     // Initialise the I2C bus.

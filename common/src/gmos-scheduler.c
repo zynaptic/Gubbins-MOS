@@ -325,9 +325,10 @@ gmosTaskState_t* gmosSchedulerCurrentTask (void)
  * scheduler lifecycle management events. The new monitor is added to
  * the head of the list.
  */
-void gmosLifecycleAddMonitor
-    (gmosLifecycleMonitor_t* lifecycleMonitor)
+void gmosLifecycleAddMonitor (gmosLifecycleMonitor_t* lifecycleMonitor,
+    bool (*handlerFunction) (gmosLifecycleStatus_t))
 {
+    lifecycleMonitor->handlerFn = handlerFunction;
     lifecycleMonitor->nextMonitor = lifecycleMonitors;
     lifecycleMonitors = lifecycleMonitor;
 }

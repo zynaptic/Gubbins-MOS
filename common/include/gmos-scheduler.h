@@ -248,9 +248,14 @@ gmosTaskState_t* gmosSchedulerCurrentTask (void);
  * scheduler lifecycle management events.
  * @param lifecycleMonitor This is the new lifecycle monitor that is to
  *     be added to the lifecycle monitor list.
+ * @param handlerFunction This is a pointer to the lifecycle handler
+ *     function that is being registered with the lifecycle monitor.
+ *     It should accept a single parameter which encodes the lifecycle
+ *     status update and return a boolean value which indicates whether
+ *     the lifecycle status update is acceptable.
  */
-void gmosLifecycleAddMonitor
-    (gmosLifecycleMonitor_t* lifecycleMonitor);
+void gmosLifecycleAddMonitor (gmosLifecycleMonitor_t* lifecycleMonitor,
+    bool (*handlerFunction) (gmosLifecycleStatus_t));
 
 /**
  * Issues a scheduler lifecycle status notification to all of the
@@ -261,8 +266,8 @@ void gmosLifecycleAddMonitor
  *     is to be passed to all of the registered lifecycle status
  *     monitors.
  * @return Returns a boolean value which will be set to 'true' if all
- *     the lifecycle status monitors indicated successful completion
- *     and 'false' otherwise.
+ *     the lifecycle status monitors indicated that the lifecycle status
+ *     update was acceptable and 'false' otherwise.
  */
 bool gmosLifecycleNotify
     (gmosLifecycleStatus_t lifecycleStatus);
