@@ -58,7 +58,7 @@ void gmosPalSystemTimerInit (void)
 /*
  * Reads the current value of the low power timer counter.
  */
-static uint16_t gmosPalSystemTimerHardwareValue (void)
+uint16_t gmosPalGetHardwareTimer (void)
 {
     uint16_t value1;
     uint16_t value2;
@@ -142,7 +142,7 @@ uint32_t gmosPalGetTimer (void)
     // earlier than an expected 'carry out'.
     do {
         NVIC_DisableIRQ (LPTIM1_IRQn);
-        lpTimerValue = 1 + gmosPalSystemTimerHardwareValue ();
+        lpTimerValue = 1 + gmosPalGetHardwareTimer ();
         interruptCountValue = interruptCount;
         NVIC_EnableIRQ (LPTIM1_IRQn);
     } while (((lpTimerValue >> 15) & 1) != (interruptCountValue & 1));
@@ -167,7 +167,7 @@ void gmosPalIdle (uint32_t duration)
 
     // If the requested period would span a regular timer interrupt,
     // calculate the sleep time based on that.
-    lpTimerValue = gmosPalSystemTimerHardwareValue ();
+    lpTimerValue = gmosPalGetHardwareTimer ();
     if ((lpTimerValue & 0x7FFF) + duration >= 0x7FFF) {
         sleepTime = 0x7FFF - (lpTimerValue & 0x7FFF);
     }

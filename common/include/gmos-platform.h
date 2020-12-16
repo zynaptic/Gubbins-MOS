@@ -78,9 +78,19 @@ void gmosPalInit (void);
     ((((uint64_t) _ticks_) * 1000) / GMOS_CONFIG_SYSTEM_TIMER_FREQUENCY))
 
 /**
+ * Reads the contents of the hardware timer. This is a 16-bit timer that
+ * increments at a rate defined by 'GMOS_CONFIG_SYSTEM_TIMER_FREQUENCY'
+ * and which is safe to access from all execution contexts.
+ * @return Returns the current value of the hardware timer.
+ */
+uint16_t gmosPalGetHardwareTimer (void);
+
+/**
  * Reads the contents of the system timer. This is a 32-bit timer that
  * increments at a rate defined by 'GMOS_CONFIG_SYSTEM_TIMER_FREQUENCY'.
- * The timer should wrap no more than once every 48 days.
+ * Correct behaviour of this timer is only guaranteed for the task
+ * execution context. The timer should wrap no more than once every 48
+ * days.
  * @return Returns the current value of the system timer.
  */
 uint32_t gmosPalGetTimer (void);
