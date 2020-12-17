@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "gmos-scheduler.h"
 #include "gmos-mempool.h"
 
@@ -45,16 +46,16 @@ typedef struct gmosStream_t {
     // This is a pointer to the start of the stream segment list.
     gmosMempoolSegment_t* segmentList;
 
-    // This specifies the upper limit of the stream buffer size.
-    uint16_t maxBufferSize;
+    // This specifies the upper limit of the stream size.
+    uint16_t maxSize;
 
-    // This specifies the current size of the stream buffer contents.
-    uint16_t bufferSize;
+    // This specifies the current size of the stream contents.
+    uint16_t size;
 
-    // This specifies the current buffer offset for the write pointer.
+    // This specifies the current offset for the write pointer.
     uint16_t writeOffset;
 
-    // This specifies the current buffer offset for the read pointer.
+    // This specifies the current offset for the read pointer.
     uint16_t readOffset;
 
 } gmosStream_t;
@@ -92,8 +93,8 @@ typedef struct gmosStream_t {
 static inline void _id_ ## _init (gmosStream_t* stream,                \
     gmosTaskState_t* consumerTask, uint16_t maxDataItems)              \
 {                                                                      \
-    uint16_t maxBufferSize = maxDataItems * sizeof (_data_type_);      \
-    gmosStreamInit (stream, consumerTask, maxBufferSize);              \
+    uint16_t maxStreamSize = maxDataItems * sizeof (_data_type_);      \
+    gmosStreamInit (stream, consumerTask, maxStreamSize);              \
 }                                                                      \
                                                                        \
 static inline bool _id_ ## _write (                                    \
@@ -111,6 +112,22 @@ static inline bool _id_ ## _read (                                     \
 }
 
 /**
+ * Provides a compile time initialisation macro for a GubbinsMOS byte
+ * stream. Assigning this macro value to a byte stream variable on
+ * declaration may be used instead of a call to the 'gmosStreamInit'
+ * function to set up the byte stream for subsequent data transfer.
+ * @param _consumer_task_ This is the consumer task to which the stream
+ *     is to forward data. It is used to automatically make the consumer
+ *     task ready to run when new data is written to the stream. A null
+ *     reference will disable this functionality.
+ * @param _max_stream_size_ This is the maximum number of bytes that may
+ *     be queued by the stream at any given time. It must be greater
+ *     than zero.
+ */
+#define GMOS_STREAM_INIT(_consumer_task_, _max_stream_size_)           \
+    { _consumer_task_, NULL, _max_stream_size_, 0, 0, 0 }
+
+/**
  * Performs a one-time initialisation of a GubbinsMOS byte stream. This
  * should be called during initialisation to set up the byte stream for
  * subsequent data transfer.
@@ -120,12 +137,12 @@ static inline bool _id_ ## _read (                                     \
  *     to forward data. It is used to automatically make the consumer
  *     task ready to run when new data is written to the stream. A null
  *     reference will disable this functionality.
- * @param maxBufferSize This is the maximum number of bytes that may be
- *     buffered by the stream at any given time. It must be greater than
+ * @param maxStreamSize This is the maximum number of bytes that may be
+ *     queued by the stream at any given time. It must be greater than
  *     zero.
  */
 void gmosStreamInit (gmosStream_t* stream,
-    gmosTaskState_t* consumerTask, uint16_t maxBufferSize);
+    gmosTaskState_t* consumerTask, uint16_t maxStreamSize);
 
 /**
  * Determines the maximum number of free bytes that are available for
@@ -148,12 +165,12 @@ uint16_t gmosStreamGetWriteCapacity (gmosStream_t* stream);
 uint16_t gmosStreamGetReadCapacity (gmosStream_t* stream);
 
 /**
- * Writes data from a local buffer to a GubbinsMOS byte stream. Up to
- * the specified number of bytes may be written.
+ * Writes data from a local byte array to a GubbinsMOS byte stream. Up
+ * to the specified number of bytes may be written.
  * @param stream This is the stream state data structure which is
  *     associated with the write data stream.
- * @param writeData This is a pointer to the start of the data area that
- *     is to be written to the byte stream.
+ * @param writeData This is a pointer to the start of the byte array
+ *     that is to be written to the byte stream.
  * @param writeSize This is the number of bytes that are ready to be
  *     written to the byte stream.
  * @return Returns the number of bytes that were written to the byte
@@ -165,13 +182,13 @@ uint16_t gmosStreamWrite (gmosStream_t* stream,
     uint8_t* writeData, uint16_t writeSize);
 
 /**
- * Writes data from a local buffer to a GubbinsMOS byte stream. Either
- * the specified number of bytes will be written as a single transfer or
- * no data will be transferred.
+ * Writes data from a local byte array to a GubbinsMOS byte stream.
+ * Either the specified number of bytes will be written as a single
+ * transfer or no data will be transferred.
  * @param stream This is the stream state data structure which is
  *     associated with the write data stream.
- * @param writeData This is a pointer to the start of the data area that
- *     is to be written to the byte stream.
+ * @param writeData This is a pointer to the start of the byte array
+ *     that is to be written to the byte stream.
  * @param writeSize This is the number of bytes that are to be written
  *     to the byte stream.
  * @return Returns a boolean value which will be set to 'true' if all
@@ -182,14 +199,14 @@ bool gmosStreamWriteAll (gmosStream_t* stream,
     uint8_t* writeData, uint16_t writeSize);
 
 /**
- * Writes data from a local buffer to a GubbinsMOS byte stream,
+ * Writes data from a local byte array to a GubbinsMOS byte stream,
  * inserting a two byte message size field as a header. Either the
  * complete message will be written as a single transfer or no data will
  * be transferred.
  * @param stream This is the stream state data structure which is
  *     associated with the write data stream.
- * @param writeData This is a pointer to the start of the data area that
- *     is to be written to the byte stream.
+ * @param writeData This is a pointer to the start of the byte array
+ *     that is to be written to the byte stream.
  * @param writeSize This is the number of bytes that are to be written
  *     to the byte stream. A message length of 0xFFFE or greater is
  *     invalid.
@@ -213,56 +230,56 @@ bool gmosStreamWriteMessage (gmosStream_t* stream,
 bool gmosStreamWriteByte (gmosStream_t* stream, uint8_t writeByte);
 
 /**
- * Reads data from a GubbinsMOS byte stream into a local read buffer.
- * Up to the specified number of bytes may be transferred.
+ * Reads data from a GubbinsMOS byte stream into a local read data byte
+ * array. Up to the specified number of bytes may be transferred.
  * @param stream This is the stream state data structure which is
  *     associated with the read data stream.
- * @param readBuffer This is a pointer to the start of the local read
- *     buffer into which the read data is to be transferred.
- * @param readSize This is the size of the read buffer, and indicates
- *     the maximum number of bytes that may be transferred.
+ * @param readData This is a pointer to the start of the local byte
+ *     array into which the read data is to be transferred.
+ * @param readSize This is the size of the read data byte array, and
+ *     indicates the maximum number of bytes that may be transferred.
  * @return Returns the number of bytes that were transferred to the
- *     local read buffer. A return value of zero indicates that no read
- *     data was available.
+ *     local read data byte array. A return value of zero indicates that
+ *     no read data was available.
  */
 uint16_t gmosStreamRead (gmosStream_t* stream,
-    uint8_t* readBuffer, uint16_t readSize);
+    uint8_t* readData, uint16_t readSize);
 
 /**
- * Reads data from a GubbinsMOS byte stream into a local read buffer.
- * Either the specified number of bytes will be read as a single
+ * Reads data from a GubbinsMOS byte stream into a local read data byte
+ * array. Either the specified number of bytes will be read as a single
  * transfer or no data will be transferred.
  * @param stream This is the stream state data structure which is
  *     associated with the read data stream.
- * @param readBuffer This is a pointer to the start of the local read
- *     buffer into which the read data is to be transferred.
- * @param readSize This is the size of the read buffer, and indicates
- *     the number of bytes that must be transferred.
+ * @param readData This is a pointer to the start of the local byte
+ *     array into which the read data is to be transferred.
+ * @param readSize This is the size of the read data byte array, and
+ *     indicates the number of bytes that must be transferred.
  * @return Returns a boolean value which will be set to 'true' if the
  *     specified number of bytes were transferred from the byte stream
  *     and 'false' if no read data was transferred from the byte stream.
  */
 bool gmosStreamReadAll (gmosStream_t* stream,
-    uint8_t* readBuffer, uint16_t readSize);
+    uint8_t* readData, uint16_t readSize);
 
 /**
- * Reads data from a GubbinsMOS byte stream into a local read buffer,
- * parsing a two byte message size field as a header. Either the
+ * Reads data from a GubbinsMOS byte stream into a local read data byte
+ * array, parsing a two byte message size field as a header. Either the
  * complete message will be read as a single transfer or no data will be
  * transferred.
  * @param stream This is the stream state data structure which is
  *     associated with the read data stream.
- * @param readBuffer This is a pointer to the start of the local read
- *     buffer into which the read data is to be transferred.
- * @param readSize This is the size of the read buffer, and indicates
- *     the maximum number of bytes that can be transferred.
+ * @param readData This is a pointer to the start of the local byte
+ *     array into which the read data is to be transferred.
+ * @param readSize This is the size of the read data byte array, and
+ *     indicates the maximum number of bytes that can be transferred.
  * @return Returns the number of bytes that were transferred to the
- *     local read buffer. A return value of zero indicates that no read
- *     data was available and a value of 0xFFFF indicates that the
- *     message is too large to be stored in the local buffer.
+ *     local read data byte array. A return value of zero indicates that
+ *     no read data was available and a value of 0xFFFF indicates that
+ *     the message is too large to be stored in the local byte array.
  */
 uint16_t gmosStreamReadMessage (gmosStream_t* stream,
-    uint8_t* readBuffer, uint16_t readSize);
+    uint8_t* readData, uint16_t readSize);
 
 /**
  * Reads a single byte from a byte stream.

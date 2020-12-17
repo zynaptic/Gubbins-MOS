@@ -68,12 +68,12 @@ static gmosMempoolSegment_t* gmosStreamSegmentListEnd (gmosStream_t* stream)
  * subsequent data transfer.
  */
 void gmosStreamInit (gmosStream_t* stream,
-    gmosTaskState_t* consumerTask, uint16_t maxBufferSize)
+    gmosTaskState_t* consumerTask, uint16_t maxStreamSize)
 {
     stream->consumerTask = consumerTask;
     stream->segmentList = NULL;
-    stream->maxBufferSize = maxBufferSize;
-    stream->bufferSize = 0;
+    stream->maxSize = maxStreamSize;
+    stream->size = 0;
 }
 
 /*
@@ -99,7 +99,7 @@ uint16_t gmosStreamGetWriteCapacity (gmosStream_t* stream)
         ((uint32_t) gmosMempoolSegmentsAvailable ());
 
     // Limit the number of free bytes to the maximum for the stream.
-    maxStreamBytes = stream->maxBufferSize - stream->bufferSize;
+    maxStreamBytes = stream->maxSize - stream->size;
     if (maxFreeBytes < maxStreamBytes) {
         maxStreamBytes = (uint16_t) maxFreeBytes;
     }
@@ -112,7 +112,7 @@ uint16_t gmosStreamGetWriteCapacity (gmosStream_t* stream)
  */
 uint16_t gmosStreamGetReadCapacity (gmosStream_t* stream)
 {
-    return stream->bufferSize;
+    return stream->size;
 }
 
 /*
@@ -135,7 +135,7 @@ static void gmosStreamCommonWrite (gmosStream_t* stream,
         segment = gmosMempoolAlloc ();
         segment->nextSegment = NULL;
         stream->segmentList = segment;
-        stream->bufferSize = 0;
+        stream->size = 0;
         stream->writeOffset = 0;
         stream->readOffset = 0;
     } else {
@@ -153,7 +153,7 @@ static void gmosStreamCommonWrite (gmosStream_t* stream,
         remainingBytes -= copySize;
         sourcePtr += copySize;
         stream->writeOffset += copySize;
-        stream->bufferSize += copySize;
+        stream->size += copySize;
     }
 
     // Write data into subsequent newly allocated segments.
@@ -170,7 +170,7 @@ static void gmosStreamCommonWrite (gmosStream_t* stream,
         remainingBytes -= copySize;
         sourcePtr += copySize;
         stream->writeOffset = copySize;
-        stream->bufferSize += copySize;
+        stream->size += copySize;
     }
 
     // Reschedule the suspended consumer task if required.
@@ -180,8 +180,8 @@ static void gmosStreamCommonWrite (gmosStream_t* stream,
 }
 
 /*
- * Writes data from a local buffer to a GubbinsMOS byte stream. Up to
- * the specified number of bytes may be written.
+ * Writes data from a local byte array to a GubbinsMOS byte stream. Up
+ * to the specified number of bytes may be written.
  */
 uint16_t gmosStreamWrite (gmosStream_t* stream,
     uint8_t* writeData, uint16_t writeSize)
@@ -202,9 +202,9 @@ uint16_t gmosStreamWrite (gmosStream_t* stream,
 }
 
 /*
- * Writes data from a local buffer to a GubbinsMOS byte stream. Either
- * the specified number of bytes will be written as a single transfer or
- * no data will be transferred.
+ * Writes data from a local byte array to a GubbinsMOS byte stream.
+ * Either the specified number of bytes will be written as a single
+ * transfer or no data will be transferred.
  */
 bool gmosStreamWriteAll (gmosStream_t* stream,
     uint8_t* writeData, uint16_t writeSize)
@@ -222,7 +222,7 @@ bool gmosStreamWriteAll (gmosStream_t* stream,
 }
 
 /*
- * Writes data from a local buffer to a GubbinsMOS byte stream,
+ * Writes data from a local byte array to a GubbinsMOS byte stream,
  * inserting a two byte message size field as a header. Either the
  * complete message will be written as a single transfer or no data will
  * be transferred.
@@ -264,7 +264,7 @@ bool gmosStreamWriteByte (gmosStream_t* stream, uint8_t writeByte)
         segment = gmosMempoolAlloc ();
         segment->nextSegment = NULL;
         stream->segmentList = segment;
-        stream->bufferSize = 0;
+        stream->size = 0;
         stream->writeOffset = 0;
         stream->readOffset = 0;
     } else {
@@ -283,7 +283,7 @@ bool gmosStreamWriteByte (gmosStream_t* stream, uint8_t writeByte)
     writePtr = segment->data.bytes + stream->writeOffset;
     *writePtr = writeByte;
     stream->writeOffset += 1;
-    stream->bufferSize += 1;
+    stream->size += 1;
 
     // Reschedule the suspended consumer task if required.
     if (stream->consumerTask != NULL) {
@@ -317,13 +317,13 @@ static void gmosStreamCommonRead (gmosStream_t* stream,
         remainingBytes -= copySize;
         targetPtr += copySize;
         stream->readOffset += copySize;
-        stream->bufferSize -= copySize;
+        stream->size -= copySize;
 
         // Release the current memory pool segment if required. If this
         // is the last segment, the segment list will take the null
         // reference from the next segment pointer.
         if ((stream->readOffset == GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE) ||
-            (stream->bufferSize == 0)) {
+            (stream->size == 0)) {
             stream->segmentList = segment->nextSegment;
             stream->readOffset = 0;
             gmosMempoolFree (segment);
@@ -333,55 +333,55 @@ static void gmosStreamCommonRead (gmosStream_t* stream,
 }
 
 /*
- * Reads data from a GubbinsMOS byte stream into a local read buffer.
- * Up to the specified number of bytes may be transferred.
+ * Reads data from a GubbinsMOS byte stream into a local read data byte
+ * array. Up to the specified number of bytes may be transferred.
  */
 uint16_t gmosStreamRead (gmosStream_t* stream,
-    uint8_t* readBuffer, uint16_t readSize)
+    uint8_t* readData, uint16_t readSize)
 {
     uint16_t transferSize;
 
     // Determine the maximum possible read transfer size.
-    transferSize = stream->bufferSize;
+    transferSize = stream->size;
     if (transferSize > readSize) {
         transferSize = readSize;
     }
 
     // Perform the read transaction.
     if (transferSize > 0) {
-        gmosStreamCommonRead (stream, readBuffer, transferSize);
+        gmosStreamCommonRead (stream, readData, transferSize);
     }
     return transferSize;
 }
 
 /*
- * Reads data from a GubbinsMOS byte stream into a local read buffer.
- * Either the specified number of bytes will be read as a single
+ * Reads data from a GubbinsMOS byte stream into a local read data byte
+ * array. Either the specified number of bytes will be read as a single
  * transfer or no data will be transferred.
  */
 bool gmosStreamReadAll (gmosStream_t* stream,
-    uint8_t* readBuffer, uint16_t readSize)
+    uint8_t* readData, uint16_t readSize)
 {
     // Determine if there is sufficient data for the entire transfer.
-    if (stream->bufferSize < readSize) {
+    if (stream->size < readSize) {
         return false;
     }
 
     // Perform the read transaction.
     if (readSize > 0) {
-        gmosStreamCommonRead (stream, readBuffer, readSize);
+        gmosStreamCommonRead (stream, readData, readSize);
     }
     return true;
 }
 
 /*
- * Reads data from a GubbinsMOS byte stream into a local read buffer,
- * parsing a two byte message size field as a header. Either the
+ * Reads data from a GubbinsMOS byte stream into a local read data byte
+ * array, parsing a two byte message size field as a header. Either the
  * complete message will be read as a single transfer or no data will be
  * transferred.
  */
 uint16_t gmosStreamReadMessage (gmosStream_t* stream,
-    uint8_t* readBuffer, uint16_t readSize)
+    uint8_t* readData, uint16_t readSize)
 {
     uint8_t msgSizeLow;
     uint8_t msgSizeHigh;
@@ -396,11 +396,11 @@ uint16_t gmosStreamReadMessage (gmosStream_t* stream,
     msgSize = (((uint16_t) msgSizeHigh) << 8) | msgSizeLow;
 
     // Check that all of the message is available.
-    if (stream->bufferSize < msgSize + 2) {
+    if (stream->size < msgSize + 2) {
         return 0;
     }
 
-    // Check that all of the message can be received by the buffer.
+    // Check that all of the message can be received by the caller.
     if (msgSize > readSize) {
         return 0xFFFF;
     }
@@ -409,7 +409,7 @@ uint16_t gmosStreamReadMessage (gmosStream_t* stream,
     gmosStreamReadByte (stream, &msgSizeLow);
     gmosStreamReadByte (stream, &msgSizeHigh);
     if (msgSize > 0) {
-        gmosStreamCommonRead (stream, readBuffer, msgSize);
+        gmosStreamCommonRead (stream, readData, msgSize);
     }
     return msgSize;
 }
@@ -423,7 +423,7 @@ bool gmosStreamReadByte (gmosStream_t* stream, uint8_t* readByte)
     gmosMempoolSegment_t* segment = stream->segmentList;
 
     // Determine if there is data available.
-    if (stream->bufferSize == 0) {
+    if (stream->size == 0) {
         return false;
     }
 
@@ -431,13 +431,13 @@ bool gmosStreamReadByte (gmosStream_t* stream, uint8_t* readByte)
     readPtr = segment->data.bytes + stream->readOffset;
     *readByte = *readPtr;
     stream->readOffset += 1;
-    stream->bufferSize -= 1;
+    stream->size -= 1;
 
     // Release the current memory pool segment if required. If this is
     // the last segment, the segment list will take the null reference
     // from the next segment pointer.
     if ((stream->readOffset == GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE) ||
-        (stream->bufferSize == 0)) {
+        (stream->size == 0)) {
         stream->segmentList = segment->nextSegment;
         stream->readOffset = 0;
         gmosMempoolFree (segment);
@@ -456,7 +456,7 @@ bool gmosStreamPeekByte (gmosStream_t* stream,
     gmosMempoolSegment_t* segment;
 
     // Determine if there is data available.
-    if (stream->bufferSize <= offset) {
+    if (stream->size <= offset) {
         return false;
     }
 
