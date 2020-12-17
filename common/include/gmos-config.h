@@ -82,6 +82,16 @@
 #endif
 
 /**
+ * This configuration option is used to select memcpy as the method for
+ * transferring data to and from data buffers. By default an inlined
+ * byte based copy is used, since buffer transfers are expected to be
+ * unaligned and relatively short.
+ */
+#ifndef GMOS_CONFIG_BUFFERS_USE_MEMCPY
+#define GMOS_CONFIG_BUFFERS_USE_MEMCPY false
+#endif
+
+/**
  * This configuration option selects whether file name and location
  * information is to be included when generating log messages. Set to
  * 'true' to enable file name and location logging for debug purposes.
