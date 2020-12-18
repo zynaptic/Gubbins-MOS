@@ -28,59 +28,6 @@
 #include "gmos-config.h"
 #include "stm32-device.h"
 
-// Provide mapping of pin bank values to GPIO register sets.
-static GPIO_TypeDef* gpioRegisterMap [] = {
-    GPIOA, GPIOB, GPIOC, GPIOD, GPIOE, NULL, NULL, GPIOH};
-
-/*
- * Configures a given GPIO pin to use an alternate function, with the
- * specified alternate function mapping.
- */
-void gmosPalGpioSetAltFunction (uint32_t pinBank, uint32_t pinIndex,
-    uint32_t driverType, uint32_t slewRate, uint32_t pullUpOrDown,
-    uint32_t altFunction)
-{
-    GPIO_TypeDef* gpio = gpioRegisterMap [pinBank];
-    uint32_t regVal;
-
-    // Set the mode bits to use alternate function.
-    regVal = gpio->MODER;
-    regVal &= ~(3 << (2 * pinIndex));
-    regVal |= (2 << (2 * pinIndex));
-    gpio->MODER = regVal;
-
-    // Select push/pull or open drain operation.
-    regVal = gpio->OTYPER;
-    regVal &= ~(1 << pinIndex);
-    regVal |= ((driverType & 1) << pinIndex);
-    gpio->OTYPER = regVal;
-
-    // Set the output driver transition speed (0 to 3).
-    regVal = gpio->OSPEEDR;
-    regVal &= ~(3 << (2 * pinIndex));
-    regVal |= ((slewRate & 3) << (2 * pinIndex));
-    gpio->OSPEEDR = regVal;
-
-    // Configure the pull up or pull down resistors.
-    regVal = gpio->PUPDR;
-    regVal &= ~(3 << (2 * pinIndex));
-    regVal |= ((pullUpOrDown & 3) << (2 * pinIndex));
-    gpio->PUPDR = regVal;
-
-    // Set the alternate function to use.
-    if (pinIndex < 8) {
-        regVal = gpio->AFR[0];
-        regVal &= ~(15 << (4 * pinIndex));
-        regVal |= ((altFunction & 15) << (4 * pinIndex));
-        gpio->AFR[0] = regVal;
-    } else {
-        regVal = gpio->AFR[1];
-        regVal &= ~(15 << (4 * (pinIndex - 8)));
-        regVal |= ((altFunction & 15) << (4 * (pinIndex - 8)));
-        gpio->AFR[1] = regVal;
-    }
-}
-
 /*
  * Configures the STM32 device for standard performance. This sets the
  * system clock to 16 MHz with a single flash memory wait cycle. This

@@ -38,33 +38,6 @@
 #error ("STM32L0XX Device Not Currently Supported");
 #endif
 
-// These constants define the STM32 GPIO bank encoding used when
-// configuring GPIO pins.
-#define STM32_GPIO_BANK_A 0
-#define STM32_GPIO_BANK_B 1
-#define STM32_GPIO_BANK_C 2
-#define STM32_GPIO_BANK_D 3
-#define STM32_GPIO_BANK_E 4
-#define STM32_GPIO_BANK_H 7
-
-// These constants define the STM32 output driver configuration options
-// to be used when configuring GPIO pins.
-#define STM32_GPIO_DRIVER_PUSH_PULL  0
-#define STM32_GPIO_DRIVER_OPEN_DRAIN 1
-
-// These constants define the STM32 output driver slew rate speed
-// options to be used when configuring GPIO pins.
-#define STM32_GPIO_DRIVER_SLEW_SLOW    0
-#define STM32_GPIO_DRIVER_SLEW_MEDIUM  1
-#define STM32_GPIO_DRIVER_SLEW_FAST    2
-#define STM32_GPIO_DRIVER_SLEW_MAXIMUM 3
-
-// These constants define the STM32 pin pullup or pulldown options to
-// be used when configuring GPIO pins.
-#define STM32_GPIO_INPUT_PULL_NONE 0
-#define STM32_GPIO_INPUT_PULL_UP   1
-#define STM32_GPIO_INPUT_PULL_DOWN 2
-
 /**
  * Initialises the STM32 system timer implementation using the 16-bit
  * low power timer.
@@ -90,27 +63,5 @@ void gmosPalSerialConsoleInit (void);
  *     in the serial console transmit queue.
  */
 bool gmosPalSerialConsoleWrite (uint8_t* writeData, uint16_t writeSize);
-
-/**
- * Sets up one of the STM32 GPIO pins for alternate function use.
- * @param pinBank This is the GPIO bank to which the selected GPIO pin
- *     belongs. It should be one of the defined GPIO bank encoding
- *     values.
- * @param pinIndex This is the GPIO pin index within the GPIO bank. It
- *     should be in the range from 0 to 15.
- * @param driverType This is the GPIO output driver type to be used,
- *     selecting between push-pull and open drain configurations.
- * @param slewRate This is the GPIO output driver slew rate speed. It
- *     should be one of the defined GPIO slew rate values.
- * @param pullUpOrDown This is the GPIO input pull up or pull down
- *     configuration. It should be one of the defined GPIO pull up or
- *     pull down values.
- * @param altFunction This is the GPIO alternate function selection.
- *     It should be in the range from 0 to 15 and will be a device
- *     specific value.
- */
-void gmosPalGpioSetAltFunction (uint32_t pinBank, uint32_t pinIndex,
-    uint32_t driverType, uint32_t slewRate, uint32_t pullUpOrDown,
-    uint32_t altFunction);
 
 #endif // STM32_DEVICE_H
