@@ -28,6 +28,7 @@
 #include "gmos-config.h"
 #include "gmos-driver-i2c.h"
 #include "stm32-device.h"
+#include "stm32-driver-gpio.h"
 #include "stm32-driver-i2c.h"
 
 // Add dummy definitions if I2C interface 2 is not supported.
@@ -314,11 +315,6 @@ bool gmosDriverI2CPalInit (gmosDriverI2CBus_t* busController)
     const gmosPalI2CBusConfig_t* palConfig = busController->platformConfig;
     uint8_t i2cIndex;
     I2C_TypeDef* i2cRegs;
-    uint8_t sclPinBank;
-    uint8_t sclPinIndex;
-    uint8_t sdaPinBank;
-    uint8_t sdaPinIndex;
-    uint32_t gpioClockEnables;
 
     // Keep a reference to the platform data structures.
     i2cIndex = palConfig->i2cInterfaceId - 1;
@@ -328,32 +324,13 @@ bool gmosDriverI2CPalInit (gmosDriverI2CBus_t* busController)
     i2cRegs = i2cRegisterMap [i2cIndex];
     i2cBusControllerMap [i2cIndex] = busController;
 
-    // Extract the pin bank and index values.
-    sclPinBank = palConfig->sclPinId >> 4;
-    sclPinIndex = palConfig->sclPinId & 0x0F;
-    sdaPinBank = palConfig->sdaPinId >> 4;
-    sdaPinIndex = palConfig->sdaPinId & 0x0F;
-
-    // Determine if any new GPIO clocks need to be enabled.
-    gpioClockEnables = (1 << sclPinBank) | (1 << sdaPinBank);
-    gpioClockEnables &= ~(RCC->IOPENR);
-    if (gpioClockEnables != 0) {
-        RCC->IOPENR |= gpioClockEnables;
-    }
-
     // Configure both pins as high speed open drain with pullup.
-    gmosPalGpioSetAltFunction (sclPinBank, sclPinIndex,
+    gmosDriverGpioAltModeInit (palConfig->sclPinId,
         STM32_GPIO_DRIVER_OPEN_DRAIN, STM32_GPIO_DRIVER_SLEW_FAST,
         STM32_GPIO_INPUT_PULL_UP, palConfig->sclPinAltFn);
-    gmosPalGpioSetAltFunction (sdaPinBank, sdaPinIndex,
+    gmosDriverGpioAltModeInit (palConfig->sdaPinId,
         STM32_GPIO_DRIVER_OPEN_DRAIN, STM32_GPIO_DRIVER_SLEW_FAST,
         STM32_GPIO_INPUT_PULL_UP, palConfig->sdaPinAltFn);
-
-    // Disable any GPIO clocks that were enabled specifically for this
-    // setup process.
-    if (gpioClockEnables != 0) {
-        RCC->IOPENR &= ~gpioClockEnables;
-    }
 
     // Enable the I2C peripheral clock. Note that this is not enabled in
     // the corresponding sleep mode register, so it will automatically

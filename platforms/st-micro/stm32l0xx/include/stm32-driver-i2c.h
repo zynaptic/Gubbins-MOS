@@ -24,22 +24,25 @@
 #ifndef STM32_DRIVER_I2C_H
 #define STM32_DRIVER_I2C_H
 
+#include <stdint.h>
+#include "stm32-driver-gpio.h"
+
 /**
  * Defines the platform specific I2C hardware configuration settings
  * data structure.
  */
 typedef struct gmosPalI2CBusConfig_t {
 
-    // Specify the GPIO pin used for SCL. The most significant nibble is
+    // Specify the GPIO pin used for SCL. The most significant byte is
     // the bank and the least significant nibble is the pin.
-    uint8_t sclPinId;
+    uint16_t sclPinId;
+
+    // Specify the GPIO pin used for SDA. The most significant byte is
+    // the bank and the least significant nibble is the pin.
+    uint16_t sdaPinId;
 
     // Specify the GPIO pin alternate function to use for SCL.
     uint8_t sclPinAltFn;
-
-    // Specify the GPIO pin used for SDA. The most significant nibble is
-    // the bank and the least significant nibble is the pin.
-    uint8_t sdaPinId;
 
     // Specify the GPIO pin alternate function to use for SDA.
     uint8_t sdaPinAltFn;
@@ -73,12 +76,12 @@ typedef struct gmosPalI2CBusState_t {
  * to the Arduino I2C connection on the STM32 Nucleo boards.
  */
 static const gmosPalI2CBusConfig_t gmosPalI2CBusConfig_STM32L0X0_I2C1 = {
-    0x18, // sclPinId = PB8
-    4,    // sclPinAltFn
-    0x19, // sdaPinId = PB9
-    4,    // sdaPinAltFn
-    1,    // i2cInterfaceId
-    1     // i2cBusSpeed = 400 kHz
+    STM32_GPIO_BANK_B | 8, // sclPinId = PB8
+    STM32_GPIO_BANK_B | 9, // sdaPinId = PB9
+    4,                     // sclPinAltFn
+    4,                     // sdaPinAltFn
+    1,                     // i2cInterfaceId
+    1                      // i2cBusSpeed = 400 kHz
 };
 
 #endif // STM32_DRIVER_I2C_H
