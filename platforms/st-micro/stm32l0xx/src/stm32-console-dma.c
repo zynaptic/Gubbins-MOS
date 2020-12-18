@@ -29,6 +29,7 @@
 #include "gmos-scheduler.h"
 #include "gmos-streams.h"
 #include "stm32-device.h"
+#include "stm32-driver-gpio.h"
 
 // Use this implementation if the DMA based serial console is selected.
 #if GMOS_CONFIG_STM32_DEBUG_CONSOLE_USE_DMA
@@ -120,7 +121,6 @@ GMOS_TASK_DEFINITION (gmosPalSerialConsoleTask,
 void gmosPalSerialConsoleInit (void)
 {
     uint16_t usartDiv;
-    bool disableGpioClock = false;
 
     // Initialise the serial console state variables.
     currentState = CONSOLE_STATE_DMA_IDLE;
@@ -131,21 +131,10 @@ void gmosPalSerialConsoleInit (void)
         &consoleTask, GMOS_CONFIG_STM32_DEBUG_CONSOLE_BUFFER_SIZE);
     gmosPalSerialConsoleTask_start (&consoleTask, NULL, "Debug Console");
 
-    // Temporarily enable the GPIO clock if required.
-    if ((RCC->IOPENR & RCC_IOPENR_GPIOAEN) == 0) {
-        RCC->IOPENR |= RCC_IOPENR_GPIOAEN;
-        disableGpioClock = true;
-    }
-
     // Configure GPIO A2 pin for USART2 transmit (high speed push/pull).
-    gmosPalGpioSetAltFunction (STM32_GPIO_BANK_A, 2,
+    gmosDriverGpioAltModeInit (STM32_GPIO_BANK_A | 2,
         STM32_GPIO_DRIVER_PUSH_PULL, STM32_GPIO_DRIVER_SLEW_FAST,
         STM32_GPIO_INPUT_PULL_NONE, 4);
-
-    // Disable the GPIO clock if no longer required.
-    if (disableGpioClock) {
-        RCC->IOPENR &= ~RCC_IOPENR_GPIOAEN;
-    }
 
     // Enable clocks for USART2 and DMA. Note that these are not enabled
     // in the corresponding sleep mode registers, so the clocks will
