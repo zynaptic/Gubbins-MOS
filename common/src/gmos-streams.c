@@ -474,3 +474,40 @@ bool gmosStreamPeekByte (gmosStream_t* stream,
     *peekByte = segment->data.bytes [residualOffset];
     return true;
 }
+
+/*
+ * Sends the contents of a data buffer over a GubbinsMOS stream using
+ * 'pass by reference' semantics to avoid excessive data copying.
+ */
+bool gmosStreamSendBuffer (gmosStream_t* stream, gmosBuffer_t* buffer)
+{
+    bool sendOk = false;
+    uint8_t* writeData = (uint8_t*) buffer;
+    uint16_t writeSize = sizeof (gmosBuffer_t);
+
+    // Attempt to copy the buffer data structure to the stream. On
+    // success, set the buffer as empty to avoid duplicate references
+    // to the segment list.
+    if (gmosStreamWriteAll (stream, writeData, writeSize)) {
+        buffer->segmentList = NULL;
+        buffer->bufferSize = 0;
+        sendOk = true;
+    }
+    return sendOk;
+}
+
+/*
+ * Accepts the contents of a data buffer from a GubbinsMOS stream using
+ * 'pass by reference' semantics to avoid excessive data copying.
+ */
+bool gmosStreamAcceptBuffer (gmosStream_t* stream, gmosBuffer_t* buffer)
+{
+    uint8_t* readData = (uint8_t*) buffer;
+    uint16_t readSize = sizeof (gmosBuffer_t);
+
+    // Always discard existing contents of the output buffer.
+    gmosBufferReset (buffer, 0);
+
+    // Attempt to read the buffer data structure from the stream.
+    return gmosStreamReadAll (stream, readData, readSize);
+}

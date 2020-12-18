@@ -28,6 +28,7 @@
 #include <stddef.h>
 #include "gmos-scheduler.h"
 #include "gmos-mempool.h"
+#include "gmos-buffers.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -308,6 +309,37 @@ bool gmosStreamReadByte (gmosStream_t* stream, uint8_t* readByte);
  */
 bool gmosStreamPeekByte (gmosStream_t* stream,
     uint8_t* peekByte, uint16_t offset);
+
+/**
+ * Sends the contents of a data buffer over a GubbinsMOS stream using
+ * 'pass by reference' semantics to avoid excessive data copying.
+ * @param stream This is the stream state data structure which is
+ *     associated with the write data stream.
+ * @param buffer This is the buffer containing the data which is to be
+ *     transferred via the stream. On successful completion the buffer
+ *     instance will automatically be reset to a length of zero, with
+ *     ownership of the buffer data having been transferred to the
+ *     stream.
+ * @return Returns a boolean value which will be set to 'true' if
+ *     ownership of the buffer data was transferred to the byte stream
+ *     and 'false' if no data was transferred to the byte stream.
+ */
+bool gmosStreamSendBuffer (gmosStream_t* stream, gmosBuffer_t* buffer);
+
+/**
+ * Accepts the contents of a data buffer from a GubbinsMOS stream using
+ * 'pass by reference' semantics to avoid excessive data copying.
+ * @param stream This is the stream state data structure which is
+ *     associated with the read data stream.
+ * @param buffer This is a buffer instance which on successful
+ *     completion will be updated to contain the buffer data transferred
+ *     via the stream. Any existing buffer contents will automatically
+ *     be discarded, regardless of outcome.
+ * @return Returns a boolean value which will be set to 'true' if data
+ *     was transferred to the buffer and 'false' if no data is currently
+ *     available.
+ */
+bool gmosStreamAcceptBuffer (gmosStream_t* stream, gmosBuffer_t* buffer);
 
 #ifdef __cplusplus
 }
