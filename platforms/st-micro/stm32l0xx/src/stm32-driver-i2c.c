@@ -27,6 +27,7 @@
 
 #include "gmos-config.h"
 #include "gmos-driver-i2c.h"
+#include "gmos-driver-gpio.h"
 #include "stm32-device.h"
 #include "stm32-driver-gpio.h"
 #include "stm32-driver-i2c.h"
@@ -326,11 +327,11 @@ bool gmosDriverI2CPalInit (gmosDriverI2CBus_t* busController)
 
     // Configure both pins as high speed open drain with pullup.
     gmosDriverGpioAltModeInit (palConfig->sclPinId,
-        STM32_GPIO_DRIVER_OPEN_DRAIN, STM32_GPIO_DRIVER_SLEW_FAST,
-        STM32_GPIO_INPUT_PULL_UP, palConfig->sclPinAltFn);
+        GMOS_DRIVER_GPIO_OUTPUT_OPEN_DRAIN, STM32_GPIO_DRIVER_SLEW_FAST,
+        GMOS_DRIVER_GPIO_INPUT_PULL_UP, palConfig->sclPinAltFn);
     gmosDriverGpioAltModeInit (palConfig->sdaPinId,
-        STM32_GPIO_DRIVER_OPEN_DRAIN, STM32_GPIO_DRIVER_SLEW_FAST,
-        STM32_GPIO_INPUT_PULL_UP, palConfig->sdaPinAltFn);
+        GMOS_DRIVER_GPIO_OUTPUT_OPEN_DRAIN, STM32_GPIO_DRIVER_SLEW_FAST,
+        GMOS_DRIVER_GPIO_INPUT_PULL_UP, palConfig->sdaPinAltFn);
 
     // Enable the I2C peripheral clock. Note that this is not enabled in
     // the corresponding sleep mode register, so it will automatically

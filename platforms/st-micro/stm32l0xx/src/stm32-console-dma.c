@@ -28,6 +28,7 @@
 #include "gmos-config.h"
 #include "gmos-scheduler.h"
 #include "gmos-streams.h"
+#include "gmos-driver-gpio.h"
 #include "stm32-device.h"
 #include "stm32-driver-gpio.h"
 
@@ -133,8 +134,8 @@ void gmosPalSerialConsoleInit (void)
 
     // Configure GPIO A2 pin for USART2 transmit (high speed push/pull).
     gmosDriverGpioAltModeInit (STM32_GPIO_BANK_A | 2,
-        STM32_GPIO_DRIVER_PUSH_PULL, STM32_GPIO_DRIVER_SLEW_FAST,
-        STM32_GPIO_INPUT_PULL_NONE, 4);
+        GMOS_DRIVER_GPIO_OUTPUT_PUSH_PULL, STM32_GPIO_DRIVER_SLEW_FAST,
+        GMOS_DRIVER_GPIO_INPUT_PULL_NONE, 4);
 
     // Enable clocks for USART2 and DMA. Note that these are not enabled
     // in the corresponding sleep mode registers, so the clocks will
