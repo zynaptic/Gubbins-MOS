@@ -24,9 +24,29 @@
 #ifndef GMOS_DRIVER_GPIO_H
 #define GMOS_DRIVER_GPIO_H
 
+#include <stdint.h>
+#include <stdbool.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
+
+// These constants define the standard output driver configuration
+// options to be used when configuring GPIO pins.
+#define GMOS_DRIVER_GPIO_OUTPUT_PUSH_PULL  false
+#define GMOS_DRIVER_GPIO_OUTPUT_OPEN_DRAIN true
+
+// These constants define the standard GPIO input pin pullup or pulldown
+// options to be used when configuring GPIO pins.
+#define GMOS_DRIVER_GPIO_INPUT_PULL_NONE 0
+#define GMOS_DRIVER_GPIO_INPUT_PULL_UP   1
+#define GMOS_DRIVER_GPIO_INPUT_PULL_DOWN -1
+
+/**
+ * Defines the function prototype to be used for GPIO interrupt service
+ * routine callbacks.
+ */
+typedef void (*gmosDriverGpioIsr_t) (void);
 
 /**
  * Initialises a general purpose IO pin for conventional use. This
@@ -42,7 +62,7 @@ extern "C" {
  *     values imply slower, lower power switching and higher values
  *     imply faster, more power hungry switching. The range of supported
  *     values will depend on the underlying hardware.
- * @param biasResistor This specifies the output bias resistor
+ * @param biasResistor This specifies the input bias resistor
  *     configuration. A value of zero selects no bias resistor, negative
  *     values select a pull down resistor, and positive values select
  *     a pull up resistor. For devices that support multiple bias
@@ -92,6 +112,57 @@ void gmosDriverGpioSetPinState (uint16_t gpioPinId, bool pinState);
  *     pin level is high and a value of 'false' if the pin level is low.
  */
 bool gmosDriverGpioGetPinState (uint16_t gpioPinId);
+
+/**
+ * Initialises a general purpose IO pin for interrupt generation. This
+ * should be called for each interrupt input GPIO pin prior to accessing
+ * it via any of the other API functions. The interrupt is not enabled
+ * at this stage.
+ * @param gpioPinId This is the platform specific GPIO pin identifier
+ *     that is associated with the GPIO pin being initialised.
+ * @param gpioIsr This is the GPIO interrupt service routine function
+ *     that is being registered with the specified GPIO interrupt pin.
+ *     It will be called in the interrupt service context so can only
+ *     use the ISR safe GubbinsMOS API calls.
+ * @param biasResistor This specifies the input bias resistor
+ *     configuration. A value of zero selects no bias resistor, negative
+ *     values select a pull down resistor, and positive values select
+ *     a pull up resistor. For devices that support multiple bias
+ *     resistor values, increasing the magnitude of this value maps to
+ *     an increase in the bias resistor value.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully setting up the GPIO pin interrupts and 'false' on
+ *     failure.
+ */
+bool gmosDriverGpioInterruptInit (uint16_t gpioPinId,
+    gmosDriverGpioIsr_t gpioIsr, int8_t biasResistor);
+
+/**
+ * Enables a GPIO interrupt for rising and/or falling edge detection.
+ * This should be called after initialising a general purpose IO pin
+ * as an interrupt source in order to receive interrupt notifications.
+ * @param gpioPinId This is the platform specific GPIO pin identifier
+ *     that is associated with the GPIO pin being used as an interrupt
+ *     source.
+ * @param risingEdge If set to 'true' this indicates that interrupts
+ *     should be generated when the input to the GPIO pin transitions
+ *     from low to high.
+ * @param fallingEdge If set to 'true' this indicates that interrupts
+ *     should be generated when the input to the GPIO pin transitions
+ *     from high to low.
+ */
+void gmosDriverGpioInterruptEnable (uint16_t gpioPinId,
+    bool risingEdge, bool fallingEdge);
+
+/**
+ * Disables a GPIO interrupt for the specified GPIO pin. This should be
+ * called after enabling a general purpose IO pin as an interrupt source
+ * in order to stop receiving interrupt notifications.
+ * @param gpioPinId This is the platform specific GPIO pin identifier
+ *     that is associated with the GPIO pin being used as an interrupt
+ *     source.
+ */
+void gmosDriverGpioInterruptDisable (uint16_t gpioPinId);
 
 #ifdef __cplusplus
 }

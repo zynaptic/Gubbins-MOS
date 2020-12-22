@@ -33,23 +33,12 @@
 #define STM32_GPIO_BANK_E 0x0400
 #define STM32_GPIO_BANK_H 0x0700
 
-// These constants define the STM32 output driver configuration options
-// to be used when configuring GPIO pins.
-#define STM32_GPIO_DRIVER_PUSH_PULL  false
-#define STM32_GPIO_DRIVER_OPEN_DRAIN true
-
 // These constants define the STM32 output driver slew rate speed
 // options to be used when configuring GPIO pins.
 #define STM32_GPIO_DRIVER_SLEW_SLOW    0
 #define STM32_GPIO_DRIVER_SLEW_MEDIUM  1
 #define STM32_GPIO_DRIVER_SLEW_FAST    2
 #define STM32_GPIO_DRIVER_SLEW_MAXIMUM 3
-
-// These constants define the STM32 pin pullup or pulldown options to
-// be used when configuring GPIO pins.
-#define STM32_GPIO_INPUT_PULL_NONE 0
-#define STM32_GPIO_INPUT_PULL_UP   1
-#define STM32_GPIO_INPUT_PULL_DOWN -1
 
 /**
  * Sets up one of the STM32 GPIO pins for alternate function use.
