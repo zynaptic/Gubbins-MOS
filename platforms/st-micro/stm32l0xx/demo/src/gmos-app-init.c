@@ -28,6 +28,11 @@
 #include "stm32-driver-i2c.h"
 
 /*
+ * Initialise the GPIO demo tasks.
+ */
+void demoGpioInit (void);
+
+/*
  * Initialise the LM75B I2C sensor using the specified I2C bus.
  */
 void demoTempSensorInit (gmosDriverI2CBus_t* i2cBus);
@@ -83,6 +88,9 @@ void gmosAppInit (void) {
     if (GMOS_DEMO_APP_LOG_LIFECYCLE_INFO) {
         gmosLifecycleAddMonitor (&lifecycleMonitor, lifecycleHandler);
     }
+
+    // Run the GPIO demo tasks.
+    demoGpioInit ();
 
     // Initialise the I2C bus.
     gmosDriverI2CBusInit (&i2cBus, &i2cBusState,
