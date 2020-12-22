@@ -28,10 +28,13 @@
 
 // Enumerate the supported devices.
 #define STM32L010RB 1
+#define STM32L072CZ 2
 
 // Select the appropriate vendor header.
 #if (TARGET_DEVICE == STM32L010RB)
 #include "stm32l010xb.h"
+#elif (TARGET_DEVICE == STM32L072CZ)
+#include "stm32l072xx.h"
 
 // No vendor header available.
 #else

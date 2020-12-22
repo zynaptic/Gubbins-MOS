@@ -57,7 +57,14 @@ deviceParameterTable = {
         "RAM_SIZE": "20K",
         "RAM_ADDR_TOP": "0x20005000",
         "RAM_RESERVED": "0x1000",
-    }
+    },
+    "STM32L072CZ": {
+        "TARGET_DEVICE": "STM32L072CZ",
+        "FLASH_SIZE": "192K",
+        "RAM_SIZE": "20K",
+        "RAM_ADDR_TOP": "0x20005000",
+        "RAM_RESERVED": "0x1000",
+    },
 }
 
 #

@@ -28,15 +28,23 @@
 #include "gmos-platform.h"
 #include "gmos-scheduler.h"
 #include "gmos-driver-gpio.h"
+#include "stm32-device.h"
 #include "stm32-driver-gpio.h"
 
-// Specify the GPIO pins to use for the RGB LED output.
+// Specify the GPIO pins to use for the STM32L010 Nucleo Board.
+#if (TARGET_DEVICE == STM32L010RB)
 #define RGB_LED_RED_PIN   (STM32_GPIO_BANK_B | 4) // Arduino D5
 #define RGB_LED_GREEN_PIN (STM32_GPIO_BANK_C | 7) // Arduino D9
 #define RGB_LED_BLUE_PIN  (STM32_GPIO_BANK_A | 9) // Arduino D8
-
-// Specify the GPIO pins to use for the switch input.
 #define COLOUR_SWITCH_PIN (STM32_GPIO_BANK_B | 5) // Arduino D4
+
+// Specify the GPIO pins to use for the STM32 LoRa Discovery Kit.
+#elif (TARGET_DEVICE == STM32L072CZ)
+#define RGB_LED_RED_PIN   (STM32_GPIO_BANK_B | 7)  // Arduino D5
+#define RGB_LED_GREEN_PIN (STM32_GPIO_BANK_B | 12) // Arduino D9
+#define RGB_LED_BLUE_PIN  (STM32_GPIO_BANK_A | 9)  // Arduino D8
+#define COLOUR_SWITCH_PIN (STM32_GPIO_BANK_B | 5)  // Arduino D4
+#endif
 
 // Defines the current RGB LED on/off state.
 static bool rgbLedIsOn = false;
