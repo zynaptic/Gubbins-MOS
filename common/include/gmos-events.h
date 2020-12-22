@@ -25,6 +25,7 @@
 #define GMOS_EVENTS_H
 
 #include <stdint.h>
+#include <stddef.h>
 #include "gmos-scheduler.h"
 
 #ifdef __cplusplus
@@ -52,13 +53,27 @@ typedef struct gmosEvent_t {
 } gmosEvent_t;
 
 /**
+ * Provides a compile time initialisation macro for a set of GubbinsMOS
+ * event flags. Assigning this macro value to an event state variable on
+ * declaration may be used instead of a call to the 'gmosEventInit'
+ * function to set up the event flags for subsequent asynchronous
+ * notifications.
+ * @param _consumer_task_ This is the consumer task which is to be
+ *     notified of any changes to the event flags. A null reference will
+ *     disable this functionality.
+ */
+#define GMOS_EVENT_INIT(_consumer_task_)                               \
+    { _consumer_task_, NULL, 0 }
+
+/**
  * Performs a one-time initialisation of a set of GubbinsMOS event
  * flags. This should be called during initialisation to set up the
  * event flags for subsequent asynchronous notifications.
  * @param event This is the event state data structure which is to be
  *     initialised.
  * @param consumerTask This is the consumer task which is to be notified
- *     of any changes to the event flags.
+ *     of any changes to the event flags. A null reference will disable
+ *     this functionality.
  */
 void gmosEventInit (gmosEvent_t* event, gmosTaskState_t* consumerTask);
 
