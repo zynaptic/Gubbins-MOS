@@ -28,7 +28,10 @@
 #include "stm32-device.h"
 
 // Statically allocate the extended counter value.
-static uint32_t interruptCount = 0;
+static uint16_t interruptCount = 0;
+
+// Store the last counter value to be read back.
+static int32_t lastCounterValue = 0;
 
 /*
  * Initialises the low power hardware timer.
@@ -100,55 +103,49 @@ static inline void gmosPalSystemTimerPowerSave (void)
  */
 void gmosPalIsrLPTIM1 (void)
 {
-    // Check for comparison register matches.
+    // Check for comparison register matches. Always reverts to the
+    // standard timer compare value which aliases with the auto-reload
+    // interrupt.
     if ((LPTIM1->ISR & LPTIM_ISR_CMPM) != 0) {
-
-        // On a timed sleep interrupt, revert to the standard timer
-        // compare value without updating the interrupt counter.
-        if (LPTIM1->CMP != 0x7FFF) {
-            LPTIM1->CMP = 0x7FFF;
-        }
-
-        // On a conventional match, increment the interrupt counter
-        // so that the least significant bit is always 1.
-        else if ((interruptCount & 1) == 0) {
-            interruptCount += 1;
-        }
+        LPTIM1->CMP = 0xFFFF;
         LPTIM1->ICR = LPTIM_ICR_CMPMCF;
     }
 
-    // On an auto-reload interrupt, increment the interrupt counter so
-    // that the least significant bit is always 0.
+    // On an auto-reload interrupt, always increment the interrupt
+    // counter.
     if ((LPTIM1->ISR & LPTIM_ISR_ARRM) != 0) {
-        if ((interruptCount & 1) != 0) {
-            interruptCount += 1;
-        }
+        interruptCount += 1;
         LPTIM1->ICR = LPTIM_ICR_ARRMCF;
     }
 }
 
 /*
  * Reads the combined hardware timer value and interrupt count value.
+ * Note that this only needs to support correct operation from the task
+ * execution context.
  */
 uint32_t gmosPalGetTimer (void)
 {
     uint16_t lpTimerValue;
-    uint32_t interruptCountValue;
+    int32_t counterValue;
 
     // Since there is a potential race condition when accessing the
     // hardware timer value and the interrupt counter, loop until they
-    // are consistent. The wrapped increment by 1 on the hardware timer
-    // compensates for the fact that the timer interrupts occur one tick
-    // earlier than an expected 'carry out'.
+    // are consistent. The race condition is detected by the timer
+    // counter value going 'backward'. The wrapped increment by 1 on the
+    // hardware timer compensates for the fact that the timer interrupts
+    // occur one tick earlier than an expected 'carry out'.
     do {
         NVIC_DisableIRQ (LPTIM1_IRQn);
         lpTimerValue = 1 + gmosPalGetHardwareTimer ();
-        interruptCountValue = interruptCount;
+        counterValue = (((int32_t) (interruptCount)) << 16) |
+            ((int32_t) lpTimerValue);
         NVIC_EnableIRQ (LPTIM1_IRQn);
-    } while (((lpTimerValue >> 15) & 1) != (interruptCountValue & 1));
+    } while ((counterValue - lastCounterValue) < 0);
 
     // Return the combined timer value.
-    return ((interruptCountValue << 15) | lpTimerValue);
+    lastCounterValue = counterValue;
+    return (uint32_t) counterValue;
 }
 
 /*
@@ -168,8 +165,8 @@ void gmosPalIdle (uint32_t duration)
     // If the requested period would span a regular timer interrupt,
     // calculate the sleep time based on that.
     lpTimerValue = gmosPalGetHardwareTimer ();
-    if ((lpTimerValue & 0x7FFF) + duration >= 0x7FFF) {
-        sleepTime = 0x7FFF - (lpTimerValue & 0x7FFF);
+    if (lpTimerValue + duration >= 0xFFFF) {
+        sleepTime = 0xFFFF - lpTimerValue;
     }
 
     // If the requested period would preempt a regular timer interrupt,
