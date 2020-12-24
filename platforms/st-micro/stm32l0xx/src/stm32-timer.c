@@ -38,10 +38,9 @@ static int32_t lastCounterValue = 0;
  */
 void gmosPalSystemTimerInit (void)
 {
-    // Set the ARR register to use the full counter range and the
-    // compare register to half the full counter range.
+    // Set the ARR and compare registers to use the full counter range.
     LPTIM1->ARR = 0xFFFF;
-    LPTIM1->CMP = 0x7FFF;
+    LPTIM1->CMP = 0xFFFF;
 
     // Enable timer interrupts on compare and wrap.
     LPTIM1->IER = LPTIM_IER_ARRMIE | LPTIM_IER_CMPMIE;
@@ -133,8 +132,10 @@ uint32_t gmosPalGetTimer (void)
     // hardware timer value and the interrupt counter, loop until they
     // are consistent. The race condition is detected by the timer
     // counter value going 'backward'. The wrapped increment by 1 on the
-    // hardware timer compensates for the fact that the timer interrupts
-    // occur one tick earlier than an expected 'carry out'.
+    // hardware timer compensates for the fact that the LPTIM hardware
+    // timer interrupts occur on auto reload register match and not on
+    // counter reload, which is one tick earlier than a conventional
+    // 'carry out'.
     do {
         NVIC_DisableIRQ (LPTIM1_IRQn);
         lpTimerValue = 1 + gmosPalGetHardwareTimer ();
