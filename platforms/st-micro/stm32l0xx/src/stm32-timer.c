@@ -28,10 +28,7 @@
 #include "stm32-device.h"
 
 // Statically allocate the extended counter value.
-static uint16_t interruptCount = 0;
-
-// Store the last counter value to be read back.
-static int32_t lastCounterValue = 0;
+static uint32_t interruptCount = 0;
 
 /*
  * Initialises the low power hardware timer.
@@ -62,17 +59,17 @@ void gmosPalSystemTimerInit (void)
  */
 uint16_t gmosPalGetHardwareTimer (void)
 {
-    uint16_t value1;
-    uint16_t value2;
+    uint32_t value1;
+    uint32_t value2;
 
     // Since the timer counter is not running on the main system clock,
     // it is only valid if two consecutive reads have the same value.
     do {
-        value1 = (uint16_t) LPTIM1->CNT;
-        value2 = (uint16_t) LPTIM1->CNT;
+        value1 = LPTIM1->CNT;
+        value2 = LPTIM1->CNT;
     } while (value1 != value2);
 
-    return value1;
+    return (uint16_t) value1;
 }
 
 /*
@@ -125,28 +122,32 @@ void gmosPalIsrLPTIM1 (void)
  */
 uint32_t gmosPalGetTimer (void)
 {
-    uint16_t lpTimerValue;
-    int32_t counterValue;
+    uint32_t lpTimerValue;
+    uint32_t lpTimerWrapped;
+    uint32_t lpTimerCheck;
+    uint32_t counterValue;
 
     // Since there is a potential race condition when accessing the
     // hardware timer value and the interrupt counter, loop until they
-    // are consistent. The race condition is detected by the timer
-    // counter value going 'backward'. The wrapped increment by 1 on the
-    // hardware timer compensates for the fact that the LPTIM hardware
-    // timer interrupts occur on auto reload register match and not on
-    // counter reload, which is one tick earlier than a conventional
-    // 'carry out'.
+    // are consistent. This is done by checking that the hardware
+    // timer has the same value before and after accessing the interrupt
+    // counter. This test also checks for inconsistent reads on the
+    // hardware timer due to accessing it over a clock boundary. The
+    // wrapped increment by 1 on the hardware timer compensates for the
+    // fact that the LPTIM hardware timer interrupts occur on auto
+    // reload register match and not on counter reload, which is one
+    // tick earlier than a conventional 'carry out'.
     do {
+        lpTimerValue = LPTIM1->CNT;
+        lpTimerWrapped = (lpTimerValue + 1) & 0xFFFF;
         NVIC_DisableIRQ (LPTIM1_IRQn);
-        lpTimerValue = 1 + gmosPalGetHardwareTimer ();
-        counterValue = (((int32_t) (interruptCount)) << 16) |
-            ((int32_t) lpTimerValue);
+        counterValue = (interruptCount << 16) | lpTimerWrapped;
         NVIC_EnableIRQ (LPTIM1_IRQn);
-    } while ((counterValue - lastCounterValue) < 0);
+        lpTimerCheck = LPTIM1->CNT;
+    } while (lpTimerValue != lpTimerCheck);
 
     // Return the combined timer value.
-    lastCounterValue = counterValue;
-    return (uint32_t) counterValue;
+    return counterValue;
 }
 
 /*
