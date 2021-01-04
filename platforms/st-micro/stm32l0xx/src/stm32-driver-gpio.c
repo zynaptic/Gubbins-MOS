@@ -44,6 +44,12 @@ static gmosDriverGpioIsr_t gpioIsrMap [] = {
     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
     NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
 
+// Provide mapping of external interrupt lines to interrupt service
+// routine data items.
+static void* gpioIsrDataMap [] = {
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL,
+    NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+
 /*
  * Initialises a general purpose IO pin for conventional use. For the
  * STM32L0XX series of devices, the upper byte of the GPIO pin ID is
@@ -269,7 +275,7 @@ bool gmosDriverGpioGetPinState (uint16_t gpioPinId)
  * interrupt is not enabled at this stage.
  */
 bool gmosDriverGpioInterruptInit (uint16_t gpioPinId,
-    gmosDriverGpioIsr_t gpioIsr, int8_t biasResistor)
+    gmosDriverGpioIsr_t gpioIsr, void* gpioIsrData, int8_t biasResistor)
 {
     uint8_t pinBank = (gpioPinId >> 8) &0x07;
     uint8_t pinIndex = gpioPinId & 0x0F;
@@ -283,6 +289,7 @@ bool gmosDriverGpioInterruptInit (uint16_t gpioPinId,
         return false;
     }
     gpioIsrMap [pinIndex] = gpioIsr;
+    gpioIsrDataMap [pinIndex] = gpioIsrData;
 
     // Configure the GPIO pin as an input.
     if (!gmosDriverGpioPinInit (gpioPinId, GMOS_DRIVER_GPIO_OUTPUT_PUSH_PULL,
@@ -355,6 +362,7 @@ static void gmosDriverGpioCommonIsr (uint8_t indexStart, uint8_t indexEnd)
     uint32_t activeFlag;
     uint8_t i;
     gmosDriverGpioIsr_t pendingIsr;
+    void* pendingIsrData;
 
     // Loop over the requested ISRs, handling any that are ready to run.
     pendingFlags = EXTI->PR;
@@ -362,8 +370,9 @@ static void gmosDriverGpioCommonIsr (uint8_t indexStart, uint8_t indexEnd)
         activeFlag = (1 << i);
         if ((pendingFlags & activeFlag) != 0) {
             pendingIsr = gpioIsrMap [i];
+            pendingIsrData = gpioIsrDataMap [i];
             if (pendingIsr != NULL) {
-                pendingIsr ();
+                pendingIsr (pendingIsrData);
             }
             EXTI->PR = activeFlag;
         }

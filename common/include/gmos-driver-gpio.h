@@ -46,7 +46,7 @@ extern "C" {
  * Defines the function prototype to be used for GPIO interrupt service
  * routine callbacks.
  */
-typedef void (*gmosDriverGpioIsr_t) (void);
+typedef void (*gmosDriverGpioIsr_t) (void* gpioIsrData);
 
 /**
  * Initialises a general purpose IO pin for conventional use. This
@@ -80,6 +80,8 @@ bool gmosDriverGpioPinInit (uint16_t gpioPinId, bool openDrain,
  * function.
  * @param gpioPinId This is the platform specific GPIO pin identifier
  *     that is associated with the GPIO pin being updated.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully setting the pin direction and 'false' on failure.
  */
 bool gmosDriverGpioSetAsInput (uint16_t gpioPinId);
 
@@ -89,6 +91,8 @@ bool gmosDriverGpioSetAsInput (uint16_t gpioPinId);
  * function.
  * @param gpioPinId This is the platform specific GPIO pin identifier
  *     that is associated with the GPIO pin being updated.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully setting the pin direction and 'false' on failure.
  */
 bool gmosDriverGpioSetAsOutput (uint16_t gpioPinId);
 
@@ -124,6 +128,10 @@ bool gmosDriverGpioGetPinState (uint16_t gpioPinId);
  *     that is being registered with the specified GPIO interrupt pin.
  *     It will be called in the interrupt service context so can only
  *     use the ISR safe GubbinsMOS API calls.
+ * @param gpioIsrData This is an opaque pointer to a data item that
+ *     will be passed to the interrupt service routine whenever it is
+ *     invoked. A null reference may be used if no such data item is
+ *     required.
  * @param biasResistor This specifies the input bias resistor
  *     configuration. A value of zero selects no bias resistor, negative
  *     values select a pull down resistor, and positive values select
@@ -135,7 +143,8 @@ bool gmosDriverGpioGetPinState (uint16_t gpioPinId);
  *     failure.
  */
 bool gmosDriverGpioInterruptInit (uint16_t gpioPinId,
-    gmosDriverGpioIsr_t gpioIsr, int8_t biasResistor);
+    gmosDriverGpioIsr_t gpioIsr, void* gpioIsrData,
+    int8_t biasResistor);
 
 /**
  * Enables a GPIO interrupt for rising and/or falling edge detection.

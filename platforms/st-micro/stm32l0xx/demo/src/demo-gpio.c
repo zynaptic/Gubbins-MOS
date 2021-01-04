@@ -99,7 +99,7 @@ GMOS_TASK_DEFINITION (ledFlashing, ledFlashingHandler, void);
  * Implement the 'joystick' centre switch ISR. This just cycles through
  * the available LED colours.
  */
-void ledColourCycleIsr (void)
+void ledColourCycleIsr (void* nullData)
 {
     uint8_t newRgbLedColour = rgbLedColour + 1;
     if (newRgbLedColour >= 3) {
@@ -123,7 +123,7 @@ void demoGpioInit (void)
 
     // Initialise the 'joystick' centre switch as an interrupt source.
     gmosDriverGpioInterruptInit (COLOUR_SWITCH_PIN,
-        ledColourCycleIsr, GMOS_DRIVER_GPIO_INPUT_PULL_NONE);
+        ledColourCycleIsr, NULL, GMOS_DRIVER_GPIO_INPUT_PULL_NONE);
     gmosDriverGpioInterruptEnable (COLOUR_SWITCH_PIN, true, false);
 
     // Configure the RGB LED GPIO pins as outputs.
