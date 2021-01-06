@@ -24,6 +24,7 @@
 #define GMOS_PAL_CONFIG_H
 
 #include <stdbool.h>
+#include "stm32-driver-gpio.h"
 
 /**
  * Specify the STM32 system clock rate. The only currently supported
@@ -110,6 +111,21 @@
  */
 #ifndef GMOS_CONFIG_STM32_I2C_USE_INTERRUPTS
 #define GMOS_CONFIG_STM32_I2C_USE_INTERRUPTS true
+#endif
+
+/**
+ * Select interrupt driven or polled mode driver operation for the STM32
+ * SPI interfaces.
+ */
+#ifndef GMOS_CONFIG_STM32_SPI_USE_INTERRUPTS
+#define GMOS_CONFIG_STM32_SPI_USE_INTERRUPTS true
+#endif
+
+/**
+ * Select the GPIO drive strength to use for the SPI interface pins.
+ */
+#ifndef GMOS_CONFIG_SPI_GPIO_DRIVE_STRENGTH
+#define GMOS_CONFIG_SPI_GPIO_DRIVE_STRENGTH STM32_GPIO_DRIVER_SLEW_FAST
 #endif
 
 // Configure the system timer frequency based on the selected low speed

@@ -40,7 +40,8 @@ PLATFORM_OBJ_FILE_NAMES = \
 	stm32-console-simple.o \
 	stm32-timer.o \
 	stm32-driver-gpio.o \
-	stm32-driver-i2c.o
+	stm32-driver-i2c.o \
+	stm32-driver-spi.o
 
 # Specify the local build directory.
 LOCAL_DIR = ${GMOS_BUILD_DIR}/platform
