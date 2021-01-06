@@ -241,7 +241,7 @@ bool gmosDriverI2CIndexedReadRequest (gmosDriverI2CDevice_t* device,
     uint8_t* writeData, uint8_t writeSize, uint8_t readSize);
 
 /**
- * Polls the I2C device driver for completion of a conventonal read or
+ * Polls the I2C device driver for completion of a conventional read or
  * an indexed read transaction.
  * @param device This is the I2C device driver data structure that is
  *     to be polled for read request completion.

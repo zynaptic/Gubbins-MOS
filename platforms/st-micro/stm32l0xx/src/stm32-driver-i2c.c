@@ -67,7 +67,7 @@ static uint32_t i2cClockEnMap [] = {
 
 // Provide reverse mapping of I2C interface IDs to bus state data
 // structures.
-static gmosDriverI2CBus_t* i2cBusControllerMap [] ={NULL, NULL, NULL};
+static gmosDriverI2CBus_t* i2cBusControllerMap [] = {NULL, NULL, NULL};
 
 // Defines the low level I2C transfer phase.
 #define TRANSFER_PHASE_IDLE     0x00
@@ -274,6 +274,7 @@ void gmosPalIsrI2C3 (void)
  * not selected. This will typically be used for debug purposes only.
  */
 #if !GMOS_CONFIG_STM32_I2C_USE_INTERRUPTS
+static bool pollingLoopRunning = false;
 static gmosTaskState_t pollingLoopTaskData;
 
 static gmosTaskStatus_t pollingLoopTaskFn (void* nullData)
@@ -346,8 +347,11 @@ bool gmosDriverI2CPalInit (gmosDriverI2CBus_t* busController)
 
     // Run the polling loop if interrupts are not being used.
 #if !GMOS_CONFIG_STM32_I2C_USE_INTERRUPTS
-    pollingLoopTask_start (&pollingLoopTaskData,
-        NULL, "STM32 I2C Driver Polling Loop");
+    if (!pollingLoopRunning) {
+        pollingLoopTask_start (&pollingLoopTaskData,
+            NULL, "STM32 I2C Driver Polling Loop");
+        pollingLoopRunning = true;
+    }
 #endif
     return true;
 }
