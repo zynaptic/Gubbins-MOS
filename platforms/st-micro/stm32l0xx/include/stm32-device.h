@@ -42,6 +42,15 @@
 #endif
 
 /**
+ * Define the function prototype to be used for DMA interrupt service
+ * routines. Each ISR will be passed the four per-channel interrupt
+ * status flags in bits 0 to 3 of the status parameter and return the
+ * interrupt clear bits in the corresponding positions of the return
+ * value.
+ */
+typedef uint8_t (*gmosPalDmaIsr_t) (uint8_t);
+
+/**
  * Initialises the STM32 system timer implementation using the 16-bit
  * low power timer.
  */
@@ -66,5 +75,20 @@ void gmosPalSerialConsoleInit (void);
  *     in the serial console transmit queue.
  */
 bool gmosPalSerialConsoleWrite (uint8_t* writeData, uint16_t writeSize);
+
+/**
+ * Attaches a DMA interrupt service routine for the specified DMA
+ * channel. The attached ISR will be passed the four per-channel
+ * interrupt status flags in bits 0 to 3 of the status parameter and
+ * return the interrupt clear bits in the corresponding positions of the
+ * return value.
+ * @param channel This is the DMA channel to which the interrupt service
+ *     routine is to be attached, numbered from 1 to 7.
+ * @param isr This is the interrupt service routine which is to be
+ *     attached to the specified DMA channel.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully attaching the ISR and 'false' otherwise.
+ */
+bool gmosPalDmaIsrAttach (uint8_t channel, gmosPalDmaIsr_t isr);
 
 #endif // STM32_DEVICE_H

@@ -29,6 +29,12 @@
 #include "stm32-device.h"
 
 /*
+ * Store pointers to the attached DMA interrupt service routines.
+ */
+static gmosPalDmaIsr_t attachedDmaIsrs [] =
+    { NULL, NULL, NULL, NULL, NULL, NULL, NULL };
+
+/*
  * Configures the STM32 device for standard performance. This sets the
  * system clock to 16 MHz with a single flash memory wait cycle. This
  * is the maximum performance supported with the default 1.5V core
@@ -110,4 +116,79 @@ void gmosPalSystemSetup (void)
 
     // Disable the internal voltage reference in deep sleep mode.
     PWR->CR |= PWR_CR_ULP;
+}
+
+/*
+ * Attaches a DMA interrupt service routine for the specified DMA
+ * channel.
+ */
+bool gmosPalDmaIsrAttach (uint8_t channel, uint8_t (*isr) (uint8_t))
+{
+    // Check for invalid or duplicate requests.
+    if ((channel <= 0) || (channel > 7) ||
+        (attachedDmaIsrs [channel-1] != NULL)) {
+        return false;
+    }
+
+    // Register the DMA channel ISR.
+    attachedDmaIsrs [channel-1] = isr;
+
+    // Enable the appropriate NVIC interrupt line.
+    if (channel == 1) {
+        NVIC_EnableIRQ (DMA1_Channel1_IRQn);
+    } else if (channel <= 3) {
+        NVIC_EnableIRQ (DMA1_Channel2_3_IRQn);
+    } else {
+        NVIC_EnableIRQ (DMA1_Channel4_5_6_7_IRQn);
+    }
+    return true;
+}
+
+/*
+ * Implements common ISR handling for the DMA interrupts.
+ */
+static void gmosPalDmaIsrCommon (uint8_t indexStart, uint8_t indexEnd)
+{
+    gmosPalDmaIsr_t dmaIsr;
+    uint32_t regFlags;
+    uint32_t isrFlags;
+    uint32_t regClear;
+    uint32_t isrClear;
+    uint8_t i;
+
+    // Loop over the requested ISR set.
+    regFlags = DMA1->ISR;
+    regClear = 0;
+    for (i = indexStart; i <= indexEnd; i++) {
+        dmaIsr = attachedDmaIsrs [i];
+        isrFlags = 0x0F & (regFlags >> (4 * i));
+        if ((dmaIsr == NULL) || (isrFlags == 0)) {
+            isrClear = 0;
+        } else {
+            isrClear = 0x0F & dmaIsr (isrFlags);
+        }
+        regClear |= (isrClear << (4 * i));
+    }
+    DMA1->IFCR = regClear;
+}
+
+/*
+ * Process DMA interrupts for channel 1.
+ */
+void gmosPalIsrDMA1A (void) {
+    gmosPalDmaIsrCommon (0, 0);
+}
+
+/*
+ * Process DMA interrupts for channels 2 and 3.
+ */
+void gmosPalIsrDMA1B (void) {
+    gmosPalDmaIsrCommon (1, 2);
+}
+
+/*
+ * Process DMA interrupts for channels 4, 5, 6 and 7.
+ */
+void gmosPalIsrDMA1C (void) {
+    gmosPalDmaIsrCommon (3, 6);
 }
