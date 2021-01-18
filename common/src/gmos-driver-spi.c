@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2021 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -111,10 +111,9 @@ bool gmosDriverSpiLinkRelease (gmosDriverSpiIo_t* spiInterface)
 
 /*
  * Initiates a SPI write request for a device peripheral connected to
- * the SPI interface using a simple point to point link. The chip select
- * must already have been asserted using 'gmosDriverSpiLinkSelect'.
+ * the SPI interface.
  */
-bool gmosDriverSpiLinkWrite (gmosDriverSpiIo_t* spiInterface,
+bool gmosDriverSpiIoWrite (gmosDriverSpiIo_t* spiInterface,
     uint8_t* writeData, uint16_t writeSize)
 {
     bool writeOk = false;
@@ -131,10 +130,9 @@ bool gmosDriverSpiLinkWrite (gmosDriverSpiIo_t* spiInterface,
 
 /*
  * Initiates a SPI read request for a device peripheral connected to
- * the SPI interface using a simple point to point link. The chip select
- * must already have been asserted using 'gmosDriverSpiLinkSelect'.
+ * the SPI interface.
  */
-bool gmosDriverSpiLinkRead (gmosDriverSpiIo_t* spiInterface,
+bool gmosDriverSpiIoRead (gmosDriverSpiIo_t* spiInterface,
     uint8_t* readData, uint16_t readSize)
 {
     bool readOk = false;
@@ -151,11 +149,9 @@ bool gmosDriverSpiLinkRead (gmosDriverSpiIo_t* spiInterface,
 
 /*
  * Initiates a SPI bidirectional transfer request for a device
- * peripheral connected to the SPI interface using a simple point to
- * point link. The chip select must already have been asserted using
- * 'gmosDriverSpiLinkSelect'.
+ * peripheral connected to the SPI interface.
  */
-bool gmosDriverSpiLinkTransfer (gmosDriverSpiIo_t* spiInterface,
+bool gmosDriverSpiIoTransfer (gmosDriverSpiIo_t* spiInterface,
     uint8_t* writeData, uint8_t* readData, uint16_t transferSize)
 {
     bool transferOk = false;
@@ -171,10 +167,10 @@ bool gmosDriverSpiLinkTransfer (gmosDriverSpiIo_t* spiInterface,
 }
 
 /*
- * Completes a SPI transaction for a device peripheral connected to the
- * SPI interface using a simple point to point link.
+ * Completes an asynchronous SPI transaction for a device peripheral
+ * connected to the SPI interface.
  */
-gmosDriverSpiStatus_t gmosDriverSpiLinkComplete
+gmosDriverSpiStatus_t gmosDriverSpiIoComplete
     (gmosDriverSpiIo_t* spiInterface, uint16_t* transferSize)
 {
     uint32_t eventBits;
@@ -197,6 +193,64 @@ gmosDriverSpiStatus_t gmosDriverSpiLinkComplete
         } else {
             spiStatus = GMOS_DRIVER_SPI_STATUS_ACTIVE;
         }
+    }
+    return spiStatus;
+}
+
+/*
+ * Requests an inline SPI write data transfer for short transactions
+ * where the overhead of setting up an asynchronous transfer is likely
+ * to exceed the cost of carrying out a simple polled transaction.
+ */
+gmosDriverSpiStatus_t gmosDriverSpiIoInlineWrite
+    (gmosDriverSpiIo_t* spiInterface, uint8_t* writeData,
+    uint16_t writeSize)
+{
+    gmosDriverSpiStatus_t spiStatus = GMOS_DRIVER_SPI_STATUS_NOT_READY;
+    if (spiInterface->linkState == GMOS_DRIVER_SPI_LINK_SELECTED) {
+        spiInterface->writeData = writeData;
+        spiInterface->readData = NULL;
+        spiInterface->transferSize = writeSize;
+        spiStatus = gmosDriverSpiPalInlineTransaction (spiInterface);
+    }
+    return spiStatus;
+}
+
+/*
+ * Requests an inline SPI read data transfer for short transactions
+ * where the overhead of setting up an asynchronous transfer is likely
+ * to exceed the cost of carrying out a simple polled transaction.
+ */
+gmosDriverSpiStatus_t gmosDriverSpiIoInlineRead
+   (gmosDriverSpiIo_t* spiInterface, uint8_t* readData,
+   uint16_t readSize)
+{
+    gmosDriverSpiStatus_t spiStatus = GMOS_DRIVER_SPI_STATUS_NOT_READY;
+    if (spiInterface->linkState == GMOS_DRIVER_SPI_LINK_SELECTED) {
+        spiInterface->writeData = NULL;
+        spiInterface->readData = readData;
+        spiInterface->transferSize = readSize;
+        spiStatus = gmosDriverSpiPalInlineTransaction (spiInterface);
+    }
+    return spiStatus;
+}
+
+/*
+ * Requests a bidirectional inline SPI data transfer for short
+ * transactions where the overhead of setting up an asynchronous
+ * transfer is likely to exceed the cost of carrying out a simple polled
+ * transaction.
+ */
+gmosDriverSpiStatus_t gmosDriverSpiIoInlineTransfer
+    (gmosDriverSpiIo_t* spiInterface, uint8_t* writeData,
+    uint8_t* readData, uint16_t transferSize)
+{
+    gmosDriverSpiStatus_t spiStatus = GMOS_DRIVER_SPI_STATUS_NOT_READY;
+    if (spiInterface->linkState == GMOS_DRIVER_SPI_LINK_SELECTED) {
+        spiInterface->writeData = writeData;
+        spiInterface->readData = readData;
+        spiInterface->transferSize = transferSize;
+        spiStatus = gmosDriverSpiPalInlineTransaction (spiInterface);
     }
     return spiStatus;
 }

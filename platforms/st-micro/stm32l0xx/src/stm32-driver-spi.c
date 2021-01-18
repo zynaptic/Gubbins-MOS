@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2021 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -149,8 +149,7 @@ static gmosTaskStatus_t pollingLoopTaskFn (void* nullData)
     uint8_t isrFlags;
     uint8_t isrClear;
     gmosDriverSpiIo_t* spiInterface;
-    // gmosTaskStatus_t taskStatus = GMOS_TASK_RUN_BACKGROUND;
-    gmosTaskStatus_t taskStatus = GMOS_TASK_RUN_AFTER (1000);
+    gmosTaskStatus_t taskStatus = GMOS_TASK_RUN_BACKGROUND;
 
     // Loop over the active SPI interfaces.
     for (spiIndex = 0; spiIndex < 2; spiIndex++) {
@@ -357,4 +356,61 @@ void gmosDriverSpiPalTransaction (gmosDriverSpiIo_t* spiInterface)
 
     // Enable the SPI interface once DMA has been set up.
     spiRegs->CR1 |= SPI_CR1_SPE;
+}
+
+/*
+ * Performs a platform specific SPI inline transaction using the given
+ * SPI interface.
+ */
+gmosDriverSpiStatus_t gmosDriverSpiPalInlineTransaction
+    (gmosDriverSpiIo_t* spiInterface)
+{
+    const gmosPalSpiIoConfig_t* palConfig = spiInterface->palConfig;
+    uint8_t spiIndex = palConfig->spiInterfaceId - 1;
+    SPI_TypeDef* spiRegs = spiRegisterMap [spiIndex];
+    uint16_t writeIndex = 0;
+    uint16_t readIndex = 0;
+    uint32_t statusReg;
+    uint8_t dataByte;
+
+    // Enable the SPI interface.
+    spiRegs->CR1 |= SPI_CR1_SPE;
+
+    // Loop until all read bytes have been processed.
+    while (readIndex < spiInterface->transferSize) {
+        statusReg = spiRegs->SR;
+
+        // Abort on error conditions.
+        if ((statusReg & (SPI_SR_MODF | SPI_SR_OVR)) != 0) {
+            spiRegs->CR1 &= ~SPI_CR1_SPE;
+            return GMOS_DRIVER_SPI_STATUS_DRIVER_ERROR;
+        }
+
+        // Prioritise reads over writes.
+        else if ((statusReg & SPI_SR_RXNE) != 0) {
+            dataByte = spiRegs->DR;
+            if (spiInterface->readData != NULL) {
+                spiInterface->readData [readIndex] = dataByte;
+            }
+            readIndex += 1;
+        }
+
+        // Write data if required.
+        else if ((statusReg & SPI_SR_TXE) != 0) {
+            if (spiInterface->writeData != NULL) {
+                dataByte = spiInterface->writeData [writeIndex];
+            } else {
+                dataByte = 0xFF;
+            }
+            spiRegs->DR = dataByte;
+            writeIndex += 1;
+        }
+    }
+
+    // Ensure busy flag is clear and then disable the SPI interface.
+    while ((spiRegs->SR & SPI_SR_BSY) != 0) {
+        // Wait for SPI bus activity to complete.
+    }
+    spiRegs->CR1 &= ~SPI_CR1_SPE;
+    return GMOS_DRIVER_SPI_STATUS_SUCCESS;
 }

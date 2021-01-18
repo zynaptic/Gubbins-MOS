@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2021 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ typedef enum {
     GMOS_DRIVER_SPI_STATUS_IDLE,
     GMOS_DRIVER_SPI_STATUS_SUCCESS,
     GMOS_DRIVER_SPI_STATUS_ACTIVE,
+    GMOS_DRIVER_SPI_STATUS_NOT_READY,
     GMOS_DRIVER_SPI_STATUS_DMA_ERROR,
     GMOS_DRIVER_SPI_STATUS_DRIVER_ERROR
 } gmosDriverSpiStatus_t;
@@ -194,50 +195,50 @@ bool gmosDriverSpiLinkRelease (gmosDriverSpiIo_t* spiInterface);
 
 /**
  * Initiates a SPI write request for a device peripheral connected to
- * the SPI interface using a simple point to point link. The chip select
- * must already have been asserted using 'gmosDriverSpiLinkSelect'.
- * On completion the number of bytes transferred will be indicated via
- * the completion event.
- * @param spiInterface This is the SPI interface data structure which
- *     is associated with the point to point SPI link.
+ * the SPI interface. The chip select must already have been asserted
+ * using 'gmosDriverSpiLinkSelect' ot 'gmosDriverSpiDeviceSelect'. On
+ * completion the number of bytes transferred will be indicated via the
+ * completion event.
+ * @param spiInterface This is the SPI state data structure which is
+ *     associated with the SPI interface.
  * @param writeData This is a pointer to the byte array that is to be
  *     written to the SPI peripheral. It must remain valid for the
  *     full duration of the transaction.
  * @param writeSize This specifies the number of bytes that are to be
  *     written to the SPI peripheral.
  * @return Returns a boolean value which will be set to 'true' if the
- *     SPI link was selected and is now active and 'false' otherwise.
+ *     SPI write was initiated and is now active and 'false' otherwise.
  */
-bool gmosDriverSpiLinkWrite (gmosDriverSpiIo_t* spiInterface,
+bool gmosDriverSpiIoWrite (gmosDriverSpiIo_t* spiInterface,
     uint8_t* writeData, uint16_t writeSize);
 
 /**
  * Initiates a SPI read request for a device peripheral connected to
- * the SPI interface using a simple point to point link. The chip select
- * must already have been asserted using 'gmosDriverSpiLinkSelect'.
- * On completion the number of bytes transferred will be indicated via
- * the completion event.
- * @param spiInterface This is the SPI interface data structure which
- *     is associated with the point to point SPI link.
+ * the SPI interface. The chip select must already have been asserted
+ * using 'gmosDriverSpiLinkSelect' or 'gmosDriverSpiDeviceSelect'. On
+ * completion the number of bytes transferred will be indicated via the
+ * completion event.
+ * @param spiInterface This is the SPI state data structure which is
+ *     associated with the SPI interface.
  * @param readData This is a pointer to the byte array that will be
- *     updated with the data read from the SPI device. It must remain
- *     valid for the full duration of the transaction.
+ *     updated with the data read from the SPI peripheral. It must
+ *     remain valid for the full duration of the transaction.
  * @param readSize This specifies the number of bytes that are to be
  *     read from the SPI peripheral.
  * @return Returns a boolean value which will be set to 'true' if the
- *     SPI link was selected and is now active and 'false' otherwise.
+ *     SPI read was initiated and is now active and 'false' otherwise.
  */
-bool gmosDriverSpiLinkRead (gmosDriverSpiIo_t* spiInterface,
+bool gmosDriverSpiIoRead (gmosDriverSpiIo_t* spiInterface,
     uint8_t* readData, uint16_t readSize);
 
 /**
  * Initiates a SPI bidirectional transfer request for a device
- * peripheral connected to the SPI interface using a simple point to
- * point link. The chip select must already have been asserted using
- * 'gmosDriverSpiLinkSelect'. On completion the number of bytes
+ * peripheral connected to the SPI interface. The chip select must
+ * already have been asserted using 'gmosDriverSpiLinkSelect' or
+ * 'gmosDriverSpiDeviceSelect'. On completion the number of bytes
  * transferred will be indicated via the completion event.
- * @param spiInterface This is the SPI interface data structure which
- *     is associated with the point to point SPI link.
+ * @param spiInterface This is the SPI state data structure which is
+ *     associated with the SPI interface.
  * @param writeData This is a pointer to the byte array that is to be
  *     written to the SPI peripheral. It must remain valid for the
  *     full duration of the transaction.
@@ -249,24 +250,87 @@ bool gmosDriverSpiLinkRead (gmosDriverSpiIo_t* spiInterface,
  * @return Returns a boolean value which will be set to 'true' if the
  *     SPI link was selected and is now active and 'false' otherwise.
  */
-bool gmosDriverSpiLinkTransfer (gmosDriverSpiIo_t* spiInterface,
+bool gmosDriverSpiIoTransfer (gmosDriverSpiIo_t* spiInterface,
     uint8_t* writeData, uint8_t* readData, uint16_t transferSize);
 
 /**
- * Completes a SPI transaction for a device peripheral connected to the
- * SPI interface using a simple point to point link.
- * @param spiInterface This is the SPI interface data structure which
- *     is associated with the point to point SPI link.
+ * Completes an asynchronous SPI transaction for a device peripheral
+ * connected to the SPI interface.
+ * @param spiInterface This is the SPI state data structure which is
+ *     associated with the SPI interface.
  * @param transferSize This is a pointer to a 16-bit unsigned integer
  *     which will be populated with the number of bytes transferred
  *     during the transaction. A null reference may be used to indicate
  *     that the transfer size information is not required.
  * @return Returns a driver status value which indicates the current
- *     SPI link status. The transaction will be complete when this is
- *     no longer set to 'GMOS_DRIVER_SPI_STATUS_ACTIVE'.
+ *     SPI interface status. The transaction will be complete when this
+ *     is no longer set to 'GMOS_DRIVER_SPI_STATUS_ACTIVE'.
  */
-gmosDriverSpiStatus_t gmosDriverSpiLinkComplete
+gmosDriverSpiStatus_t gmosDriverSpiIoComplete
     (gmosDriverSpiIo_t* spiInterface, uint16_t* transferSize);
+
+/**
+ * Requests an inline SPI write data transfer for short transactions
+ * where the overhead of setting up an asynchronous transfer is likely
+ * to exceed the cost of carrying out a simple polled transaction. The
+ * chip select must already have been asserted using one of
+ * 'gmosDriverSpiLinkSelect' or 'gmosDriverSpiDeviceSelect'.
+ * @param spiInterface This is the SPI state data structure which is
+ *     associated with the SPI interface.
+ * @param writeData This is a pointer to the byte array that is to be
+ *     written to the SPI peripheral. It must remain valid for the
+ *     full duration of the transaction.
+ * @param writeSize This specifies the number of bytes that are to be
+ *     written to the SPI peripheral.
+ * @return Returns a driver status value which indicates the success or
+ *     failure of the inline transfer request.
+ */
+gmosDriverSpiStatus_t gmosDriverSpiIoInlineWrite
+    (gmosDriverSpiIo_t* spiInterface, uint8_t* writeData,
+    uint16_t writeSize);
+
+/**
+ * Requests an inline SPI read data transfer for short transactions
+ * where the overhead of setting up an asynchronous transfer is likely
+ * to exceed the cost of carrying out a simple polled transaction. The
+ * chip select must already have been asserted using one of
+ * 'gmosDriverSpiLinkSelect' or 'gmosDriverSpiDeviceSelect'.
+ * @param spiInterface This is the SPI state data structure which is
+ *     associated with the SPI interface.
+ * @param readData This is a pointer to the byte array that will be
+ *     updated with the data read from the SPI device. It must remain
+ *     valid for the full duration of the transaction.
+ * @param readSize This specifies the number of bytes that are to be
+ *     read from the SPI peripheral.
+ * @return Returns a driver status value which indicates the success or
+ *     failure of the inline transfer request.
+ */
+gmosDriverSpiStatus_t gmosDriverSpiIoInlineRead
+   (gmosDriverSpiIo_t* spiInterface, uint8_t* readData,
+   uint16_t readSize);
+
+/**
+ * Requests a bidirectional inline SPI data transfer for short
+ * transactions where the overhead of setting up an asynchronous
+ * transfer is likely to exceed the cost of carrying out a simple polled
+ * transaction. The chip select must already have been asserted using
+ * 'gmosDriverSpiLinkSelect' or 'gmosDriverSpiDeviceSelect'.
+ * @param spiInterface This is the SPI state data structure which is
+ *     associated with the SPI interface.
+ * @param writeData This is a pointer to the byte array that is to be
+ *     written to the SPI peripheral. It must remain valid for the
+ *     full duration of the transaction.
+ * @param readData This is a pointer to the byte array that will be
+ *     updated with the data read from the SPI device. It must remain
+ *     valid for the full duration of the transaction.
+ * @param transferSize This specifies the number of bytes that are to be
+ *     transferred to and from the SPI peripheral.
+ * @return Returns a driver status value which indicates the success or
+ *     failure of the inline transfer request.
+ */
+gmosDriverSpiStatus_t gmosDriverSpiIoInlineTransfer
+    (gmosDriverSpiIo_t* spiInterface, uint8_t* writeData,
+    uint8_t* readData, uint16_t transferSize);
 
 /**
  * Initialises the platform abstraction layer for a given SPI interface.
@@ -299,5 +363,17 @@ void gmosDriverSpiPalClockSetup (gmosDriverSpiIo_t* spiInterface);
  *     initiate the SPI transaction.
  */
 void gmosDriverSpiPalTransaction (gmosDriverSpiIo_t* spiInterface);
+
+/**
+ * Performs a platform specific SPI inline transaction using the given
+ * SPI interface.
+ * @param spiInterface This is the SPI interface data structure, which
+ *     will have been configured with all the parameters required to
+ *     initiate the SPI transaction.
+ * @return Returns a driver status value which indicates the success or
+ *     failure of the inline transfer request.
+ */
+gmosDriverSpiStatus_t gmosDriverSpiPalInlineTransaction
+    (gmosDriverSpiIo_t* spiInterface);
 
 #endif // GMOS_DRIVER_SPI_H
