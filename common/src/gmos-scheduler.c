@@ -297,7 +297,7 @@ void gmosSchedulerTaskResume (gmosTaskState_t* resumedTask)
  */
 void gmosSchedulerStayAwake (void)
 {
-    GMOS_ASSERT((stayAwakeCounter < UINT32_MAX),
+    GMOS_ASSERT (ASSERT_FAILURE, (stayAwakeCounter < UINT32_MAX),
         "Scheduler wake counter overflow detected");
     stayAwakeCounter += 1;
 }
@@ -307,7 +307,7 @@ void gmosSchedulerStayAwake (void)
  */
 void gmosSchedulerCanSleep (void)
 {
-    GMOS_ASSERT((stayAwakeCounter > 0),
+    GMOS_ASSERT (ASSERT_FAILURE, (stayAwakeCounter > 0),
         "Scheduler wake counter underflow detected");
     stayAwakeCounter -= 1;
 }

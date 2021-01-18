@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2021 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,20 @@ typedef enum {
     LOG_FAILURE,
     LOG_UNUSED = 0xFF
 } gmosPalLogLevel_t;
+
+/**
+ * Defines the supported assertion levels for run time assertion
+ * checking, ordered by increasing level of severity.
+ */
+typedef enum {
+    ASSERT_PEDANTIC = 0x00,
+    ASSERT_DEBUG,
+    ASSERT_TESTING,
+    ASSERT_CONFORMANCE,
+    ASSERT_ERROR,
+    ASSERT_FAILURE,
+    ASSERT_UNUSED = 0xFF
+} gmosPalAssertLevel_t;
 
 /**
  * Initialises the platform abstraction layer on startup. This is called
@@ -178,16 +192,21 @@ void gmosPalLog (const char* fileName, uint32_t lineNo,
     gmosPalLogLevel_t logLevel, const char* message, ...);
 
 /**
- * Provides a conditional assert macro that is used to indicate fatal
+ * Provides a conditional assert macro that is used to indicate various
  * runtime error conditions.
+ * @param _assertLevel_ This is the assertion level for the associated
+ *     assertion test. It should be one of the values specified by the
+ *     'gmosPalAssertLevel_t' enumeration, excluding 'ASSERT_UNUSED'.
  * @param _condition_ This is a condition expression that for correct
  *     operation should evaluate to 'true'.
  * @param _message_ This is the error message that is associated with
  *     the assert condition.
  */
-#define GMOS_ASSERT(_condition_, _message_) {                          \
-    if (!(_condition_)) {                                              \
-        gmosPalAssertFail (__FILE__, __LINE__, _message_);             \
+#define GMOS_ASSERT(_assertLevel_, _condition_, _message_) {           \
+    if (_assertLevel_ >= GMOS_CONFIG_ASSERT_LEVEL) {                   \
+        if (!(_condition_)) {                                          \
+            gmosPalAssertFail (__FILE__, __LINE__, _message_);         \
+        }                                                              \
     }                                                                  \
 }
 

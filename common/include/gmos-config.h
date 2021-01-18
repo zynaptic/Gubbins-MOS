@@ -128,6 +128,16 @@
 #endif
 
 /**
+ * This configuration option selects the minimum assertion severity
+ * level which will be trapped during operation. This may be any value
+ * from the 'gmosPalAssertLevel_t' enumeration. Set to 'ASSERT_UNUSED'
+ * to disable assert handling completely.
+ */
+#ifndef GMOS_CONFIG_ASSERT_LEVEL
+#define GMOS_CONFIG_ASSERT_LEVEL ASSERT_FAILURE
+#endif
+
+/**
  * This configuration option specifies the size of the I2C data buffers
  * that are used for read and write transactions. This places an upper
  * limit on the size of I2C transactions that are supported.
