@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2021 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "gmos-mempool.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -91,6 +92,23 @@ bool gmosBufferReset (gmosBuffer_t* buffer, uint16_t size);
 bool gmosBufferExtend (gmosBuffer_t* buffer, uint16_t size);
 
 /**
+ * Resizes a GubbinsMOS data buffer to the specified length. If the
+ * effect of the resizing operation is to increase the buffer length,
+ * additional memory segments will be allocated from the memory pool as
+ * required. If the effect of the resizing operation is to decrease the
+ * buffer length, all data at the end of the buffer will be discarded
+ * and memory segments will be returned to the memory pool as required.
+ * @param buffer This is the data buffer that is to be resized.
+ * @param size This is the number of bytes which should be available for
+ *     storage in the data buffer after resizing. A value of zero may be
+ *     used to release all the allocated memory.
+ * @return Returns a boolean value which will be set to 'true' if the
+ *     requested amount of memory was allocated to the buffer and
+ *     'false' if there was insufficient memory available.
+ */
+bool gmosBufferResize (gmosBuffer_t* buffer, uint16_t size);
+
+/**
  * Writes a block of data to the buffer at the specified buffer offset.
  * The buffer must be large enough to hold all the data being written.
  * @param buffer This is the buffer which is to be updated.
@@ -139,6 +157,19 @@ bool gmosBufferRead (gmosBuffer_t* buffer, uint16_t offset,
  */
 bool gmosBufferAppend (gmosBuffer_t* buffer,
     uint8_t* writeData, uint16_t writeSize);
+
+/**
+ * Gets a reference to the buffer segment that contains data at the
+ * specified buffer offset.
+ * @param buffer This is the buffer which is to be accessed.
+ * @param dataOffset This is the offset within the buffer for which the
+ *     associated memory segment is being accessed.
+ * @return Returns a memory pool segment pointer to the buffer segment
+ *     that contains data at the specified offset, or a null reference
+ *     if the specified offset is out of range.
+ */
+gmosMempoolSegment_t* gmosBufferGetSegment (gmosBuffer_t* buffer,
+    uint16_t dataOffset);
 
 #ifdef __cplusplus
 }
