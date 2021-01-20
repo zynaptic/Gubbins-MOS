@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2021 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,8 +42,10 @@ static void gmosEventAppendToQueue (gmosEvent_t* event)
     gmosEvent_t** nextEventPtr;
 
     // Only append the event to the event queue if it has an associated
-    // consumer task.
-    if (event->consumerTask == NULL) {
+    // consumer task. Do not append the event to the event queue if the
+    // change is being made by the consumer task.
+    if ((event->consumerTask == NULL) ||
+        (event->consumerTask == gmosSchedulerCurrentTask ())) {
         return;
     }
 
