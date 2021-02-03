@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2020 Zynaptic Limited
+# Copyright 2020-2021 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@ endif
 # Specifies the target device to use. By default this is the STM32L010RB
 # device.
 ifndef TARGET_DEVICE
-TARGET_DEVICE = STM32L010RB
+TARGET_DEVICE = STM32L072CZ
 endif
 
 # Include the platform setup makefile fragment. This defines the
@@ -60,17 +60,33 @@ ${GMOS_BUILD_DIR}/firmware.bin : ${GMOS_BUILD_DIR}/firmware.elf
 	${OC} -S -O binary $< $@
 	${OS} $<
 
+# Specify the common component timestamps and object files.
+COMPONENT_TIMESTAMPS = \
+	${GMOS_BUILD_DIR}/app/timestamp \
+	${GMOS_BUILD_DIR}/common/timestamp \
+	${GMOS_BUILD_DIR}/platform/timestamp
+
+COMPONENT_OBJECT_FILES = \
+	${GMOS_BUILD_DIR}/app/*.o \
+	${GMOS_BUILD_DIR}/common/*.o \
+	${GMOS_BUILD_DIR}/platform/*.o
+
+# If one or more target radio directories have been specified, add them
+# to the set of common components.
+ifdef TARGET_RADIO_DIRS
+RADIO_BUILD_PATH = ${GMOS_BUILD_DIR}/radios/$(DIR)
+COMPONENT_TIMESTAMPS += \
+	$(foreach DIR, ${TARGET_RADIO_DIRS}, $(RADIO_BUILD_PATH)/timestamp)
+COMPONENT_OBJECT_FILES += \
+	$(foreach DIR, ${TARGET_RADIO_DIRS}, $(RADIO_BUILD_PATH)/*.o)
+endif
+
 # Link all the generated object files. Note that 'shell ls' is used to
 # get the list of object files instead of 'wildcard', since the wildcard
 # expansion can occur before the timestamp dependencies are met.
-${GMOS_BUILD_DIR}/firmware.elf : \
-		${GMOS_BUILD_DIR}/app/timestamp \
-		${GMOS_BUILD_DIR}/common/timestamp \
-		${GMOS_BUILD_DIR}/platform/timestamp
+${GMOS_BUILD_DIR}/firmware.elf : ${COMPONENT_TIMESTAMPS}
 	${LD} -o $@ ${LDFLAGS} -T${GMOS_BUILD_DIR}/platform/target.ld \
-		$(shell ls -xw0 ${GMOS_BUILD_DIR}/app/*.o) \
-		$(shell ls -xw0 ${GMOS_BUILD_DIR}/common/*.o) \
-		$(shell ls -xw0 ${GMOS_BUILD_DIR}/platform/*.o) \
+		$(shell ls -xw0 ${COMPONENT_OBJECT_FILES}) \
 		$(addprefix -l, ${LDLIBS})
 
 # Include the application source files makefile fragment.
@@ -82,6 +98,12 @@ include ${GMOS_GIT_DIR}/common/common-build.mk
 # Include the platform build makefile fragment. This defines the
 # platform specific source build process.
 include ${TARGET_PLATFORM_DIR}/platform-build.mk
+
+# Include the target radio makefile fragments if specified.
+ifdef TARGET_RADIO_DIRS
+RADIO_SOURCE_PATH = ${GMOS_GIT_DIR}/radios/$(DIR)
+include $(foreach DIR, ${TARGET_RADIO_DIRS}, $(RADIO_SOURCE_PATH)/radio-build.mk)
+endif
 
 # Remove all build files.
 clean :
