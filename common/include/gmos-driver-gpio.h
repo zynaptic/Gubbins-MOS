@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2021 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,6 +41,15 @@ extern "C" {
 #define GMOS_DRIVER_GPIO_INPUT_PULL_NONE 0
 #define GMOS_DRIVER_GPIO_INPUT_PULL_UP   1
 #define GMOS_DRIVER_GPIO_INPUT_PULL_DOWN -1
+
+// These constants define the minimum and maximum GPIO output drive
+// strength (slew rate) settings. More fine grained configuration
+// options will be platform specific.
+#define GMOS_DRIVER_GPIO_SLEW_MINIMUM 0x00
+#define GMOS_DRIVER_GPIO_SLEW_MAXIMUM 0xFF
+
+// This constant is used to identify an unused or undefined GPIO pin.
+#define GMOS_DRIVER_GPIO_UNUSED_PIN_ID 0xFFFF
 
 /**
  * Defines the function prototype to be used for GPIO interrupt service
