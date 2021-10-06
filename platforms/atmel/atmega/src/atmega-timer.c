@@ -29,9 +29,6 @@
 // Statically allocate the extended counter value.
 static uint32_t interruptCount = 0;
 
-// Statically allocate the I/O peripheral active counter.
-static uint8_t ioActiveCount = 0;
-
 /*
  * Implement the low power hardware timer overflow interrupt. This just
  * increments the interrupt counter.
@@ -48,14 +45,11 @@ void gmosPalSystemTimerInit (void)
 {
     uint8_t prescale;
 
-    // Select timer clock source and prescaler value. If no low speed
-    // external clock is available, the IO clock must be permanently
-    // enabled.
+    // Select timer clock source and prescaler value.
     if (GMOS_CONFIG_ATMEGA_USE_LSE_OSC) {
         ASSR = (1 << AS2);
         prescale = 3;
     } else {
-        gmosPalIoSetActive ();
         ASSR = 0;
         prescale = 7;
     }
@@ -107,29 +101,4 @@ uint32_t gmosPalGetTimer (void)
  */
 void gmosPalIdle (uint32_t duration)
 {
-}
-
-/*
- * Enable the I/O clock for the duration of an I/O operation. This
- * increments the I/O peripheral active counter and prevents the
- * microcontroller from entering power save or extended standby.
- */
-void gmosPalIoSetActive (void)
-{
-    GMOS_ASSERT (ASSERT_FAILURE, (ioActiveCount < 0xFF),
-        "Excessive I/O set active request.");
-    ioActiveCount += 1;
-}
-
-/*
- * Disable the I/O clock after completion of an I/O operation. This
- * decrements the I/O peripheral active counter and allows the
- * microcontroller to enter the power save or extended standby once
- * the counter reaches zero.
- */
-void gmosPalIoSetInactive (void)
-{
-    GMOS_ASSERT (ASSERT_FAILURE, (ioActiveCount > 0),
-        "Mismatched I/O set inactive request.");
-    ioActiveCount -= 1;
 }

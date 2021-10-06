@@ -97,10 +97,10 @@
 /**
  * This configuration option specifies the number of memory pool
  * segments to be allocated.  The default memory pool size for ATMEGA
- * devices is set to 1K.
+ * devices is set to 512 bytes.
  */
 #ifndef GMOS_CONFIG_MEMPOOL_SEGMENT_NUMBER
-#define GMOS_CONFIG_MEMPOOL_SEGMENT_NUMBER 32
+#define GMOS_CONFIG_MEMPOOL_SEGMENT_NUMBER 16
 #endif
 
 // Configure the system timer frequency based on the selected low speed

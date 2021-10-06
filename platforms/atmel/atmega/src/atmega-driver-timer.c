@@ -27,6 +27,7 @@
 
 #include "gmos-config.h"
 #include "gmos-platform.h"
+#include "gmos-scheduler.h"
 #include "gmos-driver-timer.h"
 #include "atmega-device.h"
 #include "atmega-driver-timer.h"
@@ -134,7 +135,7 @@ bool gmosDriverTimerInit (gmosDriverTimer_t* timer, uint32_t frequency,
 bool gmosDriverTimerEnable (gmosDriverTimer_t* timer)
 {
     // Place the timer in the reset hold state and enable interrupts.
-    gmosPalIoSetActive ();
+    gmosSchedulerStayAwake ();
     return gmosDriverTimerReset (timer, true) &&
         gmosDriverTimerIsrMask (timer, false);
 }
@@ -146,7 +147,7 @@ bool gmosDriverTimerEnable (gmosDriverTimer_t* timer)
 bool gmosDriverTimerDisable (gmosDriverTimer_t* timer)
 {
     // Stop the timer counter and disable interrupts.
-    gmosPalIoSetInactive ();
+    gmosSchedulerCanSleep ();
     return gmosDriverTimerReset (timer, true) &&
         gmosDriverTimerIsrMask (timer, true);
 }

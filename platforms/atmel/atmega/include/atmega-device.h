@@ -62,21 +62,6 @@ void gmosPalSerialConsoleInit (void);
  */
 bool gmosPalSerialConsoleWrite (uint8_t* writeData, uint16_t writeSize);
 
-/**
- * Enable the I/O clock for the duration of an I/O operation. This
- * increments the I/O peripheral active counter and prevents the
- * microcontroller from entering power save or extended standby.
- */
-void gmosPalIoSetActive (void);
-
-/**
- * Disable the I/O clock after completion of an I/O operation. This
- * decrements the I/O peripheral active counter and allows the
- * microcontroller to enter the power save or extended standby once
- * the counter reaches zero.
- */
-void gmosPalIoSetInactive (void);
-
 // Specify the registers used for the serial debug console. This depends
 // on the selected target device.
 #if ((TARGET_DEVICE == atmega32) || (TARGET_DEVICE == atmega32a))
