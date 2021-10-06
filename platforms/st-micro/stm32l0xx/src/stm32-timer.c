@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2021 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,7 +57,7 @@ void gmosPalSystemTimerInit (void)
 /*
  * Reads the current value of the low power timer counter.
  */
-uint16_t gmosPalGetHardwareTimer (void)
+static uint16_t gmosPalGetHardwareTimer (void)
 {
     uint32_t value1;
     uint32_t value2;

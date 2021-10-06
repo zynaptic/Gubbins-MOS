@@ -68,6 +68,13 @@ typedef enum {
 void gmosPalInit (void);
 
 /**
+ * Initialises the application code on startup. This must be implemented
+ * by application specific code to set up the application tasks. It is
+ * called immediately prior to starting the main scheduler loop.
+ */
+void gmosAppInit (void);
+
+/**
  * Converts the specified number of milliseconds to the closest number
  * of system timer ticks (rounding down).
  * @param _ms_ This is the number of milliseconds that are to be
@@ -90,14 +97,6 @@ void gmosPalInit (void);
  */
 #define GMOS_TICKS_TO_MS(_ticks_) ((uint32_t) \
     ((((uint64_t) _ticks_) * 1000) / GMOS_CONFIG_SYSTEM_TIMER_FREQUENCY))
-
-/**
- * Reads the contents of the hardware timer. This is a 16-bit timer that
- * increments at a rate defined by 'GMOS_CONFIG_SYSTEM_TIMER_FREQUENCY'
- * and which is safe to access from all execution contexts.
- * @return Returns the current value of the hardware timer.
- */
-uint16_t gmosPalGetHardwareTimer (void);
 
 /**
  * Reads the contents of the system timer. This is a 32-bit timer that
