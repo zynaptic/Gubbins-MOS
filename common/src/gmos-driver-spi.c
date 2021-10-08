@@ -36,56 +36,75 @@
 #endif
 
 /*
- * Initialises a SPI interface to use as a simple point to point link,
- * with the microcontroller as the SPI bus controller and a single
- * attached SPI device peripheral.
+ * Initialises a SPI bus interface data structure and initiates the
+ * platform specific SPI hardware setup process.
  */
-bool gmosDriverSpiLinkInit (gmosDriverSpiIo_t* spiInterface,
+bool gmosDriverSpiBusInit (gmosDriverSpiBus_t* spiInterface)
+{
+    bool initOk = false;
+
+    // Initialise the SPI interface platform specific hardware.
+    if (spiInterface->busState == GMOS_DRIVER_SPI_BUS_RESET) {
+        if (gmosDriverSpiPalInit (spiInterface)) {
+            spiInterface->busState = GMOS_DRIVER_SPI_BUS_IDLE;
+            initOk = true;
+        } else {
+            spiInterface->busState = GMOS_DRIVER_SPI_BUS_ERROR;
+        }
+    }
+    return initOk;
+}
+
+/*
+ * Initialises a SPI device data structure with the specified SPI
+ * protocol parameters.
+ */
+bool gmosDriverSpiDeviceInit (gmosDriverSpiDevice_t* spiDevice,
     gmosTaskState_t* clientTask, uint16_t spiChipSelectPin,
     uint16_t spiClockRate, uint8_t spiClockMode)
 {
-    // Populate the SPI interface data structure.
-    spiInterface->linkState = GMOS_DRIVER_SPI_LINK_IDLE;
-    spiInterface->spiChipSelectPin = spiChipSelectPin;
-    spiInterface->spiClockRate = spiClockRate;
-    spiInterface->spiClockMode = spiClockMode;
+    // Populate the SPI device data structure.
+    spiDevice->spiChipSelectPin = spiChipSelectPin;
+    spiDevice->spiClockRate = spiClockRate;
+    spiDevice->spiClockMode = spiClockMode;
 
     // Initialise the completion event data structure.
-    gmosEventInit (&(spiInterface->completionEvent), clientTask);
+    gmosEventInit (&(spiDevice->completionEvent), clientTask);
 
     // Initialise the single chip select output.
-    if (!gmosDriverGpioPinInit (spiInterface->spiChipSelectPin,
+    if (!gmosDriverGpioPinInit (spiChipSelectPin,
         GMOS_DRIVER_GPIO_OUTPUT_PUSH_PULL,
         GMOS_CONFIG_SPI_GPIO_DRIVE_STRENGTH,
         GMOS_DRIVER_GPIO_INPUT_PULL_NONE)) {
         return false;
     }
-    if (!gmosDriverGpioSetAsOutput (spiInterface->spiChipSelectPin)) {
+    if (!gmosDriverGpioSetAsOutput (spiChipSelectPin)) {
         return false;
     }
-    gmosDriverGpioSetPinState (spiInterface->spiChipSelectPin, 1);
-
-    // Run the platform specific initialisation.
-    if (!gmosDriverSpiPalInit (spiInterface)) {
-        return false;
-    }
-
-    // Perform clock setup for the lifetime of the SPI link.
-    gmosDriverSpiPalClockSetup (spiInterface);
+    gmosDriverGpioSetPinState (spiChipSelectPin, 1);
     return true;
 }
 
 /*
- * Selects a SPI device peripheral connected to the SPI interface using
- * a simple point to point link. This asserts the chip select line at
- * the start of a sequence of low level transactions.
+ * Selects a SPI device peripheral connected to the SPI bus. This
+ * sets the device specific SPI bus frequency and bus mode then asserts
+ * the chip select line at the start of a sequence of low level
+ * transactions.
  */
-bool gmosDriverSpiLinkSelect (gmosDriverSpiIo_t* spiInterface)
+bool gmosDriverSpiDeviceSelect (gmosDriverSpiBus_t* spiInterface,
+    gmosDriverSpiDevice_t* spiDevice)
 {
     bool selectOk = false;
-    if (spiInterface->linkState == GMOS_DRIVER_SPI_LINK_IDLE) {
-        spiInterface->linkState = GMOS_DRIVER_SPI_LINK_SELECTED;
-        gmosDriverGpioSetPinState (spiInterface->spiChipSelectPin, 0);
+    if (spiInterface->busState == GMOS_DRIVER_SPI_BUS_IDLE) {
+        spiInterface->busState = GMOS_DRIVER_SPI_BUS_SELECTED;
+
+        // Note that SPI bus clock setup is not required for successive
+        // accesses to the same device.
+        if (spiInterface->device != spiDevice) {
+            spiInterface->device = spiDevice;
+            gmosDriverSpiPalClockSetup (spiInterface);
+        }
+        gmosDriverGpioSetPinState (spiDevice->spiChipSelectPin, 0);
         gmosSchedulerStayAwake ();
         selectOk = true;
     }
@@ -93,16 +112,18 @@ bool gmosDriverSpiLinkSelect (gmosDriverSpiIo_t* spiInterface)
 }
 
 /*
- * Releases a SPI device peripheral connected to the SPI interface using
- * a simple point to point link. This deasserts the chip select line at
- * the end of a sequence of low level transactions.
+ * Releases a SPI device peripheral connected to the SPI bus. This
+ * deasserts the chip select line at the end of a sequence of low level
+ * transactions.
  */
-bool gmosDriverSpiLinkRelease (gmosDriverSpiIo_t* spiInterface)
+bool gmosDriverSpiDeviceRelease (gmosDriverSpiBus_t* spiInterface,
+    gmosDriverSpiDevice_t* spiDevice)
 {
     bool releaseOk = false;
-    if (spiInterface->linkState == GMOS_DRIVER_SPI_LINK_SELECTED) {
-        spiInterface->linkState = GMOS_DRIVER_SPI_LINK_IDLE;
-        gmosDriverGpioSetPinState (spiInterface->spiChipSelectPin, 1);
+    if ((spiInterface->busState == GMOS_DRIVER_SPI_BUS_SELECTED) &&
+        (spiInterface->device == spiDevice)) {
+        spiInterface->busState = GMOS_DRIVER_SPI_BUS_IDLE;
+        gmosDriverGpioSetPinState (spiDevice->spiChipSelectPin, 1);
         gmosSchedulerCanSleep ();
         releaseOk = true;
     }
@@ -113,12 +134,12 @@ bool gmosDriverSpiLinkRelease (gmosDriverSpiIo_t* spiInterface)
  * Initiates a SPI write request for a device peripheral connected to
  * the SPI interface.
  */
-bool gmosDriverSpiIoWrite (gmosDriverSpiIo_t* spiInterface,
+bool gmosDriverSpiIoWrite (gmosDriverSpiBus_t* spiInterface,
     uint8_t* writeData, uint16_t writeSize)
 {
     bool writeOk = false;
-    if (spiInterface->linkState == GMOS_DRIVER_SPI_LINK_SELECTED) {
-        spiInterface->linkState = GMOS_DRIVER_SPI_LINK_ACTIVE;
+    if (spiInterface->busState == GMOS_DRIVER_SPI_BUS_SELECTED) {
+        spiInterface->busState = GMOS_DRIVER_SPI_BUS_ACTIVE;
         spiInterface->writeData = writeData;
         spiInterface->readData = NULL;
         spiInterface->transferSize = writeSize;
@@ -132,12 +153,12 @@ bool gmosDriverSpiIoWrite (gmosDriverSpiIo_t* spiInterface,
  * Initiates a SPI read request for a device peripheral connected to
  * the SPI interface.
  */
-bool gmosDriverSpiIoRead (gmosDriverSpiIo_t* spiInterface,
+bool gmosDriverSpiIoRead (gmosDriverSpiBus_t* spiInterface,
     uint8_t* readData, uint16_t readSize)
 {
     bool readOk = false;
-    if (spiInterface->linkState == GMOS_DRIVER_SPI_LINK_SELECTED) {
-        spiInterface->linkState = GMOS_DRIVER_SPI_LINK_ACTIVE;
+    if (spiInterface->busState == GMOS_DRIVER_SPI_BUS_SELECTED) {
+        spiInterface->busState = GMOS_DRIVER_SPI_BUS_ACTIVE;
         spiInterface->writeData = NULL;
         spiInterface->readData = readData;
         spiInterface->transferSize = readSize;
@@ -151,12 +172,12 @@ bool gmosDriverSpiIoRead (gmosDriverSpiIo_t* spiInterface,
  * Initiates a SPI bidirectional transfer request for a device
  * peripheral connected to the SPI interface.
  */
-bool gmosDriverSpiIoTransfer (gmosDriverSpiIo_t* spiInterface,
+bool gmosDriverSpiIoTransfer (gmosDriverSpiBus_t* spiInterface,
     uint8_t* writeData, uint8_t* readData, uint16_t transferSize)
 {
     bool transferOk = false;
-    if (spiInterface->linkState == GMOS_DRIVER_SPI_LINK_SELECTED) {
-        spiInterface->linkState = GMOS_DRIVER_SPI_LINK_ACTIVE;
+    if (spiInterface->busState == GMOS_DRIVER_SPI_BUS_SELECTED) {
+        spiInterface->busState = GMOS_DRIVER_SPI_BUS_ACTIVE;
         spiInterface->writeData = writeData;
         spiInterface->readData = readData;
         spiInterface->transferSize = transferSize;
@@ -171,17 +192,19 @@ bool gmosDriverSpiIoTransfer (gmosDriverSpiIo_t* spiInterface,
  * connected to the SPI interface.
  */
 gmosDriverSpiStatus_t gmosDriverSpiIoComplete
-    (gmosDriverSpiIo_t* spiInterface, uint16_t* transferSize)
+    (gmosDriverSpiBus_t* spiInterface, uint16_t* transferSize)
 {
     uint32_t eventBits;
+    gmosEvent_t* completionEvent;
     gmosDriverSpiStatus_t spiStatus = GMOS_DRIVER_SPI_STATUS_IDLE;
 
     // Only poll the completion event if a transaction is active.
-    if (spiInterface->linkState == GMOS_DRIVER_SPI_LINK_ACTIVE) {
-        eventBits = gmosEventGetBits (&spiInterface->completionEvent);
+    if (spiInterface->busState == GMOS_DRIVER_SPI_BUS_ACTIVE) {
+        completionEvent = &(spiInterface->device->completionEvent);
+        eventBits = gmosEventGetBits (completionEvent);
         if ((eventBits & GMOS_DRIVER_SPI_EVENT_COMPLETION_FLAG) != 0) {
-            spiInterface->linkState = GMOS_DRIVER_SPI_LINK_SELECTED;
-            gmosEventClearBits (&spiInterface->completionEvent, 0xFFFFFFFF);
+            spiInterface->busState = GMOS_DRIVER_SPI_BUS_SELECTED;
+            gmosEventClearBits (completionEvent, 0xFFFFFFFF);
             spiStatus = eventBits & GMOS_DRIVER_SPI_EVENT_STATUS_MASK;
 
             // Transfer size notifications are optional.
@@ -203,11 +226,11 @@ gmosDriverSpiStatus_t gmosDriverSpiIoComplete
  * to exceed the cost of carrying out a simple polled transaction.
  */
 gmosDriverSpiStatus_t gmosDriverSpiIoInlineWrite
-    (gmosDriverSpiIo_t* spiInterface, uint8_t* writeData,
+    (gmosDriverSpiBus_t* spiInterface, uint8_t* writeData,
     uint16_t writeSize)
 {
     gmosDriverSpiStatus_t spiStatus = GMOS_DRIVER_SPI_STATUS_NOT_READY;
-    if (spiInterface->linkState == GMOS_DRIVER_SPI_LINK_SELECTED) {
+    if (spiInterface->busState == GMOS_DRIVER_SPI_BUS_SELECTED) {
         spiInterface->writeData = writeData;
         spiInterface->readData = NULL;
         spiInterface->transferSize = writeSize;
@@ -222,11 +245,11 @@ gmosDriverSpiStatus_t gmosDriverSpiIoInlineWrite
  * to exceed the cost of carrying out a simple polled transaction.
  */
 gmosDriverSpiStatus_t gmosDriverSpiIoInlineRead
-   (gmosDriverSpiIo_t* spiInterface, uint8_t* readData,
+   (gmosDriverSpiBus_t* spiInterface, uint8_t* readData,
    uint16_t readSize)
 {
     gmosDriverSpiStatus_t spiStatus = GMOS_DRIVER_SPI_STATUS_NOT_READY;
-    if (spiInterface->linkState == GMOS_DRIVER_SPI_LINK_SELECTED) {
+    if (spiInterface->busState == GMOS_DRIVER_SPI_BUS_SELECTED) {
         spiInterface->writeData = NULL;
         spiInterface->readData = readData;
         spiInterface->transferSize = readSize;
@@ -242,11 +265,11 @@ gmosDriverSpiStatus_t gmosDriverSpiIoInlineRead
  * transaction.
  */
 gmosDriverSpiStatus_t gmosDriverSpiIoInlineTransfer
-    (gmosDriverSpiIo_t* spiInterface, uint8_t* writeData,
+    (gmosDriverSpiBus_t* spiInterface, uint8_t* writeData,
     uint8_t* readData, uint16_t transferSize)
 {
     gmosDriverSpiStatus_t spiStatus = GMOS_DRIVER_SPI_STATUS_NOT_READY;
-    if (spiInterface->linkState == GMOS_DRIVER_SPI_LINK_SELECTED) {
+    if (spiInterface->busState == GMOS_DRIVER_SPI_BUS_SELECTED) {
         spiInterface->writeData = writeData;
         spiInterface->readData = readData;
         spiInterface->transferSize = transferSize;

@@ -30,6 +30,10 @@
 #include "gmos-scheduler.h"
 #include "gmos-events.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 /**
  * This enumeration specifies the SPI status values that are returned by
  * the transaction completion functions.
@@ -44,13 +48,15 @@ typedef enum {
 } gmosDriverSpiStatus_t;
 
 /**
- * This enumeration specifies the various SPI link operating states.
+ * This enumeration specifies the various SPI bus operating states.
  */
 typedef enum {
-    GMOS_DRIVER_SPI_LINK_IDLE,
-    GMOS_DRIVER_SPI_LINK_SELECTED,
-    GMOS_DRIVER_SPI_LINK_ACTIVE
-} gmosDriverSpiLinkState_t;
+    GMOS_DRIVER_SPI_BUS_RESET,
+    GMOS_DRIVER_SPI_BUS_ERROR,
+    GMOS_DRIVER_SPI_BUS_IDLE,
+    GMOS_DRIVER_SPI_BUS_SELECTED,
+    GMOS_DRIVER_SPI_BUS_ACTIVE
+} gmosDriverSpiBusState_t;
 
 /*
  * This set of definitions specify the event bit masks used to indicate
@@ -64,39 +70,65 @@ typedef enum {
 #define GMOS_DRIVER_SPI_EVENT_COMPLETION_FLAG 0x80000000
 
 /**
- * Defines the platform specific SPI I/O state data structure. The full
+ * Defines the platform specific SPI bus state data structure. The full
  * type definition must be provided by the associated platform
  * abstraction layer.
  */
-typedef struct gmosPalSpiIoState_t gmosPalSpiIoState_t;
+typedef struct gmosPalSpiBusState_t gmosPalSpiBusState_t;
 
 /**
- * Defines the platform specific SPI I/O configuration options. The full
+ * Defines the platform specific SPI bus configuration options. The full
  * type definition must be provided by the associated platform
  * abstraction layer.
  */
-typedef struct gmosPalSpiIoConfig_t gmosPalSpiIoConfig_t;
+typedef struct gmosPalSpiBusConfig_t gmosPalSpiBusConfig_t;
 
 /**
- * Defines the GubbinsMOS SPI I/O state data structure that is used for
+ * Defines the GubbinsMOS SPI device information structure that is used
+ * for storing the SPI bus parameters associated with a single attached
+ * device.
+ */
+typedef struct gmosDriverSpiDevice_t {
+
+    // This is the set of event flags that are used by the platform
+    // abstraction layer to signal completion of a SPI device
+    // transaction.
+    gmosEvent_t completionEvent;
+
+    // This is the GPIO pin which is to be used for driving the SPI
+    // device chip select line.
+    uint16_t spiChipSelectPin;
+
+    // This is the SPI clock frequency to be used during the transfer,
+    // expressed as an integer multiple of 1kHz.
+    uint16_t spiClockRate;
+
+    // This is the SPI clock mode to be used during the transfer,
+    // expressed using the conventional SPI clock mode enumeration.
+    uint8_t spiClockMode;
+
+} gmosDriverSpiDevice_t;
+
+/**
+ * Defines the GubbinsMOS SPI bus state data structure that is used for
  * managing the low level I/O for a single SPI bus controller.
  */
-typedef struct gmosDriverSpiIo_t {
+typedef struct gmosDriverSpiBus_t {
 
     // This is an opaque pointer to the SPI platform abstraction layer
     // data structure that is used for accessing the SPI interface
     // hardware. The data structure will be platform specific.
-    gmosPalSpiIoState_t* palData;
+    gmosPalSpiBusState_t* palData;
 
     // This is an opaque pointer to the SPI platform abstraction layer
     // configuration data structure that is used for setting up the
     // SPI interface hardware. The data structure will be platform
     // specific.
-    const gmosPalSpiIoConfig_t* palConfig;
+    const gmosPalSpiBusConfig_t* palConfig;
 
-    // This is the set of event flags that are used by the platform
-    // abstraction layer to signal completion of a SPI bus transaction.
-    gmosEvent_t completionEvent;
+    // This is a pointer to the device data structure for the currently
+    // active SPI device.
+    gmosDriverSpiDevice_t* device;
 
     // This is a pointer to the write data buffer to be used during a
     // SPI I/O transaction.
@@ -110,22 +142,10 @@ typedef struct gmosDriverSpiIo_t {
     // transaction.
     uint16_t transferSize;
 
-    // This is the GPIO pin which is to be used for driving the SPI
-    // chip select line.
-    uint16_t spiChipSelectPin;
+    // This is the current internal SPI bus state.
+    uint8_t busState;
 
-    // This is the SPI clock frequency to be used during the transfer,
-    // expressed as an integer multiple of 1kHz.
-    uint16_t spiClockRate;
-
-    // This is the SPI clock mode to be used during the transfer,
-    // expressed using the conventional SPI clock mode enumeration.
-    uint8_t spiClockMode;
-
-    // This is the current internal SPI link state.
-    uint8_t linkState;
-
-} gmosDriverSpiIo_t;
+} gmosDriverSpiBus_t;
 
 /**
  * Provides a platform configuration setup macro to be used when
@@ -140,67 +160,74 @@ typedef struct gmosDriverSpiIo_t {
  *     configuration options to be used with the SPI interface.
  */
 #define GMOS_DRIVER_SPI_PAL_CONFIG(_palData_, _palConfig_)             \
-    { _palData_, _palConfig_ }
+    { _palData_, _palConfig_, NULL, NULL, NULL, 0, 0 }
 
 /**
- * Initialises a SPI interface to use as a simple point to point link,
- * with the microcontroller as the SPI bus controller and a single
- * attached SPI device peripheral.
- * @param spiInterface This is the SPI interface data structure that is
- *     to be initialised for the simple point to point link.
+ * Initialises a SPI bus interface data structure and initiates the
+ * platform specific SPI hardware setup process.
+ */
+bool gmosDriverSpiBusInit (gmosDriverSpiBus_t* spiInterface);
+
+/**
+ * Initialises a SPI device data structure with the specified SPI
+ * protocol parameters.
  * @param clientTask This is the client task which is to be notified
  *     on completion of SPI interface I/O transactions.
  * @param spiChipSelectPin This is the GPIO pin which is to be used as
- *     the dedicated chip select.
+ *     the dedicated chip select for the SPI device.
  * @param spiClockRate This is the maximum SPI clock frequency to be
- *     used during link transfers, expressed as an integer multiple of
+ *     used during bus transfers, expressed as an integer multiple of
  *     1kHz. This will typically be rounded down to the closest clock
  *     frequency supported by the underlying hardware.
- * @param spiClockMode This is the SPI clock mode to be used during link
+ * @param spiClockMode This is the SPI clock mode to be used during bus
  *     transfers, expressed using the conventional SPI clock mode
  *     enumeration. Supported clock mode values are 0, 1, 2 and 3.
  * @return Returns a boolean value which will be set to 'true' on
  *     successfully completing the initialisation process and 'false'
  *     otherwise.
  */
-bool gmosDriverSpiLinkInit (gmosDriverSpiIo_t* spiInterface,
+bool gmosDriverSpiDeviceInit (gmosDriverSpiDevice_t* spiDevice,
     gmosTaskState_t* clientTask, uint16_t spiChipSelectPin,
     uint16_t spiClockRate, uint8_t spiClockMode);
 
 /**
- * Selects a SPI device peripheral connected to the SPI interface using
- * a simple point to point link. This asserts the chip select line at
- * the start of a sequence of low level transactions. The scheduler is
- * automatically prevented from entering low power mode while a SPI link
- * is active.
+ * Selects a SPI device peripheral connected to the SPI bus. This
+ * sets the device specific SPI bus frequency and bus mode then asserts
+ * the chip select line at the start of a sequence of low level
+ * transactions. The scheduler is automatically prevented from entering
+ * low power mode while the SPI bus is active.
  * @param spiInterface This is the SPI interface data structure which
- *     is associated with the point to point SPI link.
+ *     is associated with the SPI bus.
+ * @param spiDevice This is the SPI device data structure which is
+ *     associated with the device being accessed.
  * @return Returns a boolean value which will be set to 'true' if the
- *     SPI link was idle and has now been selected and 'false'
- *     otherwise.
+ *     SPI bus was idle and has now been selected and 'false' otherwise.
  */
-bool gmosDriverSpiLinkSelect (gmosDriverSpiIo_t* spiInterface);
+bool gmosDriverSpiDeviceSelect (gmosDriverSpiBus_t* spiInterface,
+    gmosDriverSpiDevice_t* spiDevice);
 
 /**
- * Releases a SPI device peripheral connected to the SPI interface using
- * a simple point to point link. This deasserts the chip select line at
- * the end of a sequence of low level transactions.
+ * Releases a SPI device peripheral connected to the SPI bus. This
+ * deasserts the chip select line at the end of a sequence of low level
+ * transactions.
  * @param spiInterface This is the SPI interface data structure which
- *     is associated with the point to point SPI link.
+ *     is associated with the SPI bus.
+ * @param spiDevice This is the SPI device data structure which is
+ *     associated with the device being accessed.
  * @return Returns a boolean value which will be set to 'true' if the
- *     SPI link was selected and has now been deselected and 'false'
+ *     SPI device was selected and has now been deselected and 'false'
  *     otherwise.
  */
-bool gmosDriverSpiLinkRelease (gmosDriverSpiIo_t* spiInterface);
+bool gmosDriverSpiDeviceRelease (gmosDriverSpiBus_t* spiInterface,
+    gmosDriverSpiDevice_t* spiDevice);
 
 /**
  * Initiates a SPI write request for a device peripheral connected to
  * the SPI interface. The chip select must already have been asserted
- * using 'gmosDriverSpiLinkSelect' ot 'gmosDriverSpiDeviceSelect'. On
- * completion the number of bytes transferred will be indicated via the
- * completion event.
+ * using 'gmosDriverSpiDeviceSelect'. On completion the number of bytes
+ * transferred will be indicated via the device completion event.
  * @param spiInterface This is the SPI state data structure which is
- *     associated with the SPI interface.
+ *     associated with the SPI bus.
  * @param writeData This is a pointer to the byte array that is to be
  *     written to the SPI peripheral. It must remain valid for the
  *     full duration of the transaction.
@@ -209,17 +236,16 @@ bool gmosDriverSpiLinkRelease (gmosDriverSpiIo_t* spiInterface);
  * @return Returns a boolean value which will be set to 'true' if the
  *     SPI write was initiated and is now active and 'false' otherwise.
  */
-bool gmosDriverSpiIoWrite (gmosDriverSpiIo_t* spiInterface,
+bool gmosDriverSpiIoWrite (gmosDriverSpiBus_t* spiInterface,
     uint8_t* writeData, uint16_t writeSize);
 
 /**
  * Initiates a SPI read request for a device peripheral connected to
  * the SPI interface. The chip select must already have been asserted
- * using 'gmosDriverSpiLinkSelect' or 'gmosDriverSpiDeviceSelect'. On
- * completion the number of bytes transferred will be indicated via the
- * completion event.
+ * using 'gmosDriverSpiDeviceSelect'. On completion the number of bytes
+ * transferred will be indicated via the device completion event.
  * @param spiInterface This is the SPI state data structure which is
- *     associated with the SPI interface.
+ *     associated with the SPI bus.
  * @param readData This is a pointer to the byte array that will be
  *     updated with the data read from the SPI peripheral. It must
  *     remain valid for the full duration of the transaction.
@@ -228,17 +254,17 @@ bool gmosDriverSpiIoWrite (gmosDriverSpiIo_t* spiInterface,
  * @return Returns a boolean value which will be set to 'true' if the
  *     SPI read was initiated and is now active and 'false' otherwise.
  */
-bool gmosDriverSpiIoRead (gmosDriverSpiIo_t* spiInterface,
+bool gmosDriverSpiIoRead (gmosDriverSpiBus_t* spiInterface,
     uint8_t* readData, uint16_t readSize);
 
 /**
  * Initiates a SPI bidirectional transfer request for a device
  * peripheral connected to the SPI interface. The chip select must
- * already have been asserted using 'gmosDriverSpiLinkSelect' or
- * 'gmosDriverSpiDeviceSelect'. On completion the number of bytes
- * transferred will be indicated via the completion event.
+ * already have been asserted using 'gmosDriverSpiDeviceSelect'. On
+ * completion the number of bytes transferred will be indicated via the
+ * device completion event.
  * @param spiInterface This is the SPI state data structure which is
- *     associated with the SPI interface.
+ *     associated with the SPI bus.
  * @param writeData This is a pointer to the byte array that is to be
  *     written to the SPI peripheral. It must remain valid for the
  *     full duration of the transaction.
@@ -248,16 +274,16 @@ bool gmosDriverSpiIoRead (gmosDriverSpiIo_t* spiInterface,
  * @param transferSize This specifies the number of bytes that are to be
  *     transferred to and from the SPI peripheral.
  * @return Returns a boolean value which will be set to 'true' if the
- *     SPI link was selected and is now active and 'false' otherwise.
+ *     SPI device was selected and is now active and 'false' otherwise.
  */
-bool gmosDriverSpiIoTransfer (gmosDriverSpiIo_t* spiInterface,
+bool gmosDriverSpiIoTransfer (gmosDriverSpiBus_t* spiInterface,
     uint8_t* writeData, uint8_t* readData, uint16_t transferSize);
 
 /**
  * Completes an asynchronous SPI transaction for a device peripheral
  * connected to the SPI interface.
  * @param spiInterface This is the SPI state data structure which is
- *     associated with the SPI interface.
+ *     associated with the SPI bus.
  * @param transferSize This is a pointer to a 16-bit unsigned integer
  *     which will be populated with the number of bytes transferred
  *     during the transaction. A null reference may be used to indicate
@@ -267,16 +293,16 @@ bool gmosDriverSpiIoTransfer (gmosDriverSpiIo_t* spiInterface,
  *     is no longer set to 'GMOS_DRIVER_SPI_STATUS_ACTIVE'.
  */
 gmosDriverSpiStatus_t gmosDriverSpiIoComplete
-    (gmosDriverSpiIo_t* spiInterface, uint16_t* transferSize);
+    (gmosDriverSpiBus_t* spiInterface, uint16_t* transferSize);
 
 /**
  * Requests an inline SPI write data transfer for short transactions
  * where the overhead of setting up an asynchronous transfer is likely
- * to exceed the cost of carrying out a simple polled transaction. The
- * chip select must already have been asserted using one of
- * 'gmosDriverSpiLinkSelect' or 'gmosDriverSpiDeviceSelect'.
+ * to exceed the cost of carrying out a simple polled transaction.
+ * The chip select must already have been asserted using
+ * 'gmosDriverSpiDeviceSelect'.
  * @param spiInterface This is the SPI state data structure which is
- *     associated with the SPI interface.
+ *     associated with the SPI bus.
  * @param writeData This is a pointer to the byte array that is to be
  *     written to the SPI peripheral. It must remain valid for the
  *     full duration of the transaction.
@@ -286,17 +312,17 @@ gmosDriverSpiStatus_t gmosDriverSpiIoComplete
  *     failure of the inline transfer request.
  */
 gmosDriverSpiStatus_t gmosDriverSpiIoInlineWrite
-    (gmosDriverSpiIo_t* spiInterface, uint8_t* writeData,
+    (gmosDriverSpiBus_t* spiInterface, uint8_t* writeData,
     uint16_t writeSize);
 
 /**
  * Requests an inline SPI read data transfer for short transactions
  * where the overhead of setting up an asynchronous transfer is likely
- * to exceed the cost of carrying out a simple polled transaction. The
- * chip select must already have been asserted using one of
- * 'gmosDriverSpiLinkSelect' or 'gmosDriverSpiDeviceSelect'.
+ * to exceed the cost of carrying out a simple polled transaction.
+ * The chip select must already have been asserted using
+ * 'gmosDriverSpiDeviceSelect'.
  * @param spiInterface This is the SPI state data structure which is
- *     associated with the SPI interface.
+ *     associated with the SPI bus.
  * @param readData This is a pointer to the byte array that will be
  *     updated with the data read from the SPI device. It must remain
  *     valid for the full duration of the transaction.
@@ -306,7 +332,7 @@ gmosDriverSpiStatus_t gmosDriverSpiIoInlineWrite
  *     failure of the inline transfer request.
  */
 gmosDriverSpiStatus_t gmosDriverSpiIoInlineRead
-   (gmosDriverSpiIo_t* spiInterface, uint8_t* readData,
+   (gmosDriverSpiBus_t* spiInterface, uint8_t* readData,
    uint16_t readSize);
 
 /**
@@ -314,9 +340,9 @@ gmosDriverSpiStatus_t gmosDriverSpiIoInlineRead
  * transactions where the overhead of setting up an asynchronous
  * transfer is likely to exceed the cost of carrying out a simple polled
  * transaction. The chip select must already have been asserted using
- * 'gmosDriverSpiLinkSelect' or 'gmosDriverSpiDeviceSelect'.
+ * 'gmosDriverSpiDeviceSelect'.
  * @param spiInterface This is the SPI state data structure which is
- *     associated with the SPI interface.
+ *     associated with the SPI bus.
  * @param writeData This is a pointer to the byte array that is to be
  *     written to the SPI peripheral. It must remain valid for the
  *     full duration of the transaction.
@@ -329,14 +355,14 @@ gmosDriverSpiStatus_t gmosDriverSpiIoInlineRead
  *     failure of the inline transfer request.
  */
 gmosDriverSpiStatus_t gmosDriverSpiIoInlineTransfer
-    (gmosDriverSpiIo_t* spiInterface, uint8_t* writeData,
+    (gmosDriverSpiBus_t* spiInterface, uint8_t* writeData,
     uint8_t* readData, uint16_t transferSize);
 
 /**
  * Initialises the platform abstraction layer for a given SPI interface.
  * Refer to the platform specific SPI implementation for details of the
  * platform data area and the SPI interface configuration options.
- * This function is called automatically by the 'gmosDriverSpiLinkInit'
+ * This function is called automatically by the 'gmosDriverSpiBusInit'
  * function.
  * @param spiInterface This is the SPI interface data structure with
  *     the platform data and platform configuration entries already
@@ -345,15 +371,15 @@ gmosDriverSpiStatus_t gmosDriverSpiIoInlineTransfer
  *     successfully completing the initialisation process and 'false'
  *     otherwise.
  */
-bool gmosDriverSpiPalInit (gmosDriverSpiIo_t* spiInterface);
+bool gmosDriverSpiPalInit (gmosDriverSpiBus_t* spiInterface);
 
 /**
  * Sets up the platform abstraction layer for one or more SPI
  * transactions that share the same SPI clock configuration.
  * @param spiInterface This is the SPI interface data structure with
- *     the SPI clock frequency and clock mode fields already populated.
+ *     the SPI device field already populated.
  */
-void gmosDriverSpiPalClockSetup (gmosDriverSpiIo_t* spiInterface);
+void gmosDriverSpiPalClockSetup (gmosDriverSpiBus_t* spiInterface);
 
 /**
  * Performs a platform specific SPI transaction using the given SPI
@@ -362,7 +388,7 @@ void gmosDriverSpiPalClockSetup (gmosDriverSpiIo_t* spiInterface);
  *     will have been configured with all the parameters required to
  *     initiate the SPI transaction.
  */
-void gmosDriverSpiPalTransaction (gmosDriverSpiIo_t* spiInterface);
+void gmosDriverSpiPalTransaction (gmosDriverSpiBus_t* spiInterface);
 
 /**
  * Performs a platform specific SPI inline transaction using the given
@@ -374,6 +400,9 @@ void gmosDriverSpiPalTransaction (gmosDriverSpiIo_t* spiInterface);
  *     failure of the inline transfer request.
  */
 gmosDriverSpiStatus_t gmosDriverSpiPalInlineTransaction
-    (gmosDriverSpiIo_t* spiInterface);
+    (gmosDriverSpiBus_t* spiInterface);
 
+#ifdef __cplusplus
+}
+#endif // __cplusplus
 #endif // GMOS_DRIVER_SPI_H
