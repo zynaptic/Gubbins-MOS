@@ -37,7 +37,8 @@ PLATFORM_OBJ_FILE_NAMES = \
 	atmega-console.o \
 	atmega-timer.o \
 	atmega-driver-gpio.o \
-	atmega-driver-timer.o
+	atmega-driver-timer.o \
+	atmega-driver-spi.o
 
 # Specify the local build directory.
 LOCAL_DIR = ${GMOS_BUILD_DIR}/platform
