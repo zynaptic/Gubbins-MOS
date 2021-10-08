@@ -42,10 +42,8 @@ static void gmosEventAppendToQueue (gmosEvent_t* event)
     gmosEvent_t** nextEventPtr;
 
     // Only append the event to the event queue if it has an associated
-    // consumer task. Do not append the event to the event queue if the
-    // change is being made by the consumer task.
-    if ((event->consumerTask == NULL) ||
-        (event->consumerTask == gmosSchedulerCurrentTask ())) {
+    // consumer task.
+    if (event->consumerTask == NULL) {
         return;
     }
 

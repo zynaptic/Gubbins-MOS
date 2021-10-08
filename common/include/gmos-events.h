@@ -89,9 +89,12 @@ uint32_t gmosEventGetBits (gmosEvent_t* event);
 /**
  * Sets one or more event bits, as specified by the bit mask. For each
  * bit in the bit mask that is set to '1', the corresponding event bit
- * will be set to '1'.
+ * will be set to '1'. Setting event bits will always queue the consumer
+ * task for subsequent event processing.
  * @param event This is the event state data structure for which the
  *     specified event bits are being modified.
+ * @param bitMask This is a bit vector specifying the event bits that
+ *     are to be set to '1'.
  * @return Returns the state of the event bits prior to modification.
  */
 uint32_t gmosEventSetBits (gmosEvent_t* event, uint32_t bitMask);
@@ -99,9 +102,12 @@ uint32_t gmosEventSetBits (gmosEvent_t* event, uint32_t bitMask);
 /**
  * Clears one or more event bits, as specified by the bit mask. For each
  * bit in the bit mask that is set to '1', the corresponding event bit
- * will be set to '0'.
+ * will be cleared to '0'. Clearing event bits will always queue the
+ * consumer task for subsequent event processing.
  * @param event This is the event state data structure for which the
  *     specified event bits are being modified.
+ * @param bitMask This is a bit vector specifying the event bits that
+ *     are to be cleared to '0'.
  * @return Returns the state of the event bits prior to modification.
  */
 uint32_t gmosEventClearBits (gmosEvent_t* event, uint32_t bitMask);
