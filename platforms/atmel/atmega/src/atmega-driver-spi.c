@@ -83,15 +83,19 @@ static bool gmosDriverSpiPalTransfer (gmosDriverSpiBus_t* spiInterface)
  */
 static void gmosDriverSpiPalComplete (gmosDriverSpiBus_t* spiInterface)
 {
+    uint32_t eventFlags;
+    gmosEvent_t* completionEvent;
+
     // Set the GubbinsMOS event flags to indicate successful completion.
-    uint32_t eventFlags = spiInterfaceData->transferSize;
+    eventFlags = spiInterfaceData->transferSize;
     eventFlags <<= GMOS_DRIVER_SPI_EVENT_SIZE_OFFSET;
     eventFlags |= GMOS_DRIVER_SPI_EVENT_COMPLETION_FLAG |
         GMOS_DRIVER_SPI_STATUS_SUCCESS;
 
     // Disable the SPI interface and send the completion event.
     SPCR &= ~((1 << SPIE) | (1 << SPE));
-    gmosEventSetBits (&(spiInterfaceData->device->completionEvent), eventFlags);
+    completionEvent = &(spiInterfaceData->device->completionEvent);
+    gmosEventAssignBits (completionEvent, eventFlags);
 }
 
 /*

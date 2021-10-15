@@ -91,6 +91,53 @@ uint32_t gmosEventGetBits (gmosEvent_t* event)
 }
 
 /*
+ * Tests the state of the event bits against a specified bit mask.
+ * Returns true if all the bits identified by the bit mask are set.
+ */
+bool gmosEventTestAllBits (gmosEvent_t* event, uint32_t bitMask)
+{
+    uint32_t eventBits = 0;
+
+    // Read the event bits with interrupts disabled.
+    gmosPalMutexLock ();
+    eventBits = event->eventBits;
+    gmosPalMutexUnlock ();
+    return ((eventBits & bitMask) == bitMask) ? true : false;
+}
+
+/*
+ * Tests the state of the event bits against a specified bit mask.
+ * Returns true if any of the bits identified by the bit mask are set.
+ */
+bool gmosEventTestAnyBits (gmosEvent_t* event, uint32_t bitMask)
+{
+    uint32_t eventBits = 0;
+
+    // Read the event bits with interrupts disabled.
+    gmosPalMutexLock ();
+    eventBits = event->eventBits;
+    gmosPalMutexUnlock ();
+    return ((eventBits & bitMask) != 0) ? true : false;
+}
+
+/*
+ * Assigns the full set of event bits, as specified by the bit values.
+ */
+uint32_t gmosEventAssignBits (gmosEvent_t* event, uint32_t bitValues)
+{
+    uint32_t eventBits = 0;
+
+    // Set the event bits with interrupts disabled and then add the
+    // event to the pending queue.
+    gmosPalMutexLock ();
+    eventBits = event->eventBits;
+    event->eventBits = bitValues;
+    gmosEventAppendToQueue (event);
+    gmosPalMutexUnlock ();
+    return eventBits;
+}
+
+/*
  * Sets one or more event bits, as specified by the bit mask.
  */
 uint32_t gmosEventSetBits (gmosEvent_t* event, uint32_t bitMask)
@@ -120,6 +167,22 @@ uint32_t gmosEventClearBits (gmosEvent_t* event, uint32_t bitMask)
     eventBits = event->eventBits;
     event->eventBits &= ~bitMask;
     gmosEventAppendToQueue (event);
+    gmosPalMutexUnlock ();
+    return eventBits;
+}
+
+/*
+ * Resets all the event bits to zero, returning the state of the event
+ * bits immediately prior to reset.
+ */
+uint32_t gmosEventResetBits (gmosEvent_t* event)
+{
+    uint32_t eventBits = 0;
+
+    // Reset the event bits with interrupts disabled.
+    gmosPalMutexLock ();
+    eventBits = event->eventBits;
+    event->eventBits = 0;
     gmosPalMutexUnlock ();
     return eventBits;
 }

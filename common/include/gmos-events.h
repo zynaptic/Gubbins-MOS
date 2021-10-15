@@ -87,6 +87,42 @@ void gmosEventInit (gmosEvent_t* event, gmosTaskState_t* consumerTask);
 uint32_t gmosEventGetBits (gmosEvent_t* event);
 
 /**
+ * Tests the state of the event bits against a specified bit mask.
+ * Returns true if all the bits identified by the bit mask are set.
+ * @param event This is the event state data structure for which the
+ *     associated event bits are being accessed.
+ * @param bitMask This is a bit vector specifying the event bits that
+ *     are to be tested.
+ * @return Returns a boolean value which will be set to 'true' if all
+ *     the bits specified by the bit mask are set and 'false' otherwise.
+ */
+bool gmosEventTestAllBits (gmosEvent_t* event, uint32_t bitMask);
+
+/**
+ * Tests the state of the event bits against a specified bit mask.
+ * Returns true if any of the bits identified by the bit mask are set.
+ * @param event This is the event state data structure for which the
+ *     associated event bits are being accessed.
+ * @param bitMask This is a bit vector specifying the event bits that
+ *     are to be tested.
+ * @return Returns a boolean value which will be set to 'true' if any of
+ *     the bits specified by the bit mask are set and 'false' otherwise.
+ */
+bool gmosEventTestAnyBits (gmosEvent_t* event, uint32_t bitMask);
+
+/**
+ * Assigns the full set of event bits, as specified by the bit values.
+ * Assigning event bits will always queue the consumer task for
+ * subsequent event processing.
+ * @param event This is the event state data structure for which the
+ *     specified event bits are being modified.
+ * @param bitValues This is a bit vector specifying the new values of
+ *     all the event bits.
+ * @return Returns the state of the event bits prior to modification.
+ */
+uint32_t gmosEventAssignBits (gmosEvent_t* event, uint32_t bitValues);
+
+/**
  * Sets one or more event bits, as specified by the bit mask. For each
  * bit in the bit mask that is set to '1', the corresponding event bit
  * will be set to '1'. Setting event bits will always queue the consumer
@@ -111,6 +147,17 @@ uint32_t gmosEventSetBits (gmosEvent_t* event, uint32_t bitMask);
  * @return Returns the state of the event bits prior to modification.
  */
 uint32_t gmosEventClearBits (gmosEvent_t* event, uint32_t bitMask);
+
+/**
+ * Resets all the event bits to zero, returning the state of the event
+ * bits immediately prior to reset. Resetting event bits will not queue
+ * the consumer task for subsequent event processing. This is the normal
+ * method of processing events in the consumer task.
+ * @param event This is the event state data structure for which the
+ *     event bits are being reset.
+ * @return Returns the state of the event bits prior to modification.
+ */
+uint32_t gmosEventResetBits (gmosEvent_t* event);
 
 /**
  * If one or more events have occurred, this function will return the

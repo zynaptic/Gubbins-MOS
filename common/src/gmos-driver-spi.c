@@ -201,10 +201,9 @@ gmosDriverSpiStatus_t gmosDriverSpiIoComplete
     // Only poll the completion event if a transaction is active.
     if (spiInterface->busState == GMOS_DRIVER_SPI_BUS_ACTIVE) {
         completionEvent = &(spiInterface->device->completionEvent);
-        eventBits = gmosEventGetBits (completionEvent);
-        if ((eventBits & GMOS_DRIVER_SPI_EVENT_COMPLETION_FLAG) != 0) {
+        eventBits = gmosEventResetBits (completionEvent);
+        if (eventBits != 0) {
             spiInterface->busState = GMOS_DRIVER_SPI_BUS_SELECTED;
-            gmosEventClearBits (completionEvent, 0xFFFFFFFF);
             spiStatus = eventBits & GMOS_DRIVER_SPI_EVENT_STATUS_MASK;
 
             // Transfer size notifications are optional.
