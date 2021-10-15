@@ -68,7 +68,7 @@ static inline uint32_t atmegaDriverTimerSetClock
         clockSelect = 5;
     }
     if (frequency != frequencySelect) {
-        GMOS_LOG (LOG_WARNING,
+        GMOS_LOG_FMT (LOG_WARNING,
             "Timer %d clock requested %ldHz, actual %ldHz.",
             timerIndex, frequency, frequencySelect);
     }

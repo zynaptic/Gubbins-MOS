@@ -80,7 +80,7 @@ gmosMempoolSegment_t* gmosMempoolAlloc (void)
         segment->nextSegment = NULL;
         gmosMempoolFreeSegmentCount -= 1;
     }
-    GMOS_LOG (LOG_VERBOSE, "Memory pool alloc at 0x%08X",
+    GMOS_LOG_FMT (LOG_VERBOSE, "Memory pool alloc at 0x%08X",
         (uint32_t)(uintptr_t) segment)
     return segment;
 }
@@ -90,7 +90,7 @@ gmosMempoolSegment_t* gmosMempoolAlloc (void)
  */
 void gmosMempoolFree (gmosMempoolSegment_t* freeSegment)
 {
-    GMOS_LOG (LOG_VERBOSE, "Memory pool free at 0x%08X",
+    GMOS_LOG_FMT (LOG_VERBOSE, "Memory pool free at 0x%08X",
         (uint32_t)(uintptr_t) freeSegment)
     if (freeSegment != NULL) {
         freeSegment->nextSegment = gmosMempoolFreeList;

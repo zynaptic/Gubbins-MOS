@@ -29,10 +29,6 @@
 #include "gmos-platform.h"
 #include "atmega-device.h"
 
-// Provide mapping of log levels to human readable strings.
-static const char* logLevelNames [] = {
-    "VERBOSE", "DEBUG  ", "INFO   ", "WARNING", "ERROR  ", "FAILURE" };
-
 // Implement the platform mutex lock counter.
 static uint32_t mutexLockCount = 0;
 
@@ -86,30 +82,41 @@ void gmosPalMutexUnlock (void)
 }
 
 /*
- * Provides platform level handling of log messages.
+ * Provides platform level handling of fixed string log messages.
  */
 void gmosPalLog (const char* fileName, uint32_t lineNo,
-    gmosPalLogLevel_t logLevel, const char* message, ...)
+    gmosPalLogLevel_t logLevel, const char* msgPtr)
 {
+    gmosPalLogFmt (fileName, lineNo, logLevel, msgPtr);
+}
+
+/*
+ * Provides platform level handling of formatted log messages.
+ */
+void gmosPalLogFmt (const char* fileName, uint32_t lineNo,
+    gmosPalLogLevel_t logLevel, const char* msgPtr, ...)
+{
+    char message [GMOS_CONFIG_LOG_MESSAGE_SIZE];
     char writeBuffer [GMOS_CONFIG_LOG_MESSAGE_SIZE + 2];
     size_t writeSize;
     va_list args;
-    const char* levelString;
+
+    // First copy the message string from program memory space.
+    strlcpy_P (message, msgPtr, GMOS_CONFIG_LOG_MESSAGE_SIZE);
 
     // Map the log level to the corresponding text.
     if ((logLevel < LOG_VERBOSE) || (logLevel > LOG_ERROR)) {
         logLevel = LOG_ERROR;
     }
-    levelString = logLevelNames [logLevel];
 
     // Add message debug prefix.
-    va_start (args, message);
-    if (fileName != NULL) {
+    va_start (args, msgPtr);
+    if ((GMOS_CONFIG_LOG_FILE_LOCATIONS) && (fileName != NULL)) {
         writeSize = snprintf (writeBuffer, GMOS_CONFIG_LOG_MESSAGE_SIZE,
-            "[%s:%ld] \t%s : ", fileName, lineNo, levelString);
+            "[%s:%ld] \tL%d : ", fileName, lineNo, logLevel);
     } else {
         writeSize = snprintf (writeBuffer, GMOS_CONFIG_LOG_MESSAGE_SIZE,
-            "%s : ", levelString);
+            "L%d : ", logLevel);
     }
 
     // Append the formatted message.

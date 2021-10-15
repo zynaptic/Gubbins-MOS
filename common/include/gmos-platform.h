@@ -62,6 +62,16 @@ typedef enum {
 } gmosPalAssertLevel_t;
 
 /**
+ * This is a macro that may be used to wrap message strings for
+ * efficient storage on the target platform. The default option uses
+ * standard 'C' strings. An alternative definition may be provided in
+ * the platform configuration header if required.
+ */
+#ifndef GMOS_PLATFORM_STRING_WRAPPER
+#define GMOS_PLATFORM_STRING_WRAPPER(_message_) _message_
+#endif
+
+/**
  * Initialises the platform abstraction layer on startup. This is called
  * automatically during system initialisation.
  */
@@ -145,33 +155,57 @@ void gmosPalMutexLock (void);
 void gmosPalMutexUnlock (void);
 
 /**
- * Provides a logging macro that is used to support debug logs for
- * GubbinsMOS applications. The required logging level can be set using
- * the 'GMOS_CONFIG_LOG_LEVEL' parameter in the GubbinsMOS configuration
- * header.
- * @param _logLevel_ This is the log level for the associated log
+ * Provides a fixed string logging macro that is used to support debug
+ * logs for GubbinsMOS applications. The required logging level can be
+ * set using the 'GMOS_CONFIG_LOG_LEVEL' parameter in the GubbinsMOS
+ * configuration header.
+ * @param _level_ This is the log level for the associated log
  *     message. It should be one of the values specified by the
  *     'gmosPalLogLevel_t' enumeration, excluding 'LOG_UNUSED'.
- * @param ... This is the log message, followed by an arbitrary number
- *     of message format parameters. The log message format and any
- *     additional parameters conform to a platform specific subset of
- *     the standard C 'printf' conventions. In general this subset will
- *     include all formatting options that do not depend on floating
- *     point support.
+ * @param _message_ This is the fixed string log message.
  */
-#define GMOS_LOG(_logLevel_, ...) {                                    \
-    if (_logLevel_ >= GMOS_CONFIG_LOG_LEVEL) {                         \
+#define GMOS_LOG(_level_, _message_) {                                 \
+    if (_level_ >= GMOS_CONFIG_LOG_LEVEL) {                            \
+        const char* msgPtr = GMOS_PLATFORM_STRING_WRAPPER (_message_); \
         if (GMOS_CONFIG_LOG_FILE_LOCATIONS) {                          \
-            gmosPalLog (__FILE__, __LINE__, _logLevel_, __VA_ARGS__);  \
+            gmosPalLog (__FILE__, __LINE__, _level_, msgPtr);          \
         } else {                                                       \
-            gmosPalLog (NULL, 0, _logLevel_, __VA_ARGS__);             \
+            gmosPalLog (NULL, 0, _level_, msgPtr);                     \
         }                                                              \
     }                                                                  \
 }
 
 /**
- * Provides platform level handling of log messages. This function
- * should always be invoked using the GMOS_LOG macro.
+ * Provides a formatted string logging macro that is used to support
+ * debug logs for GubbinsMOS applications. The required logging level
+ * can be set using the 'GMOS_CONFIG_LOG_LEVEL' parameter in the
+ * GubbinsMOS configuration header.
+ * @param _level_ This is the log level for the associated log
+ *     message. It should be one of the values specified by the
+ *     'gmosPalLogLevel_t' enumeration, excluding 'LOG_UNUSED'.
+ * @param _message_ This is the formatted string log message. The log
+ *     message format and any additional parameters conform to a
+ *     platform specific subset of the standard C 'printf' conventions.
+ *     In general this subset will include all formatting options that
+ *     do not depend on floating point support.
+ * @param ... This is an arbitrary number of message format parameters.
+ */
+#define GMOS_LOG_FMT(_level_, _message_, ...) {                        \
+    if (_level_ >= GMOS_CONFIG_LOG_LEVEL) {                            \
+        const char* msgPtr = GMOS_PLATFORM_STRING_WRAPPER (_message_); \
+        if (GMOS_CONFIG_LOG_FILE_LOCATIONS) {                          \
+            gmosPalLogFmt (__FILE__, __LINE__,                         \
+                _level_, msgPtr, __VA_ARGS__);                         \
+        } else {                                                       \
+            gmosPalLogFmt (NULL, 0,                                    \
+                _level_, msgPtr, __VA_ARGS__);                         \
+        }                                                              \
+    }                                                                  \
+}
+
+/**
+ * Provides platform level handling of fixed string log messages. This
+ * function should always be invoked using the GMOS_LOG macro.
  * @param fileName This is the name of the source file in which the
  *     log message occurred. A null reference indicates that source file
  *     information is not to be included in the log message.
@@ -180,15 +214,31 @@ void gmosPalMutexUnlock (void);
  * @param logLevel This is the log level for the associated log
  *     message. It should be one of the values specified by the
  *     'gmosPalLogLevel_t' enumeration, excluding 'LOG_UNUSED'.
- * @param message This is the log message, followed by an arbitrary
- *     number of message format parameters. The log message format and
- *     any additional parameters conform to a platform specific subset
- *     of the standard C 'printf' conventions. In general this subset
- *     will include all formatting options that do not depend on
- *     floating point support.
+ * @param msgPtr This is a pointer to the fixed string log message.
  */
 void gmosPalLog (const char* fileName, uint32_t lineNo,
-    gmosPalLogLevel_t logLevel, const char* message, ...);
+    gmosPalLogLevel_t logLevel, const char* msgPtr);
+
+/**
+ * Provides platform level handling of formatted string log messages.
+ * This function should always be invoked using the GMOS_LOG_FMT macro.
+ * @param fileName This is the name of the source file in which the
+ *     log message occurred. A null reference indicates that source file
+ *     information is not to be included in the log message.
+ * @param lineNo This is the line number in the source file at which
+ *     the log message occurred.
+ * @param logLevel This is the log level for the associated log
+ *     message. It should be one of the values specified by the
+ *     'gmosPalLogLevel_t' enumeration, excluding 'LOG_UNUSED'.
+ * @param msgPtr This is a pointer to the the log message, followed by
+ *     an arbitrary number of message format parameters. The log message
+ *     format and any additional parameters conform to a platform
+ *     specific subset of the standard C 'printf' conventions. In
+ *     general this subset will include all formatting options that do
+ *     not depend on floating point support.
+ */
+void gmosPalLogFmt (const char* fileName, uint32_t lineNo,
+    gmosPalLogLevel_t logLevel, const char* msgPtr, ...);
 
 /**
  * Provides a conditional assert macro that is used to indicate various
@@ -203,8 +253,13 @@ void gmosPalLog (const char* fileName, uint32_t lineNo,
  */
 #define GMOS_ASSERT(_assertLevel_, _condition_, _message_) {           \
     if (_assertLevel_ >= GMOS_CONFIG_ASSERT_LEVEL) {                   \
+        const char* msgPtr = GMOS_PLATFORM_STRING_WRAPPER (_message_); \
         if (!(_condition_)) {                                          \
-            gmosPalAssertFail (__FILE__, __LINE__, _message_);         \
+            if (GMOS_CONFIG_LOG_FILE_LOCATIONS) {                      \
+                gmosPalAssertFail (__FILE__, __LINE__, msgPtr);        \
+            } else {                                                   \
+                gmosPalAssertFail (NULL, 0, msgPtr);                   \
+            }                                                          \
         }                                                              \
     }                                                                  \
 }
@@ -216,7 +271,12 @@ void gmosPalLog (const char* fileName, uint32_t lineNo,
  *     the assert condition.
  */
 #define GMOS_ASSERT_FAIL(_message_) {                                  \
-    gmosPalAssertFail (__FILE__, __LINE__, _message_);                 \
+    const char* msgPtr = GMOS_PLATFORM_STRING_WRAPPER (_message_);     \
+    if (GMOS_CONFIG_LOG_FILE_LOCATIONS) {                              \
+        gmosPalAssertFail (__FILE__, __LINE__, msgPtr);                \
+    } else {                                                           \
+        gmosPalAssertFail (NULL, 0, msgPtr);                           \
+    }                                                                  \
 }
 
 /**

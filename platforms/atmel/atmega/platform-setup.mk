@@ -44,6 +44,7 @@ ASFLAGS += -Wall
 CFLAGS += -c
 CFLAGS += -mmcu=${TARGET_DEVICE}
 CFLAGS += -Wall
+CFLAGS += -Os
 CFLAGS += -ffunction-sections
 CFLAGS += -fdata-sections
 CFLAGS += -nodevicelib

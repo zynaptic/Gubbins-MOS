@@ -100,6 +100,16 @@ typedef struct gmosLifecycleMonitor_t {
 
 } gmosLifecycleMonitor_t;
 
+/**
+ * This is a macro that may be used to wrap task name strings for
+ * efficient storage on the target platform. The default option uses
+ * standard 'C' strings. An alternative definition may be provided in
+ * the platform configuration header if required.
+ */
+#ifndef GMOS_TASK_NAME_WRAPPER
+#define GMOS_TASK_NAME_WRAPPER(_taskName_)                             \
+    (GMOS_CONFIG_INCLUDE_TASK_NAMES ? _taskName_ : NULL)
+#endif
 
 /**
  * Provides a task definition macro that can be used to enforce static

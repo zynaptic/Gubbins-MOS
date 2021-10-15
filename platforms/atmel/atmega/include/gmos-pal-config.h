@@ -103,6 +103,11 @@
 #define GMOS_CONFIG_MEMPOOL_SEGMENT_NUMBER 16
 #endif
 
+// Wrap message strings for storage in the ATMEGA flash memory area.
+#include "avr/pgmspace.h"
+#define GMOS_PLATFORM_STRING_WRAPPER(_message_)                        \
+    ((_message_ == NULL) ? NULL : PSTR(_message_))
+
 // Configure the system timer frequency based on the selected low speed
 // clock source. If the low speed oscillator is not being used, the
 // maximum prescaling is applied to the system clock.

@@ -138,6 +138,16 @@
 #endif
 
 /**
+ * This configuration option determines whether task names are included
+ * for the various system and driver tasks. These are usually only
+ * useful for debugging and can be omitted in production builds to
+ * save memory.
+ */
+#ifndef GMOS_CONFIG_INCLUDE_TASK_NAMES
+#define GMOS_CONFIG_INCLUDE_TASK_NAMES false
+#endif
+
+/**
  * This configuration option specifies the size of the I2C data buffers
  * that are used for read and write transactions. This places an upper
  * limit on the size of I2C transactions that are supported.

@@ -68,7 +68,8 @@ void gmosPalSerialConsoleInit (void)
     // Initialise the task and stream state.
     gmosStreamInit (&consoleStream,
         &consoleTask, GMOS_CONFIG_ATMEGA_DEBUG_CONSOLE_BUFFER_SIZE);
-    gmosPalSerialConsoleTask_start (&consoleTask, NULL, "Debug Console");
+    gmosPalSerialConsoleTask_start (&consoleTask, NULL,
+        GMOS_TASK_NAME_WRAPPER ("Debug Console"));
 
     // Set the USART Baud rate and 8N1 format (the default setting).
     brrValue = (GMOS_CONFIG_ATMEGA_SYSTEM_CLOCK /
