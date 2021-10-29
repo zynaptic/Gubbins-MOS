@@ -61,6 +61,9 @@ static void gmosEventAppendToQueue (gmosEvent_t* event)
     event->nextEvent = NULL;
     *nextEventPtr = event;
     pendingEventsReady = true;
+
+    // Wake the scheduler if required.
+    gmosPalWake ();
 }
 
 /*

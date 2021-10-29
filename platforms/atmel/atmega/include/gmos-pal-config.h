@@ -105,8 +105,16 @@
 
 // Wrap message strings for storage in the ATMEGA flash memory area.
 #include "avr/pgmspace.h"
-#define GMOS_PLATFORM_STRING_WRAPPER(_message_)                        \
+#define GMOS_PLATFORM_STRING_WRAPPER(_message_) \
     ((_message_ == NULL) ? NULL : PSTR(_message_))
+
+// Allocate ROM data for storage in the ATMEGA flash memory area.
+#define GMOS_PLATFORM_ROM_ALLOC(_romName_) \
+    static const uint8_t _romName_[] PROGMEM
+
+// Access ROM data from the ATMEGA flash memory area.
+#define GMOS_PLATFORM_ROM_READ(_romName_, _romIndex_) \
+    (pgm_read_byte (_romName_ + _romIndex_))
 
 // Configure the system timer frequency based on the selected low speed
 // clock source. If the low speed oscillator is not being used, the

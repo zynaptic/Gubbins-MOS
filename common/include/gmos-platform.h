@@ -72,6 +72,38 @@ typedef enum {
 #endif
 
 /**
+ * This is a macro that may be used to allocate ROM data for efficient
+ * storage on the target platform. ROM data is stored as a byte array
+ * that has local file scope, and should be assigned using the normal
+ * array initialisation syntax. The default option uses standard 'C'
+ * static variables.
+ */
+#ifndef GMOS_PLATFORM_ROM_ALLOC
+#define GMOS_PLATFORM_ROM_ALLOC(_romName_) \
+    static const uint8_t _romName_[]
+#endif
+
+/**
+ * This is a macro that may be ised to access ROM data for efficient
+ * storage on the target platform. The default option uses standard 'C'
+ * indexed access.
+ */
+#ifndef GMOS_PLATFORM_ROM_READ
+#define GMOS_PLATFORM_ROM_READ(_romName_, _romIndex_) \
+    (_romName_ [_romIndex_])
+#endif
+
+/**
+ * This is a macro that may be ised to access ROM data for efficient
+ * storage on the target platform. The default option uses standard 'C'
+ * sizeof operator.
+ */
+#ifndef GMOS_PLATFORM_ROM_SIZE
+#define GMOS_PLATFORM_ROM_SIZE(_romName_) \
+    (sizeof (_romName_))
+#endif
+
+/**
  * Initialises the platform abstraction layer on startup. This is called
  * automatically during system initialisation.
  */
@@ -128,6 +160,13 @@ uint32_t gmosPalGetTimer (void);
  *     system timer ticks.
  */
 void gmosPalIdle (uint32_t duration);
+
+/**
+ * Requests that the platform abstraction layer wakes the GMOS scheduler
+ * from idle mode. This is usually only required for situations where
+ * the GMOS scheduler is running in a single thread of a host RTOS.
+ */
+void gmosPalWake (void);
 
 /**
  * Requests that the platform abstraction layer terminate all further

@@ -102,3 +102,10 @@ uint32_t gmosPalGetTimer (void)
 void gmosPalIdle (uint32_t duration)
 {
 }
+
+/*
+ * Requests that the platform abstraction layer wakes from idle mode.
+ */
+void gmosPalWake (void)
+{
+}
