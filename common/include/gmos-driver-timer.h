@@ -182,8 +182,8 @@ bool gmosDriverTimerIsrMask (gmosDriverTimer_t* timer, bool isrMask);
  * @param resetHold This is a boolean value which selects the timer
  *     behaviour after reset. When set to 'true' the timer will be
  *     held in its reset state until another timer action releases it.
- *     When set to 'false' the timer counter will immediately start
- *     incrementing.
+ *     When set to 'false' the timer counter remains in its current
+ *     state (either reset, one-shot or continuous).
  * @return Returns a boolean value which will be set to 'true' on
  *     successfully resetting the timer value and 'false' on failure.
  */

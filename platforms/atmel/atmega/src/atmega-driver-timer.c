@@ -39,7 +39,7 @@ static gmosDriverTimer_t* timerDataMap [] = {
 /*
  * Sets the timer clock frequency by configuring the clock prescaler.
  */
-static inline uint32_t atmegaDriverTimerSetClock
+static inline bool atmegaDriverTimerSetClock
     (gmosDriverTimer_t* timer, uint32_t frequency)
 {
     gmosPalTimerState_t* timerState = timer->palData;
@@ -268,6 +268,11 @@ static bool atmegaDriverTimerRun (gmosDriverTimer_t* timer,
     // Check for a valid timer selection and alarm value.
     if ((timerIndex >= 2) || (timerDataMap [timerIndex] != timer) ||
         (alarm > timer->maxValue) || (alarm == 0)) {
+        return false;
+    }
+
+    // Ensure that the timer is in the reset state.
+    if (timer->activeState != GMOS_DRIVER_TIMER_STATE_RESET) {
         return false;
     }
 
