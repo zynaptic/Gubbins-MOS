@@ -32,6 +32,11 @@
 // Use the Harmony framework host OS abstraction layer.
 #include "osal/osal.h"
 
+// Use the Harmony cryptographic random number source if selected.
+#if (GMOS_CONFIG_RANDOM_SOUCE == GMOS_RANDOM_SOURCE_PLATFORM_SPECIFIC)
+#include "system/random/sys_random.h"
+#endif // GMOS_RANDOM_SOURCE_PLATFORM_SPECIFIC
+
 // Provide mapping of log levels to human readable strings.
 static const char* logLevelNames [] = {
     "GMOS-VERBOSE", "GMOS-DEBUG  ", "GMOS-INFO   ",
@@ -81,6 +86,31 @@ void gmosPalMutexUnlock (void)
         OSAL_CRIT_Leave (OSAL_CRIT_TYPE_HIGH, mutexLockState);
     }
 }
+
+/*
+ * Provides a platform specific method of adding entropy to the random
+ * number generator.
+ */
+#if (GMOS_CONFIG_RANDOM_SOUCE == GMOS_RANDOM_SOURCE_PLATFORM_SPECIFIC)
+void gmosPalAddRandomEntropy (uint32_t randomEntropy)
+{
+    uint8_t entropyByte = (uint8_t) randomEntropy;
+    entropyByte ^= (uint8_t) (randomEntropy >> 8);
+    entropyByte ^= (uint8_t) (randomEntropy >> 16);
+    entropyByte ^= (uint8_t) (randomEntropy >> 24);
+    SYS_RANDOM_CryptoEntropyAdd (entropyByte);
+}
+#endif // GMOS_RANDOM_SOURCE_PLATFORM_SPECIFIC
+
+/*
+ * Provides a platform specific random number generator.
+ */
+#if (GMOS_CONFIG_RANDOM_SOUCE == GMOS_RANDOM_SOURCE_PLATFORM_SPECIFIC)
+void gmosPalGetRandomBytes (uint8_t* byteArray, size_t byteArraySize)
+{
+    SYS_RANDOM_CryptoBlockGet (byteArray, byteArraySize);
+}
+#endif // GMOS_RANDOM_SOURCE_PLATFORM_SPECIFIC
 
 /*
  * Provides platform level handling of fixed string log messages.

@@ -32,6 +32,7 @@ COMMON_HEADER_DIRS = \
 COMMON_OBJ_FILE_NAMES = \
 	gmos-scheduler.o \
 	gmos-mempool.o \
+	gmos-random.o \
 	gmos-streams.o \
 	gmos-buffers.o \
 	gmos-events.o \

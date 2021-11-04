@@ -92,6 +92,18 @@
 #endif
 
 /**
+ * This configuration option is used to select the random number source
+ * to be used. The default setting is the simplest XOR shift option.
+ */
+#ifndef GMOS_CONFIG_RANDOM_SOUCE
+#define GMOS_CONFIG_RANDOM_SOUCE GMOS_RANDOM_SOURCE_XOSHIRO128PP
+#endif
+
+// Specify the supported options for the random number source.
+#define GMOS_RANDOM_SOURCE_PLATFORM_SPECIFIC 0
+#define GMOS_RANDOM_SOURCE_XOSHIRO128PP      1
+
+/**
  * This configuration option selects whether file name and location
  * information is to be included when generating log messages. Set to
  * 'true' to enable file name and location logging for debug purposes.

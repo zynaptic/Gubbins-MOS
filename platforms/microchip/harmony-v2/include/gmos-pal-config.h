@@ -53,6 +53,15 @@
 #endif
 
 /**
+ * This configuration option is used to select the random number source
+ * to be used. The default setting is the configured Harmony platform
+ * cryptographic random number generator.
+ */
+#ifndef GMOS_CONFIG_RANDOM_SOUCE
+#define GMOS_CONFIG_RANDOM_SOUCE GMOS_RANDOM_SOURCE_PLATFORM_SPECIFIC
+#endif
+
+/**
  * Specify the vendor framework function to be used for writing GMOS
  * debug messages to the console. The default debug console write
  * function uses the standard Harmony system console.

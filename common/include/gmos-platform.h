@@ -194,6 +194,29 @@ void gmosPalMutexLock (void);
 void gmosPalMutexUnlock (void);
 
 /**
+ * Provides a platform specific method of adding entropy to the random
+ * number generator. Each call to this function will mix the contents
+ * of the supplied entropy value with the internal state of the random
+ * number generator.
+ * @param randomEntropy This is the entropy value which is to be added
+ *     to the random number generator.
+ */
+void gmosPalAddRandomEntropy (uint32_t randomEntropy);
+
+/**
+ * Provides a platform specific random number generator. This will
+ * populate a given byte array with the specified number of random
+ * bytes. The quality of the random number generator will vary between
+ * platforms, but it should always provide better performance than the
+ * standard 'C' library function.
+ * @param byteArray This is a pointer to the byte array that is to be
+ *     populated with random byte values.
+ * @param byteArraySize This specifies the number of bytes in the byte
+ *     array that are to be set to random byte values.
+ */
+void gmosPalGetRandomBytes (uint8_t* byteArray, size_t byteArraySize);
+
+/**
  * Provides a fixed string logging macro that is used to support debug
  * logs for GubbinsMOS applications. The required logging level can be
  * set using the 'GMOS_CONFIG_LOG_LEVEL' parameter in the GubbinsMOS
