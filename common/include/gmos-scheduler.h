@@ -254,6 +254,21 @@ void gmosSchedulerCanSleep (void);
 gmosTaskState_t* gmosSchedulerCurrentTask (void);
 
 /**
+ * Prioritises between two task status values. This selects the task
+ * status value that is most immediate in terms of the task scheduling
+ * requirements. Typically this will be the value associated with the
+ * smallest task rescheduling delay.
+ * @param taskStatusA This is the first task status value that is to
+ *     be prioritised.
+ * @param taskStatusB This is the second task status value that is to
+ *     be prioritised.
+ * @return Returns the task status value that corresponds to the highest
+ *     task rescheduling priority.
+ */
+gmosTaskStatus_t gmosSchedulerPrioritise (
+    gmosTaskStatus_t taskStatusA, gmosTaskStatus_t gmosTaskStatusB);
+
+/**
  * Adds a scheduler lifecycle monitor to receive notifications of
  * scheduler lifecycle management events.
  * @param lifecycleMonitor This is the new lifecycle monitor that is to

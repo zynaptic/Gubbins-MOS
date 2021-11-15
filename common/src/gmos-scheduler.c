@@ -321,6 +321,34 @@ gmosTaskState_t* gmosSchedulerCurrentTask (void)
 }
 
 /*
+ * Prioritises between two task status values. This selects the task
+ * status value that is most immediate in terms of the task scheduling
+ * requirements.
+ */
+gmosTaskStatus_t gmosSchedulerPrioritise (
+    gmosTaskStatus_t taskStatusA, gmosTaskStatus_t taskStatusB)
+{
+    // If either of the task status values is 'task suspend', the other
+    // value will be taken by default.
+    if (taskStatusA == GMOS_TASK_SUSPEND) {
+        return taskStatusB;
+    }
+    if (taskStatusB == GMOS_TASK_SUSPEND) {
+        return taskStatusA;
+    }
+
+    // If the task status values refer to different scheduler queues,
+    // convert them both to foreground tasks.
+    if ((taskStatusA & 0x80000000) != (taskStatusB & 0x80000000)) {
+        taskStatusA &= 0x7FFFFFFF;
+        taskStatusB &= 0x7FFFFFFF;
+    }
+
+    // Select the earliest scheduled option.
+    return (taskStatusA < taskStatusB) ? taskStatusA : taskStatusB;
+}
+
+/*
  * Adds a scheduler lifecycle monitor to receive notifications of
  * scheduler lifecycle management events. The new monitor is added to
  * the head of the list.
