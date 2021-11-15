@@ -55,6 +55,16 @@
 #endif
 
 /**
+ * This configuration option specifies whether the memory pool should
+ * use the heap for data storage. This will only be possible if the
+ * 'GMOS_MALLOC' and 'GMOS_FREE' macros are supported by the target
+ * platform.
+ */
+#ifndef GMOS_CONFIG_MEMPOOL_USE_HEAP
+#define GMOS_CONFIG_MEMPOOL_USE_HEAP false
+#endif
+
+/**
  * This configuration option specifies the size of individual memory
  * pool segments as an integer number of bytes. This must be an integer
  * multiple of 4.

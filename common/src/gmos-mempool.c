@@ -24,10 +24,15 @@
 #include <stddef.h>
 
 #include "gmos-config.h"
+#include "gmos-platform.h"
 #include "gmos-mempool.h"
 
 // Statically allocate the memory pool area.
+#if (GMOS_CONFIG_MEMPOOL_USE_HEAP == false)
 static gmosMempoolSegment_t gmosMempool [GMOS_CONFIG_MEMPOOL_SEGMENT_NUMBER];
+#else
+static gmosMempoolSegment_t gmosMempool [0];
+#endif
 
 // Specifies the head of the free segment list.
 static gmosMempoolSegment_t* gmosMempoolFreeList;
@@ -49,7 +54,14 @@ void gmosMempoolInit (void)
     // Link the memory pool free segment list.
     nextSegmentPtr = &gmosMempoolFreeList;
     for (i = 0; i < GMOS_CONFIG_MEMPOOL_SEGMENT_NUMBER; i++) {
-        currentSegment = &gmosMempool [i];
+        if (GMOS_CONFIG_MEMPOOL_USE_HEAP) {
+            currentSegment = (gmosMempoolSegment_t*)
+                GMOS_MALLOC (sizeof (gmosMempoolSegment_t));
+            GMOS_ASSERT (ASSERT_FAILURE, (currentSegment != NULL),
+                "Out of heap memory when creating memory pool.");
+        } else {
+            currentSegment = &gmosMempool [i];
+        }
         *nextSegmentPtr = currentSegment;
         nextSegmentPtr = &(currentSegment->nextSegment);
     }

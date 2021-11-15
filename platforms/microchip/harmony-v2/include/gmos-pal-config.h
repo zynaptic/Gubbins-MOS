@@ -25,6 +25,24 @@
 #define GMOS_PAL_CONFIG_H
 
 /**
+ * The typical Microchip Harmony project will have sufficient memory
+ * to support the use of heap memory allocation. The amount of memory
+ * dedicated to the heap will be set in the Harmony configuration tool.
+ */
+#ifndef GMOS_MALLOC
+#include <stdlib.h>
+#define GMOS_MALLOC(_size_) malloc(_size_)
+#define GMOS_FREE (_mem_) free(_mem_)
+#endif
+
+/**
+ * Enable heap based allocation for the memory pool.
+ */
+#ifndef GMOS_CONFIG_MEMPOOL_USE_HEAP
+#define GMOS_CONFIG_MEMPOOL_USE_HEAP true
+#endif
+
+/**
  * Specify the name of the Harmony application task name that is used
  * to wrap the GMOS scheduler loop.
  */

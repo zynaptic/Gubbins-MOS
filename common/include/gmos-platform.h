@@ -62,6 +62,26 @@ typedef enum {
 } gmosPalAssertLevel_t;
 
 /**
+ * This is a macro that may be used to support heap based memory
+ * allocation using the standard 'C' library call convention. This will
+ * be unsupported on most microcontroller targets due to memory
+ * constraints.
+ */
+#ifndef GMOS_MALLOC
+#define GMOS_MALLOC(_size_) NULL
+#endif
+
+/**
+ * This is a macro that may be used to supported the release of
+ * previously allocated memory using the standard 'C' library call
+ * convention. This will be unsupported on most microcontroller targets
+ * due to memory constraints.
+ */
+#ifndef GMOS_FREE
+#define GMOS_FREE(_mem_)
+#endif
+
+/**
  * This is a macro that may be used to wrap message strings for
  * efficient storage on the target platform. The default option uses
  * standard 'C' strings. An alternative definition may be provided in
