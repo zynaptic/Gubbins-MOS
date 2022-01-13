@@ -55,10 +55,19 @@ endif
 # platform specific compiler options.
 include ${TARGET_PLATFORM_DIR}/platform-setup.mk
 
-# Generate the firmware binary.
+# Generate both binary and hex format files.
+all : \
+	${GMOS_BUILD_DIR}/firmware.elf \
+	${GMOS_BUILD_DIR}/firmware.hex \
+	${GMOS_BUILD_DIR}/firmware.bin
+
+# Generate the firmware binary in Intel hex format.
+${GMOS_BUILD_DIR}/firmware.hex : ${GMOS_BUILD_DIR}/firmware.elf
+	${OC} -S -O ihex $< $@
+
+# Generate the firmware binary as a raw binary file.
 ${GMOS_BUILD_DIR}/firmware.bin : ${GMOS_BUILD_DIR}/firmware.elf
 	${OC} -S -O binary $< $@
-	${OS} $<
 
 # Specify the common component timestamps and object files.
 COMPONENT_TIMESTAMPS = \
@@ -85,9 +94,10 @@ endif
 # get the list of object files instead of 'wildcard', since the wildcard
 # expansion can occur before the timestamp dependencies are met.
 ${GMOS_BUILD_DIR}/firmware.elf : ${COMPONENT_TIMESTAMPS}
-	${LD} -o $@ ${LDFLAGS} -T${GMOS_BUILD_DIR}/platform/target.ld \
+	${LD} -o $@ ${LDFLAGS} \
 		$(shell ls -xw0 ${COMPONENT_OBJECT_FILES}) \
 		$(addprefix -l, ${LDLIBS})
+	${OS} $@
 
 # Include the application source files makefile fragment.
 include ${GMOS_APP_DIR}/app-build.mk
