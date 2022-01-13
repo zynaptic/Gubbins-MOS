@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2021 Zynaptic Limited
+ * Copyright 2020-2022 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,19 @@
     }                                                                  \
 } while (false)
 #endif
+
+/*
+ * Discards the entire contents of a buffer.
+ */
+static void gmosBufferDiscardContents (gmosBuffer_t* buffer)
+{
+    if (buffer->segmentList != NULL) {
+        gmosMempoolFreeSegments (buffer->segmentList);
+        buffer->segmentList = NULL;
+        buffer->bufferSize = 0;
+        buffer->bufferOffset = 0;
+    }
+}
 
 /*
  * Copies a block of data to a linked list of segments, starting with
@@ -132,6 +145,15 @@ void gmosBufferInit (gmosBuffer_t* buffer)
 {
     buffer->segmentList = NULL;
     buffer->bufferSize = 0;
+    buffer->bufferOffset = 0;
+}
+
+/*
+ * Gets the current allocated size of the buffer.
+ */
+uint16_t gmosBufferGetSize (gmosBuffer_t* buffer)
+{
+    return buffer->bufferSize;
 }
 
 /*
@@ -144,11 +166,7 @@ bool gmosBufferReset (gmosBuffer_t* buffer, uint16_t size)
     bool resetOk = true;
 
     // Return all the current data segments to the free list.
-    if (buffer->segmentList != NULL) {
-        gmosMempoolFreeSegments (buffer->segmentList);
-        buffer->segmentList = NULL;
-        buffer->bufferSize = 0;
-    }
+    gmosBufferDiscardContents (buffer);
 
     // Attempt to allocate the specified amount of memory.
     if (size > 0) {
@@ -164,9 +182,10 @@ bool gmosBufferReset (gmosBuffer_t* buffer, uint16_t size)
 }
 
 /*
- * Increases the size of the buffer to the specified size.
+ * Increases the size of the buffer to the specified size, adding
+ * capacity to the end of the buffer.
  */
-static bool gmosBufferIncreaseSize (gmosBuffer_t* buffer, uint16_t size)
+static bool gmosBufferIncrSizeEnd (gmosBuffer_t* buffer, uint16_t size)
 {
     bool extendOk = true;
     uint16_t segmentCount;
@@ -184,7 +203,8 @@ static bool gmosBufferIncreaseSize (gmosBuffer_t* buffer, uint16_t size)
 
     // Allocate additional memory segments if required.
     newSegmentCount = 1 - segmentCount +
-        ((size - 1) / GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE);
+        ((buffer->bufferOffset + size - 1) /
+        GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE);
     if (newSegmentCount != 0) {
         newSegments = gmosMempoolAllocSegments (newSegmentCount);
         if (newSegments != NULL) {
@@ -200,9 +220,10 @@ static bool gmosBufferIncreaseSize (gmosBuffer_t* buffer, uint16_t size)
 }
 
 /*
- * Decreases the size of the buffer to the specified size.
+ * Decreases the size of the buffer to the specified size, removing
+ * capacity from the end of the buffer.
  */
-static void gmosBufferDecreaseSize (gmosBuffer_t* buffer, uint16_t size)
+static void gmosBufferDecrSizeEnd (gmosBuffer_t* buffer, uint16_t size)
 {
     uint16_t byteCount;
     gmosMempoolSegment_t** segmentPtr;
@@ -210,7 +231,7 @@ static void gmosBufferDecreaseSize (gmosBuffer_t* buffer, uint16_t size)
     // Follow the segment list to the trim point.
     byteCount = 0;
     segmentPtr = &(buffer->segmentList);
-    while (byteCount < size) {
+    while (byteCount < buffer->bufferOffset + size) {
         byteCount += GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE;
         segmentPtr = &((*segmentPtr)->nextSegment);
     }
@@ -221,6 +242,91 @@ static void gmosBufferDecreaseSize (gmosBuffer_t* buffer, uint16_t size)
         *segmentPtr = NULL;
     }
     buffer->bufferSize = size;
+}
+
+/*
+ * Increases the size of the buffer to the specified size, adding
+ * capacity to the start of the buffer.
+ */
+static bool gmosBufferIncrSizeStart (gmosBuffer_t* buffer, uint16_t size)
+{
+    bool extendOk = true;
+    uint16_t extraByteCount;
+    uint16_t newSegmentCount;
+    uint16_t newOffset;
+    gmosMempoolSegment_t** segmentPtr;
+    gmosMempoolSegment_t* newSegments;
+
+    // Extend into the existing memory segment if possible.
+    extraByteCount = size - buffer->bufferSize;
+    if (extraByteCount <= buffer->bufferOffset) {
+        buffer->bufferSize = size;
+        buffer->bufferOffset -= extraByteCount;
+        return true;
+    };
+
+    // Calculate the number of additional segments required and the new
+    // buffer offset.
+    newSegmentCount = 1 + (extraByteCount - buffer->bufferOffset - 1) /
+        GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE;
+    newOffset = buffer->bufferOffset - extraByteCount +
+        newSegmentCount * GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE;
+
+    // Allocate additional memory segments and link them to the start
+    // of the buffer.
+    newSegments = gmosMempoolAllocSegments (newSegmentCount);
+    if (newSegments != NULL) {
+        segmentPtr = &(newSegments->nextSegment);
+        while (*segmentPtr != NULL) {
+            segmentPtr = &((*segmentPtr)->nextSegment);
+        }
+        *segmentPtr = buffer->segmentList;
+        buffer->segmentList = newSegments;
+    } else {
+        extendOk = false;
+    }
+
+    // Update the buffer size and offset.
+    if (extendOk) {
+        buffer->bufferSize = size;
+        buffer->bufferOffset = newOffset;
+    }
+    return extendOk;
+}
+
+/*
+ * Decreases the size of the buffer to the specified size, removing
+ * capacity from the start of the buffer.
+ */
+static void gmosBufferDecrSizeStart (gmosBuffer_t* buffer, uint16_t size)
+{
+    uint16_t trimByteCount;
+    uint16_t segmentCount;
+    gmosMempoolSegment_t** segmentPtr;
+    gmosMempoolSegment_t* freeSegments;
+
+    // Follow the segment list to the trim point.
+    trimByteCount = buffer->bufferSize - size;
+    segmentCount = 0;
+    segmentPtr = &(buffer->segmentList);
+    while (buffer->bufferOffset + trimByteCount >=
+        (segmentCount + 1) * GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE) {
+        segmentCount += 1;
+        segmentPtr = &((*segmentPtr)->nextSegment);
+    }
+
+    // Return the excess segments to the memory pool.
+    if (segmentCount > 0) {
+        freeSegments = buffer->segmentList;
+        buffer->segmentList = *segmentPtr;
+        *segmentPtr = NULL;
+        gmosMempoolFreeSegments (freeSegments);
+    }
+
+    // Update the buffer size and offset fields.
+    buffer->bufferSize = size;
+    buffer->bufferOffset += trimByteCount -
+        segmentCount * GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE;
 }
 
 /*
@@ -246,7 +352,7 @@ bool gmosBufferExtend (gmosBuffer_t* buffer, uint16_t size)
 
     // Extend to the specified size.
     else {
-        extendOk = gmosBufferIncreaseSize (buffer, (uint16_t) newBufferSize);
+        extendOk = gmosBufferIncrSizeEnd (buffer, (uint16_t) newBufferSize);
     }
     return extendOk;
 }
@@ -258,19 +364,57 @@ bool gmosBufferResize (gmosBuffer_t* buffer, uint16_t size)
 {
     bool resizeOk;
 
+    // Reset to zero length if required.
+    if (size == 0) {
+        gmosBufferDiscardContents (buffer);
+        resizeOk = true;
+    }
+
     // No resizing required.
-    if (size == buffer->bufferSize) {
+    else if (size == buffer->bufferSize) {
         resizeOk = true;
     }
 
     // Extend the buffer if required.
     else if (size > buffer->bufferSize) {
-        resizeOk = gmosBufferIncreaseSize (buffer, size);
+        resizeOk = gmosBufferIncrSizeEnd (buffer, size);
     }
 
     // Truncate the buffer if required.
     else {
-        gmosBufferDecreaseSize (buffer, size);
+        gmosBufferDecrSizeEnd (buffer, size);
+        resizeOk = true;
+    }
+    return resizeOk;
+}
+
+/*
+ * Resizes a GubbinsMOS data buffer to the specified length by modifying
+ * the start of the buffer.
+ */
+bool gmosBufferRebase (gmosBuffer_t* buffer, uint16_t size)
+{
+    bool resizeOk;
+
+    // Reset to zero length if required.
+    if (size == 0) {
+        gmosBufferDiscardContents (buffer);
+        resizeOk = true;
+    }
+
+    // No resizing required.
+    else if (size == buffer->bufferSize) {
+        resizeOk = true;
+    }
+
+    // Extend the buffer if required.
+    else if (size > buffer->bufferSize) {
+        resizeOk = gmosBufferIncrSizeStart (buffer, size);
+    }
+
+    // Truncate the buffer if required.
+    else {
+        gmosBufferDecrSizeStart (buffer, size);
         resizeOk = true;
     }
     return resizeOk;
@@ -289,7 +433,7 @@ bool gmosBufferWrite (gmosBuffer_t* buffer, uint16_t offset,
     if (((uint32_t) offset) + ((uint32_t) writeSize) <=
         ((uint32_t) buffer->bufferSize)) {
         gmosBufferCopyToSegments (buffer->segmentList,
-            offset, writeData, writeSize);
+            buffer->bufferOffset + offset, writeData, writeSize);
         writeOk = true;
     } else {
         writeOk = false;
@@ -310,7 +454,7 @@ bool gmosBufferRead (gmosBuffer_t* buffer, uint16_t offset,
     if (((uint32_t) offset) + ((uint32_t) readSize) <=
         ((uint32_t) buffer->bufferSize)) {
         gmosBufferCopyFromSegments (buffer->segmentList,
-            offset, readData, readSize);
+            buffer->bufferOffset + offset, readData, readSize);
         readOk = true;
     } else {
         readOk = false;
@@ -321,6 +465,7 @@ bool gmosBufferRead (gmosBuffer_t* buffer, uint16_t offset,
 /*
  * Appends a block of data to the end of the buffer, increasing the
  * buffer length and automatically allocating additional memory pool
+ * segments if required.
  */
 bool gmosBufferAppend (gmosBuffer_t* buffer,
     uint8_t* writeData, uint16_t writeSize)
@@ -331,12 +476,53 @@ bool gmosBufferAppend (gmosBuffer_t* buffer,
     // Attempt to extend the buffer before initiating the copy.
     if (gmosBufferExtend (buffer, writeSize)) {
         gmosBufferCopyToSegments (buffer->segmentList,
-            offset, writeData, writeSize);
+            buffer->bufferOffset + offset, writeData, writeSize);
         appendOk = true;
     } else {
         appendOk = false;
     }
     return appendOk;
+}
+
+/*
+ * Prepends a block of data to the start of the buffer, increasing the
+ * buffer length and automatically allocating additional memory pool
+ * segments if required.
+ */
+bool gmosBufferPrepend (gmosBuffer_t* buffer,
+    uint8_t* writeData, uint16_t writeSize)
+{
+    bool prependOk;
+
+    // Attempt to extend the buffer before initiating the copy.
+    if (gmosBufferRebase (buffer, buffer->bufferSize + writeSize)) {
+        gmosBufferCopyToSegments (buffer->segmentList,
+            buffer->bufferOffset, writeData, writeSize);
+        prependOk = true;
+    } else {
+        prependOk = false;
+    }
+    return prependOk;
+}
+
+/*
+ * Implements a zero copy move operation, transferring the contents of a
+ * source buffer into a destination buffer.
+ */
+void gmosBufferMove (gmosBuffer_t* source, gmosBuffer_t* destination)
+{
+    // Ensure that the destination buffer is empty.
+    gmosBufferDiscardContents (destination);
+
+    // Transfer the source buffer contents to the destination.
+    destination->segmentList = source->segmentList;
+    destination->bufferSize = source->bufferSize;
+    destination->bufferOffset = source->bufferOffset;
+
+    // Remove source buffer references to the buffer data.
+    source->segmentList = NULL;
+    source->bufferSize = 0;
+    source->bufferOffset = 0;
 }
 
 /*
@@ -358,7 +544,7 @@ gmosMempoolSegment_t* gmosBufferGetSegment (gmosBuffer_t* buffer,
     byteCount = GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE;
     segment = buffer->segmentList;
     while (segment != NULL) {
-        if (dataOffset >= byteCount) {
+        if (buffer->bufferOffset + dataOffset >= byteCount) {
             byteCount += GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE;
             segment = segment->nextSegment;
         } else {

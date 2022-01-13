@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2021 Zynaptic Limited
+ * Copyright 2020-2022 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -44,6 +44,9 @@ typedef struct gmosBuffer_t {
     // This specifies the current size of the data buffer.
     uint16_t bufferSize;
 
+    // This specifies the current buffer data offset.
+    uint16_t bufferOffset;
+
 } gmosBuffer_t;
 
 /**
@@ -52,8 +55,8 @@ typedef struct gmosBuffer_t {
  * declaration may be used instead of a call to the 'gmosBufferInit'
  * function to set up a data buffer for subsequent use.
  */
-#define GMOS_BUFFER_INIT()                                             \
-    { NULL, 0 }
+#define GMOS_BUFFER_INIT() \
+    { NULL, 0, 0 }
 
 /**
  * Performs a one-time initialisation of a GubbinsMOS data buffer. This
@@ -63,6 +66,13 @@ typedef struct gmosBuffer_t {
  *     initialised.
  */
 void gmosBufferInit (gmosBuffer_t* buffer);
+
+/**
+ * Gets the current allocated size of the buffer.
+ * @param buffer This is the buffer which is to be accessed.
+ * @return Returns the current size of the buffer.
+ */
+uint16_t gmosBufferGetSize (gmosBuffer_t* buffer);
 
 /**
  * Resets a GubbinsMOS data buffer. All current data in the buffer is
@@ -92,12 +102,13 @@ bool gmosBufferReset (gmosBuffer_t* buffer, uint16_t size);
 bool gmosBufferExtend (gmosBuffer_t* buffer, uint16_t size);
 
 /**
- * Resizes a GubbinsMOS data buffer to the specified length. If the
- * effect of the resizing operation is to increase the buffer length,
- * additional memory segments will be allocated from the memory pool as
- * required. If the effect of the resizing operation is to decrease the
- * buffer length, all data at the end of the buffer will be discarded
- * and memory segments will be returned to the memory pool as required.
+ * Resizes a GubbinsMOS data buffer to the specified length by modifying
+ * the end of the buffer. If the effect of the resizing operation is to
+ * increase the buffer length, additional memory segments will be
+ * allocated from the memory pool as required. If the effect of the
+ * resizing operation is to decrease the buffer length, all data at the
+ * end of the buffer will be discarded and memory segments will be
+ * returned to the memory pool as required.
  * @param buffer This is the data buffer that is to be resized.
  * @param size This is the number of bytes which should be available for
  *     storage in the data buffer after resizing. A value of zero may be
@@ -107,6 +118,24 @@ bool gmosBufferExtend (gmosBuffer_t* buffer, uint16_t size);
  *     'false' if there was insufficient memory available.
  */
 bool gmosBufferResize (gmosBuffer_t* buffer, uint16_t size);
+
+/**
+ * Resizes a GubbinsMOS data buffer to the specified length by modifying
+ * the start of the buffer. If the effect of the resizing operation is
+ * to increase the buffer length, additional memory segments will be
+ * allocated from the memory pool as required. If the effect of the
+ * resizing operation is to decrease the buffer length, all data at the
+ * start of the buffer will be discarded and memory segments will be
+ * returned to the memory pool as required.
+ * @param buffer This is the data buffer that is to be rebased.
+ * @param size This is the number of bytes which should be available for
+ *     storage in the data buffer after rebasing. A value of zero may be
+ *     used to release all the allocated memory.
+ * @return Returns a boolean value which will be set to 'true' if the
+ *     requested amount of memory was allocated to the buffer and
+ *     'false' if there was insufficient memory available.
+ */
+bool gmosBufferRebase (gmosBuffer_t* buffer, uint16_t size);
 
 /**
  * Writes a block of data to the buffer at the specified buffer offset.
@@ -157,6 +186,35 @@ bool gmosBufferRead (gmosBuffer_t* buffer, uint16_t offset,
  */
 bool gmosBufferAppend (gmosBuffer_t* buffer,
     uint8_t* writeData, uint16_t writeSize);
+
+/**
+ * Prepends a block of data to the start of the buffer, increasing the
+ * buffer length and automatically allocating additional memory pool
+ * segments if required.
+ * @param buffer This is the buffer which is to be updated.
+ * @param writeData This is a pointer to the block of data that is to
+ *     be prepended to the data buffer.
+ * @param writeSize This specifies the number of bytes that are to be
+ *     prepended to the data buffer.
+ * @return Returns a boolean value which will be set to 'true' if the
+ *     data was prepended to the buffer and 'false' if an attempt to
+ *     allocate additional memory to the buffer failed.
+ */
+bool gmosBufferPrepend (gmosBuffer_t* buffer,
+    uint8_t* writeData, uint16_t writeSize);
+
+/**
+ * Implements a zero copy move operation, transferring the contents of a
+ * source buffer into a destination buffer. Any existing contents of the
+ * destination buffer will be discarded. After the buffer move operation
+ * the destination source buffer will hold the original contents of the
+ * source buffer and the source buffer will be empty.
+ * @param source This is a pointer to the source buffer from which the
+ *     buffer data will be transferred.
+ * @param desintation This is a pointer to the destination buffer to
+ *     which the buffer data will be transferred.
+ */
+void gmosBufferMove (gmosBuffer_t* source, gmosBuffer_t* destination);
 
 /**
  * Gets a reference to the buffer segment that contains data at the
