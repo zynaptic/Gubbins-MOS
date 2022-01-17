@@ -37,7 +37,8 @@ COMMON_OBJ_FILE_NAMES = \
 	gmos-buffers.o \
 	gmos-events.o \
 	gmos-driver-i2c.o \
-	gmos-driver-spi.o
+	gmos-driver-spi.o \
+	gmos-driver-lcd.o
 
 # Specify the local build directory.
 LOCAL_DIR = ${GMOS_BUILD_DIR}/common

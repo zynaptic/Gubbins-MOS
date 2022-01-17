@@ -96,6 +96,55 @@
 #define GMOS_CONFIG_STM32_DEEP_SLEEP_THRESHOLD 128
 #endif
 
+/**
+ * Specify whether LCD segment remapping is to be used. This is required
+ * when there is not a direct mapping from logical LCD segments to
+ * LCD driver segments. If this option is enabled, a corresponding
+ * segment mapping table must be provided in the LCD driver
+ * configuration.
+ */
+#ifndef GMOS_CONFIG_STM32_LCD_REMAP_SEGMENTS
+#define GMOS_CONFIG_STM32_LCD_REMAP_SEGMENTS false
+#endif
+
+/**
+ * Specify whether LCD pin remapping is to be used. This is required
+ * for smaller footprint devices to map the device segments 28 to 31
+ * onto available pins which would normally control device segments
+ * 40 to 43.
+ */
+#ifndef GMOS_CONFIG_STM32_LCD_REMAP_DEVICE_PINS
+#define GMOS_CONFIG_STM32_LCD_REMAP_DEVICE_PINS true
+#endif
+
+/**
+ * Specify the approximate LCD frame refresh frequency. This should be
+ * in the range from 30 to 100 Hz, and is a compromise between power
+ * consumption and the potential for visible flicker.
+ */
+#ifndef GMOS_CONFIG_STM32_LCD_FRAME_RATE
+#define GMOS_CONFIG_STM32_LCD_FRAME_RATE 85
+#endif
+
+/**
+ * Specify the default LCD drive voltage level. This should be in the
+ * range from 0 to 7 (highest voltage), and is a compromise between
+ * power consumption and LCD saturation.
+ */
+#ifndef GMOS_CONFIG_STM32_LCD_DEFAULT_VOLTAGE_LEVEL
+#define GMOS_CONFIG_STM32_LCD_DEFAULT_VOLTAGE_LEVEL 7
+#endif
+
+/**
+ * Specify the LCD duty cycle ratio. This is a compromise between the
+ * number of common terminals that may be used by the LCD panel and the
+ * potential for visible flicker. Duty cycle ratios of 1, 2, 3, 4 and 8
+ * are supported.
+ */
+#ifndef GMOS_CONFIG_STM32_LCD_DUTY_CYCLE_RATIO
+#define GMOS_CONFIG_STM32_LCD_DUTY_CYCLE_RATIO 4
+#endif
+
 // Configure the system timer frequency based on the selected low speed
 // clock source.
 #define GMOS_CONFIG_SYSTEM_TIMER_FREQUENCY 1024
