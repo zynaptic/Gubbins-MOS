@@ -84,6 +84,50 @@ static void gmosPalClockSetup16MHz (void)
 }
 
 /*
+ * Configures the STM32 device for high performance. This sets the
+ * system clock to 32 MHz, derived from the 16 MHz internal oscillator
+ * using the PLL. This is the maximum performance supported with the
+ * high power 1.8V core voltage setting.
+ */
+static void gmosPalClockSetup32MHz (void)
+{
+    uint32_t regValue;
+
+    // Set the core supply voltage to 1.8V.
+    regValue = PWR->CR;
+    regValue &= PWR_CR_VOS_Msk;
+    regValue |= PWR_CR_VOS_0;
+    PWR->CR = regValue;
+
+    // Wait for the core supply voltage to stabilise.
+    while ((PWR->CSR & PWR_CSR_VOSF) != 0) {};
+
+    // Enable the HSI oscillator and wait for it to stabilise.
+    RCC->CR |= RCC_CR_HSION;
+    while ((RCC->CR & RCC_CR_HSIRDY) == 0) {};
+
+    // Enable the PLL to multiply the HSI clock by four and divide by
+    // two and then wait for it to stabilise.
+    RCC->CFGR |= RCC_CFGR_PLLDIV2 | RCC_CFGR_PLLMUL4;
+    RCC->CR |= RCC_CR_PLLON;
+    while ((RCC->CR & RCC_CR_PLLRDY) == 0) {};
+
+    // Enable 64-bit flash memory access support and ensure that it is
+    // set before updating the prefetch and wait state bits.
+    FLASH->ACR |= FLASH_ACR_ACC64;
+    while ((FLASH->ACR & FLASH_ACR_ACC64) == 0) {};
+
+    // Enable flash memory prefetch with extra latency. Wait for the
+    // latency to be updated before altering the clock source.
+    FLASH->ACR |= FLASH_ACR_LATENCY | FLASH_ACR_PRFTEN;
+    while ((FLASH->ACR & (FLASH_ACR_LATENCY | FLASH_ACR_PRFTEN)) == 0) {};
+
+    // Select the 32MHz PLL output as the system clock source.
+    RCC->CFGR |= RCC_CFGR_SW_PLL;
+    while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) {};
+}
+
+/*
  * Configures the STM32 timer 11 to run off the external 32.768kHz
  * oscillator, divided to 1.024kHz. The core timer logic runs off the
  * default internal clock, so requires this to be stable during
@@ -106,7 +150,8 @@ static void gmosPalTimerSetup (void)
         RCC->CSR |= RCC_CSR_LSEON;
         while ((RCC->CSR & RCC_CSR_LSERDY) == 0) {};
 
-        // Enable RTC clock if an external oscillator is available.
+        // Enable RTC clock if an external oscillator is available. This
+        // is also used as the refresh clock for the LCD controller.
         RCC->CSR |= RCC_CSR_RTCSEL_LSE | RCC_CSR_RTCEN;
     }
     TIM11->SMCR |= TIM_SMCR_ECE;
@@ -118,8 +163,12 @@ static void gmosPalTimerSetup (void)
  */
 void gmosPalSystemSetup (void)
 {
-    // Use the 16MHz HSI clock by default.
-    gmosPalClockSetup16MHz ();
+    // Select the 32MHz PLL or 16MHz HSI clock.
+    if (GMOS_CONFIG_STM32_SYSTEM_CLOCK == 32000000) {
+        gmosPalClockSetup32MHz ();
+    } else {
+        gmosPalClockSetup16MHz ();
+    }
 
     // Select the required low speed clock source.
     gmosPalTimerSetup ();

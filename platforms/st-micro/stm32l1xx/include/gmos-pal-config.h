@@ -27,10 +27,11 @@
 
 /**
  * Specify the STM32 system clock rate. The only currently supported
- * option uses the 16MHz HSI clock.
+ * options use the 16MHz HSI clock or the 32MHz PLL output derived from
+ * the HSI clock.
  */
 #ifndef GMOS_CONFIG_STM32_SYSTEM_CLOCK
-#define GMOS_CONFIG_STM32_SYSTEM_CLOCK 16000000
+#define GMOS_CONFIG_STM32_SYSTEM_CLOCK 32000000
 #endif
 
 /**
