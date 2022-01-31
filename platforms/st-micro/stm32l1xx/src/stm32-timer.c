@@ -182,3 +182,10 @@ void gmosPalIdle (uint32_t duration)
         gmosLifecycleNotify (SCHEDULER_EXIT_POWER_SAVE);
     }
 }
+
+/*
+ * Requests that the platform abstraction layer wakes from idle mode.
+ */
+void gmosPalWake (void)
+{
+}

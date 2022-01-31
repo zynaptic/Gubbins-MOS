@@ -146,6 +146,24 @@
 #define GMOS_CONFIG_STM32_LCD_DUTY_CYCLE_RATIO 4
 #endif
 
+/**
+ * Specify the capacitive touch sensor minimum valid acquisition
+ * measurement. The acquisition will be in error if the measure is below
+ * this value.
+ */
+#ifndef GMOS_CONFIG_STM32_TOUCH_ACQ_MIN_LEVEL
+#define GMOS_CONFIG_STM32_TOUCH_ACQ_MIN_LEVEL 10
+#endif
+
+/**
+ * Specify the capacitive touch sensor maximum valid acquisition
+ * measurement. The acquisition will be in error if the measure is above
+ * this value.
+ */
+#ifndef GMOS_CONFIG_STM32_TOUCH_ACQ_MAX_LEVEL
+#define GMOS_CONFIG_STM32_TOUCH_ACQ_MAX_LEVEL 4000
+#endif
+
 // Configure the system timer frequency based on the selected low speed
 // clock source.
 #define GMOS_CONFIG_SYSTEM_TIMER_FREQUENCY 1024
