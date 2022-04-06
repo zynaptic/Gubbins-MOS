@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2022 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,7 +43,7 @@ static gmosPalDmaIsr_t attachedDmaIsrs [] =
 static void gmosPalClockSetup16MHz (void)
 {
     // Enable the HSI oscillator and wait for it to stabilise.
-    RCC->CR |= (RCC_CR_HSION);
+    RCC->CR |= RCC_CR_HSION;
     while ((RCC->CR & RCC_CR_HSIRDY) == 0) {};
 
     // Enable the extra flash memory access wait state. Wait for the
@@ -56,6 +56,48 @@ static void gmosPalClockSetup16MHz (void)
     // deep sleep.
     RCC->CFGR |= (RCC_CFGR_SW_HSI | RCC_CFGR_STOPWUCK);
     while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_HSI) {};
+
+    // Disable the internal voltage reference in deep sleep mode.
+    PWR->CR |= PWR_CR_ULP;
+}
+
+/*
+ * Configures the STM32 device for high performance. This sets the
+ * system clock to 32 MHz, derived from the 16 MHz internal oscillator
+ * using the PLL. This is the maximum performance supported with the
+ * high power 1.8V core voltage setting.
+ */
+static void gmosPalClockSetup32MHz (void)
+{
+    uint32_t regValue;
+
+    // Set the core supply voltage to 1.8V.
+    regValue = PWR->CR;
+    regValue &= PWR_CR_VOS_Msk;
+    regValue |= PWR_CR_VOS_0;
+    PWR->CR = regValue;
+
+    // Wait for the core supply voltage to stabilise.
+    while ((PWR->CSR & PWR_CSR_VOSF) != 0) {};
+
+    // Enable the HSI oscillator and wait for it to stabilise.
+    RCC->CR |= RCC_CR_HSION;
+    while ((RCC->CR & RCC_CR_HSIRDY) == 0) {};
+
+    // Enable the PLL to multiply the HSI clock by four and divide by
+    // two and then wait for it to stabilise.
+    RCC->CFGR |= RCC_CFGR_PLLDIV2 | RCC_CFGR_PLLMUL4;
+    RCC->CR |= RCC_CR_PLLON;
+    while ((RCC->CR & RCC_CR_PLLRDY) == 0) {};
+
+    // Enable flash memory prefetch with extra latency. Wait for the
+    // latency to be updated before altering the clock source.
+    FLASH->ACR |= FLASH_ACR_LATENCY | FLASH_ACR_PRFTEN;
+    while ((FLASH->ACR & (FLASH_ACR_LATENCY | FLASH_ACR_PRFTEN)) == 0) {};
+
+    // Select the 32MHz PLL output as the system clock source.
+    RCC->CFGR |= RCC_CFGR_SW_PLL;
+    while ((RCC->CFGR & RCC_CFGR_SWS) != RCC_CFGR_SWS_PLL) {};
 }
 
 /*
@@ -108,14 +150,15 @@ static void gmosPalTimerSetup (bool useExternalOsc)
  */
 void gmosPalSystemSetup (void)
 {
-    // Use the 16MHz HSI clock by default.
-    gmosPalClockSetup16MHz ();
+    // Select the 32MHz PLL or 16MHz HSI clock.
+    if (GMOS_CONFIG_STM32_SYSTEM_CLOCK == 32000000) {
+        gmosPalClockSetup32MHz ();
+    } else {
+        gmosPalClockSetup16MHz ();
+    }
 
     // Select the required low speed clock source.
     gmosPalTimerSetup (GMOS_CONFIG_STM32_USE_LSE_OSC);
-
-    // Disable the internal voltage reference in deep sleep mode.
-    PWR->CR |= PWR_CR_ULP;
 }
 
 /*

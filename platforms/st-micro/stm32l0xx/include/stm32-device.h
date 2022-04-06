@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2022 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,7 @@
 #ifndef STM32_DEVICE_H
 #define STM32_DEVICE_H
 
-// Enumerate the supported devices.
+// Provide an enumerated list of the supported devices.
 #define STM32L010RB 1
 #define STM32L072CZ 2
 
@@ -49,6 +49,13 @@
  * value.
  */
 typedef uint8_t (*gmosPalDmaIsr_t) (uint8_t);
+
+/**
+ * Performs STM32 system setup immediately after reset. This will
+ * configure system clocks and power management settings prior to
+ * running the main initialisation routines.
+ */
+void gmosPalSystemSetup (void);
 
 /**
  * Initialises the STM32 system timer implementation using the 16-bit

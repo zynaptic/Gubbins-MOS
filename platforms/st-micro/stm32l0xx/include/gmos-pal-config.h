@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2022 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,10 +28,19 @@
 
 /**
  * Specify the STM32 system clock rate. The only currently supported
- * option uses the 16MHz HSI clock.
+ * options use the 16MHz HSI clock and 32 MHz PLL clock.
  */
 #ifndef GMOS_CONFIG_STM32_SYSTEM_CLOCK
 #define GMOS_CONFIG_STM32_SYSTEM_CLOCK 16000000
+#endif
+
+/**
+ * Specify whether STM32 low power sleep modes should be used when no
+ * tasks are currently scheduled. If this is not enabled the scheduler
+ * will use busy waiting instead.
+ */
+#ifndef GMOS_CONFIG_STM32_SYSTEM_SLEEP_ENABLE
+#define GMOS_CONFIG_STM32_SYSTEM_SLEEP_ENABLE true
 #endif
 
 /**
@@ -129,7 +138,7 @@
 #endif
 
 // Configure the system timer frequency based on the selected low speed
-// clock source
+// clock source.
 #if GMOS_CONFIG_STM32_USE_LSE_OSC
 #define GMOS_CONFIG_SYSTEM_TIMER_FREQUENCY 1024
 #else

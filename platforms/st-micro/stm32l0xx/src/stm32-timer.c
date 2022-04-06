@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2021 Zynaptic Limited
+ * Copyright 2020-2022 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -78,10 +78,19 @@ static uint16_t gmosPalGetHardwareTimer (void)
  */
 static inline void gmosPalSystemTimerDeepSleep (void)
 {
-    // Call the CMSIS WFI wrapper to wait for next interrupt event.
-    SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
-    __WFI ();
-    SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
+    // Deep sleep is not used in high performance mode. Just call the
+    // CMSIS WFI wrapper to wait for next interrupt event.
+    if (GMOS_CONFIG_STM32_SYSTEM_CLOCK == 32000000) {
+        __WFI ();
+    }
+
+    // Enter deep sleep mode then call the CMSIS WFI wrapper to wait
+    // for next interrupt event.
+    else {
+        SCB->SCR |= SCB_SCR_SLEEPDEEP_Msk;
+        __WFI ();
+        SCB->SCR &= ~SCB_SCR_SLEEPDEEP_Msk;
+    }
 }
 
 /*
@@ -159,6 +168,12 @@ void gmosPalIdle (uint32_t duration)
     uint32_t lpTimerValue;
     uint32_t sleepTime;
 
+    // Ignore the idle request if low power sleep support is not
+    // enabled.
+    if (!GMOS_CONFIG_STM32_SYSTEM_SLEEP_ENABLE) {
+        return ;
+    }
+
     // Ignore the idle request if the requested duration is too short.
     if (duration <= GMOS_CONFIG_STM32_STAY_AWAKE_THRESHOLD) {
         return;
@@ -193,4 +208,11 @@ void gmosPalIdle (uint32_t duration)
         }
         gmosLifecycleNotify (SCHEDULER_EXIT_POWER_SAVE);
     }
+}
+
+/*
+ * Requests that the platform abstraction layer wakes from idle mode.
+ */
+void gmosPalWake (void)
+{
 }
