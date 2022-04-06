@@ -73,18 +73,18 @@ gmosPalArmVectorTable:
     .word gmosPalIsrTIM2
 
     // STM32 peripheral interrupt vectors (block 2).
-    .word 0
-    .word 0
-    .word 0
+    .word gmosPalIsrTIM3
+    .word gmosPalIsrTIM6
+    .word gmosPalIsrTIM7
     .word 0
     .word gmosPalIsrTIM21
-    .word 0
+    .word gmosPalIsrI2C3
     .word gmosPalIsrTIM22
     .word gmosPalIsrI2C1
-    .word 0
+    .word gmosPalIsrI2C2
     .word gmosPalIsrSPI1
-    .word 0
-    .word 0
+    .word gmosPalIsrSPI2
+    .word gmosPalIsrUSART1
     .word gmosPalIsrUSART2
     .word gmosPalIsrLPUART1
     .word 0
@@ -151,6 +151,15 @@ gmosPalArmVectorTable:
     .weak      gmosPalIsrTIM2
     .thumb_set gmosPalIsrTIM2, gmosPalIsrUnused
 
+    .weak      gmosPalIsrTIM3
+    .thumb_set gmosPalIsrTIM3, gmosPalIsrUnused
+
+    .weak      gmosPalIsrTIM6
+    .thumb_set gmosPalIsrTIM6, gmosPalIsrUnused
+
+    .weak      gmosPalIsrTIM7
+    .thumb_set gmosPalIsrTIM7, gmosPalIsrUnused
+
     .weak      gmosPalIsrTIM21
     .thumb_set gmosPalIsrTIM21, gmosPalIsrUnused
 
@@ -160,8 +169,20 @@ gmosPalArmVectorTable:
     .weak      gmosPalIsrI2C1
     .thumb_set gmosPalIsrI2C1, gmosPalIsrUnused
 
+    .weak      gmosPalIsrI2C2
+    .thumb_set gmosPalIsrI2C2, gmosPalIsrUnused
+
+    .weak      gmosPalIsrI2C3
+    .thumb_set gmosPalIsrI2C3, gmosPalIsrUnused
+
     .weak      gmosPalIsrSPI1
     .thumb_set gmosPalIsrSPI1, gmosPalIsrUnused
+
+    .weak      gmosPalIsrSPI2
+    .thumb_set gmosPalIsrSPI2, gmosPalIsrUnused
+
+    .weak      gmosPalIsrUSART1
+    .thumb_set gmosPalIsrUSART1, gmosPalIsrUnused
 
     .weak      gmosPalIsrUSART2
     .thumb_set gmosPalIsrUSART2, gmosPalIsrUnused
