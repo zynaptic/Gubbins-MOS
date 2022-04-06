@@ -83,10 +83,19 @@ void gmosPalMutexUnlock (void)
 }
 
 /*
- * Provides platform level handling of log messages.
+ * Provides platform level handling of fixed string log messages.
  */
 void gmosPalLog (const char* fileName, uint32_t lineNo,
-    gmosPalLogLevel_t logLevel, const char* message, ...)
+    gmosPalLogLevel_t logLevel, const char* msgPtr)
+{
+    gmosPalLogFmt (fileName, lineNo, logLevel, msgPtr);
+}
+
+/*
+ * Provides platform level handling of formatted string log messages.
+ */
+void gmosPalLogFmt (const char* fileName, uint32_t lineNo,
+    gmosPalLogLevel_t logLevel, const char* msgPtr, ...)
 {
     char writeBuffer [GMOS_CONFIG_LOG_MESSAGE_SIZE + 2];
     size_t writeSize;
@@ -100,7 +109,7 @@ void gmosPalLog (const char* fileName, uint32_t lineNo,
     levelString = logLevelNames [logLevel];
 
     // Add message debug prefix.
-    va_start (args, message);
+    va_start (args, msgPtr);
     if (fileName != NULL) {
         writeSize = snprintf (writeBuffer, GMOS_CONFIG_LOG_MESSAGE_SIZE,
             "[%s:%ld] \t%s : ", fileName, lineNo, levelString);
@@ -113,7 +122,7 @@ void gmosPalLog (const char* fileName, uint32_t lineNo,
     if (writeSize < GMOS_CONFIG_LOG_MESSAGE_SIZE) {
         char* writePtr = writeBuffer + writeSize;
         size_t writeBufSize = GMOS_CONFIG_LOG_MESSAGE_SIZE - writeSize;
-        writeSize += vsnprintf (writePtr, writeBufSize, message, args);
+        writeSize += vsnprintf (writePtr, writeBufSize, msgPtr, args);
     }
     if (writeSize > GMOS_CONFIG_LOG_MESSAGE_SIZE) {
         writeSize = GMOS_CONFIG_LOG_MESSAGE_SIZE;
