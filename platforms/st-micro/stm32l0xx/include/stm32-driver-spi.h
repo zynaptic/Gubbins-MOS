@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2022 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@
  * Defines the platform specific SPI interface hardware configuration
  * settings data structure.
  */
-typedef struct gmosPalSpiIoConfig_t {
+typedef struct gmosPalSpiBusConfig_t {
 
     // Specify the GPIO pin used for the SPI clock. The most significant
     // byte is the bank and the least significant byte is the pin.
@@ -54,14 +54,14 @@ typedef struct gmosPalSpiIoConfig_t {
     // Specify the STM32 SPI interface to use.
     uint8_t spiInterfaceId;
 
-} gmosPalSpiIoConfig_t;
+} gmosPalSpiBusConfig_t;
 
 /**
  * Defines the platform specific SPI interface dynamic data structure
  * to be used for the DMA based SPI driver.
  */
-typedef struct gmosPalSpiIoState_t {
+typedef struct gmosPalSpiBusState_t {
 
-} gmosPalSpiIoState_t;
+} gmosPalSpiBusState_t;
 
 #endif // STM32_DRIVER_SPI_H

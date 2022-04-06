@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2021 Zynaptic Limited
+ * Copyright 2020-2022 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,7 +35,7 @@
 
 // Add dummy definitions if SPI interface 2 is not supported.
 #ifndef SPI2
-#define SPI2 NULL
+#define SPI2 ((SPI_TypeDef*) NULL)
 #define SPI2_IRQn 0
 #define RCC_APB1ENR_SPI2EN 0
 #endif
@@ -51,7 +51,7 @@ static DMA_Channel_TypeDef* dmaRxRegisterMap [] =
 
 // Provide reverse mapping of SPI interface IDs to bus state data
 // structures.
-static gmosDriverSpiIo_t* spiIoStateMap [] = {NULL, NULL};
+static gmosDriverSpiBus_t* spiBusStateMap [] = {NULL, NULL};
 
 // Fake DMA data source for use in receive only transactions.
 static uint8_t dmaFakeSource = 0xFF;
@@ -65,13 +65,14 @@ static uint8_t dmaFakeTarget;
  * transfers should be using valid addresses.
  */
 static uint8_t gmosDriverSpiPalIsrCommon
-    (gmosDriverSpiIo_t* spiInterface, uint8_t isrFlags)
+    (gmosDriverSpiBus_t* spiInterface, uint8_t isrFlags)
 {
-    const gmosPalSpiIoConfig_t* palConfig = spiInterface->palConfig;
+    const gmosPalSpiBusConfig_t* palConfig = spiInterface->palConfig;
     uint8_t spiIndex = palConfig->spiInterfaceId - 1;
     SPI_TypeDef* spiRegs = spiRegisterMap [spiIndex];
     DMA_Channel_TypeDef* dmaTxRegs = dmaTxRegisterMap [spiIndex];
     DMA_Channel_TypeDef* dmaRxRegs = dmaRxRegisterMap [spiIndex];
+    gmosEvent_t* completionEvent;
     uint32_t eventFlags = 0;
 
     // Check for error condition. Note that all flags are shifted into
@@ -81,7 +82,7 @@ static uint8_t gmosDriverSpiPalIsrCommon
             GMOS_DRIVER_SPI_STATUS_DMA_ERROR;
     }
 
-    // Check for sucessful completion.
+    // Check for successful completion.
     if ((isrFlags & DMA_ISR_TCIF1) != 0) {
         eventFlags = spiInterface->transferSize;
         eventFlags <<= GMOS_DRIVER_SPI_EVENT_SIZE_OFFSET;
@@ -108,7 +109,8 @@ static uint8_t gmosDriverSpiPalIsrCommon
         spiRegs->CR2 &= ~(SPI_CR2_TXDMAEN | SPI_CR2_RXDMAEN);
 
         // Set the GubbinsMOS event flags.
-        gmosEventSetBits (&(spiInterface->completionEvent), eventFlags);
+        completionEvent = &(spiInterface->device->completionEvent);
+        gmosEventSetBits (completionEvent, eventFlags);
     }
 
     // Clear all interrupts, regardless of status.
@@ -121,7 +123,7 @@ static uint8_t gmosDriverSpiPalIsrCommon
 #if GMOS_CONFIG_STM32_SPI_USE_INTERRUPTS
 static uint8_t gmosDriverSpiPalIsrSpi1 (uint8_t isrFlags)
 {
-    return gmosDriverSpiPalIsrCommon (spiIoStateMap [0], isrFlags);
+    return gmosDriverSpiPalIsrCommon (spiBusStateMap [0], isrFlags);
 }
 #endif
 
@@ -131,7 +133,7 @@ static uint8_t gmosDriverSpiPalIsrSpi1 (uint8_t isrFlags)
 #if GMOS_CONFIG_STM32_SPI_USE_INTERRUPTS
 static uint8_t gmosDriverSpiPalIsrSpi2 (uint8_t isrFlags)
 {
-    return gmosDriverSpiPalIsrCommon (spiIoStateMap [1], isrFlags);
+    return gmosDriverSpiPalIsrCommon (spiBusStateMap [1], isrFlags);
 }
 #endif
 
@@ -148,12 +150,12 @@ static gmosTaskStatus_t pollingLoopTaskFn (void* nullData)
     uint8_t spiIndex;
     uint8_t isrFlags;
     uint8_t isrClear;
-    gmosDriverSpiIo_t* spiInterface;
+    gmosDriverSpiBus_t* spiInterface;
     gmosTaskStatus_t taskStatus = GMOS_TASK_RUN_BACKGROUND;
 
     // Loop over the active SPI interfaces.
     for (spiIndex = 0; spiIndex < 2; spiIndex++) {
-        spiInterface = spiIoStateMap [spiIndex];
+        spiInterface = spiBusStateMap [spiIndex];
         if (spiInterface != NULL) {
             if (spiInterface->linkState == GMOS_DRIVER_SPI_LINK_ACTIVE) {
 
@@ -188,12 +190,10 @@ GMOS_TASK_DEFINITION (pollingLoopTask, pollingLoopTaskFn, void);
 
 /*
  * Initialises the platform abstraction layer for a given SPI interface.
- * Refer to the platform specific SPI implementation for details of the
- * platform data area and the SPI interface configuration options.
  */
-bool gmosDriverSpiPalInit (gmosDriverSpiIo_t* spiInterface)
+bool gmosDriverSpiPalInit (gmosDriverSpiBus_t* spiInterface)
 {
-    const gmosPalSpiIoConfig_t* palConfig = spiInterface->palConfig;
+    const gmosPalSpiBusConfig_t* palConfig = spiInterface->palConfig;
     uint8_t spiIndex;
     uint32_t regValue;
 
@@ -225,7 +225,7 @@ bool gmosDriverSpiPalInit (gmosDriverSpiIo_t* spiInterface)
 #endif
 
     // Keep a reference to the platform data structures.
-    spiIoStateMap [spiIndex] = spiInterface;
+    spiBusStateMap [spiIndex] = spiInterface;
 
     // Configure the SPI I/O as GPIO alternate functions.
     gmosDriverGpioAltModeInit (palConfig->sclkPinId,
@@ -262,7 +262,7 @@ bool gmosDriverSpiPalInit (gmosDriverSpiIo_t* spiInterface)
         regValue |= (1 << DMA_CSELR_C2S_Pos) | (1 << DMA_CSELR_C3S_Pos);
         DMA1_Channel2->CPAR = (uintptr_t) &(SPI1->DR);
         DMA1_Channel3->CPAR = (uintptr_t) &(SPI1->DR);
-    } else {
+    } else if (SPI2 != NULL) {
         regValue &= ~(DMA_CSELR_C6S_Msk |DMA_CSELR_C7S_Msk);
         regValue |= (2 << DMA_CSELR_C6S_Pos) | (2 << DMA_CSELR_C7S_Pos);
         DMA1_Channel6->CPAR = (uintptr_t) &(SPI2->DR);
@@ -277,9 +277,10 @@ bool gmosDriverSpiPalInit (gmosDriverSpiIo_t* spiInterface)
  * Sets up the platform abstraction layer for one or more SPI
  * transactions that share the same SPI clock configuration.
  */
-void gmosDriverSpiPalClockSetup (gmosDriverSpiIo_t* spiInterface)
+void gmosDriverSpiPalClockSetup (gmosDriverSpiBus_t* spiInterface)
 {
-    const gmosPalSpiIoConfig_t* palConfig = spiInterface->palConfig;
+    const gmosPalSpiBusConfig_t* palConfig = spiInterface->palConfig;
+    gmosDriverSpiDevice_t* spiDevice = spiInterface->device;
     uint8_t spiIndex = palConfig->spiInterfaceId - 1;
     SPI_TypeDef* spiRegs = spiRegisterMap [spiIndex];
     uint32_t clockDiv;
@@ -295,7 +296,7 @@ void gmosDriverSpiPalClockSetup (gmosDriverSpiIo_t* spiInterface)
     }
 
     // Select the closest SPI clock scaling to the one requested.
-    spiClockRequest = 1000 * (uint32_t) (spiInterface->spiClockRate);
+    spiClockRequest = 1000 * (uint32_t) (spiDevice->spiClockRate);
     for (clockDiv = 0; clockDiv < 7; clockDiv++) {
         if (spiClockFreq <= spiClockRequest) {
             break;
@@ -307,7 +308,7 @@ void gmosDriverSpiPalClockSetup (gmosDriverSpiIo_t* spiInterface)
     // Set up configuration register 1.
     regValue = SPI_CR1_MSTR | SPI_CR1_SSM | SPI_CR1_SSI |
         (clockDiv << SPI_CR1_BR_Pos);
-    regValue |= 3 & (spiInterface->spiClockMode);
+    regValue |= 3 & (spiDevice->spiClockMode);
     spiRegs->CR1 = regValue;
 }
 
@@ -315,9 +316,9 @@ void gmosDriverSpiPalClockSetup (gmosDriverSpiIo_t* spiInterface)
  * Performs a platform specific SPI transaction using the given SPI
  * interface settings.
  */
-void gmosDriverSpiPalTransaction (gmosDriverSpiIo_t* spiInterface)
+void gmosDriverSpiPalTransaction (gmosDriverSpiBus_t* spiInterface)
 {
-    const gmosPalSpiIoConfig_t* palConfig = spiInterface->palConfig;
+    const gmosPalSpiBusConfig_t* palConfig = spiInterface->palConfig;
     uint8_t spiIndex = palConfig->spiInterfaceId - 1;
     SPI_TypeDef* spiRegs = spiRegisterMap [spiIndex];
     DMA_Channel_TypeDef* dmaTxRegs = dmaTxRegisterMap [spiIndex];
@@ -363,9 +364,9 @@ void gmosDriverSpiPalTransaction (gmosDriverSpiIo_t* spiInterface)
  * SPI interface.
  */
 gmosDriverSpiStatus_t gmosDriverSpiPalInlineTransaction
-    (gmosDriverSpiIo_t* spiInterface)
+    (gmosDriverSpiBus_t* spiInterface)
 {
-    const gmosPalSpiIoConfig_t* palConfig = spiInterface->palConfig;
+    const gmosPalSpiBusConfig_t* palConfig = spiInterface->palConfig;
     uint8_t spiIndex = palConfig->spiInterfaceId - 1;
     SPI_TypeDef* spiRegs = spiRegisterMap [spiIndex];
     uint16_t writeIndex = 0;
