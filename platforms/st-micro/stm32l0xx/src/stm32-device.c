@@ -107,7 +107,7 @@ static void gmosPalClockSetup32MHz (void)
 static void gmosPalTimerSetup (bool useExternalOsc)
 {
     // Enable the low power timer clock in standard and sleep modes.
-    RCC->APB1ENR |= RCC_APB1ENR_LPTIM1EN;
+    RCC->APB1ENR |= RCC_APB1ENR_LPTIM1EN | RCC_APB1ENR_PWREN;
     RCC->APB1SMENR |= RCC_APB1SMENR_LPTIM1SMEN;
 
     // Configures the STM32 low power timer to run off the external
@@ -117,8 +117,8 @@ static void gmosPalTimerSetup (bool useExternalOsc)
     // changes by disabling backup protection.
     if (useExternalOsc) {
         if ((RCC->CSR & RCC_CSR_LSERDY) == 0) {
-            RCC->APB1ENR |= RCC_APB1ENR_PWREN;
             PWR->CR |= PWR_CR_DBP;
+            while ((PWR->CR & PWR_CR_DBP) == 0) {};
             RCC->CSR |= RCC_CSR_LSEON;
             while ((RCC->CSR & RCC_CSR_LSERDY) == 0) {};
 
