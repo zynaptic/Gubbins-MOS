@@ -27,6 +27,85 @@
 #include "gmos-driver-rtc.h"
 
 /*
+ * Store the standard month lengths.
+ */
+static uint8_t monthLengths [] = {
+    31, // January.
+    28, // February.
+    31, // March.
+    30, // April.
+    31, // May.
+    30, // June.
+    31, // July.
+    31, // August.
+    30, // September.
+    31, // October.
+    30, // November.
+    31, // December.
+};
+
+/*
+ * This function may be used to validate a two digit BCD value to
+ * ensure that it contains a valid BCD number.
+ */
+static bool validateBcdValue (uint8_t bcd)
+{
+    return (((bcd & 0x0F) <= 0x09) && ((bcd & 0xF0) <= 0x90)) ?
+        true : false;
+}
+
+/*
+ * Get the number of days that have elapsed since the UTC millenium
+ * reference date.
+ */
+static uint32_t getElapsedDays (gmosDriverRtcTime_t* rtcTime)
+{
+    uint32_t yearCount;
+    uint32_t yearDays;
+    uint32_t monthCount;
+    uint32_t monthDays;
+    bool isLeapYear;
+
+    // Derive the number of days that have elapsed due to an integer
+    // number of leap year cycles.
+    yearCount = gmosDriverRtcBcdToUint8 (rtcTime->year);
+    yearDays = (yearCount / 4) * (366 + 3 * 365);
+    switch (yearCount & 0x03) {
+        case 0 :
+            isLeapYear = true;
+            break;
+        case 1 :
+            yearDays += 366;
+            isLeapYear = false;
+            break;
+        case 2 :
+            yearDays += 366 + 365;
+            isLeapYear = false;
+            break;
+        default :
+            yearDays += 366 + 2 * 365;
+            isLeapYear = false;
+            break;
+    }
+
+    // Derive the number of days that have elapsed after a set number
+    // of months.
+    monthCount = gmosDriverRtcBcdToUint8 (rtcTime->month);
+    monthDays = 0;
+    for (monthCount = monthCount - 1; monthCount > 0; monthCount --) {
+        uint8_t monthLength = monthLengths [monthCount - 1];
+        if (isLeapYear && (monthCount == 2)) {
+            monthLength += 1;
+        }
+        monthDays += monthLength;
+    }
+
+    // Derive the total number of elapsed full days.
+    return (yearDays + monthDays +
+        gmosDriverRtcBcdToUint8 (rtcTime->dayOfMonth) - 1);
+}
+
+/*
  * This function may be used for converting the two digit BCD values
  * stored in the real time data structure into conventional 8-bit
  * integers.
@@ -64,7 +143,6 @@ bool gmosDriverRtcConvertFromUtcTime (gmosDriverRtcTime_t* rtcTime,
     uint32_t timeSeconds;
     uint32_t timeMinutes;
     uint32_t timeHours;
-    bool monthFound;
     bool isLeapYear;
 
     // Convert from UTC to local time. Time zones from -12 to +14 hours
@@ -105,49 +183,14 @@ bool gmosDriverRtcConvertFromUtcTime (gmosDriverRtcTime_t* rtcTime,
 
     // Determine the month and day.
     monthDays = yearDays;
-    monthFound = false;
     for (monthCount = 1; monthCount <= 12; monthCount++) {
-        switch (monthCount) {
-            case 1 :  // January.
-            case 3 :  // March.
-            case 5 :  // May.
-            case 7 :  // July.
-            case 8 :  // August.
-            case 10 : // October.
-            case 12 : // December.
-                if (monthDays < 31) {
-                    monthFound = true;
-                } else {
-                    monthDays -= 31;
-                }
-                break;
-            case 4 :  // April.
-            case 6 :  // June.
-            case 9 :  // September.
-            case 11 : // November.
-                if (monthDays < 30) {
-                    monthFound = true;
-                } else {
-                    monthDays -= 30;
-                }
-                break;
-            default : // February.
-                if (isLeapYear) {
-                    if (monthDays < 29) {
-                        monthFound = true;
-                    } else {
-                        monthDays -= 29;
-                    }
-                } else {
-                    if (monthDays < 28) {
-                        monthFound = true;
-                    } else {
-                        monthDays -= 28;
-                    }
-                }
-                break;
+        uint8_t monthLength = monthLengths [monthCount - 1];
+        if (isLeapYear && (monthCount == 2)) {
+            monthLength += 1;
         }
-        if (monthFound) {
+        if (monthDays >= monthLength) {
+            monthDays -= monthLength;
+        } else {
             break;
         }
     }
@@ -184,73 +227,12 @@ bool gmosDriverRtcConvertFromUtcTime (gmosDriverRtcTime_t* rtcTime,
 bool gmosDriverRtcConvertToUtcTime (gmosDriverRtcTime_t* rtcTime,
     uint32_t* utcTime)
 {
-    uint32_t localDays;
     uint32_t localSeconds;
-    uint32_t yearCount;
-    uint32_t yearDays;
-    uint32_t monthCount;
-    uint32_t monthDays;
     int8_t timeZone;
     int32_t timeZoneAdjustment;
-    bool isLeapYear;
-
-    // Derive the number of days that have elapsed due to an integer
-    // number of leap year cycles.
-    yearCount = gmosDriverRtcBcdToUint8 (rtcTime->year);
-    yearDays = (yearCount / 4) * (366 + 3 * 365);
-    switch (yearCount & 0x03) {
-        case 0 :
-            isLeapYear = true;
-            break;
-        case 1 :
-            yearDays += 366;
-            isLeapYear = false;
-            break;
-        case 2 :
-            yearDays += 366 + 365;
-            isLeapYear = false;
-            break;
-        default :
-            yearDays += 366 + 2 * 365;
-            isLeapYear = false;
-            break;
-    }
-
-    // Derive the number of days that have elapsed after a set number
-    // of months.
-    monthCount = gmosDriverRtcBcdToUint8 (rtcTime->month);
-    monthDays = 0;
-    for (monthCount = monthCount - 1; monthCount > 0; monthCount --) {
-        switch (monthCount) {
-            case 1 :  // January.
-            case 3 :  // March.
-            case 5 :  // May.
-            case 7 :  // July.
-            case 8 :  // August.
-            case 10 : // October.
-            case 12 : // December.
-                monthDays += 31;
-                break;
-            case 4 :  // April.
-            case 6 :  // June.
-            case 9 :  // September.
-            case 11 : // November.
-                monthDays += 30;
-                break;
-            default : // February.
-                if (isLeapYear) {
-                    monthDays += 29;
-                } else {
-                    monthDays += 28;
-                }
-                break;
-        }
-    }
 
     // Derive the number of seconds that have elapsed for full days.
-    localDays = yearDays + monthDays +
-        gmosDriverRtcBcdToUint8 (rtcTime->dayOfMonth) - 1;
-    localSeconds = localDays * (24 * 60 * 60);
+    localSeconds = getElapsedDays (rtcTime) * (24 * 60 * 60);
 
     // Derive the number of seconds in the day which have elapsed.
     localSeconds += 60 * 60 * gmosDriverRtcBcdToUint8 (rtcTime->hours);
@@ -271,4 +253,58 @@ bool gmosDriverRtcConvertToUtcTime (gmosDriverRtcTime_t* rtcTime,
         *utcTime = localSeconds - timeZoneAdjustment;
         return true;
     }
+}
+
+/*
+ * This function may be used to check that a specified RTC time data
+ * structure contains a valid BCD representation of time and date. It
+ * also automatically sets the day of week field to the correct value.
+ */
+bool gmosDriverRtcValidateRtcTime (gmosDriverRtcTime_t* rtcTime)
+{
+    uint8_t year;
+    uint8_t month;
+    uint8_t dayOfMonth;
+    uint8_t hours;
+    uint8_t minutes;
+    uint8_t seconds;
+    uint8_t monthLength;
+
+    // Check for valid BCD representations.
+    if ((!validateBcdValue (rtcTime->year)) ||
+        (!validateBcdValue (rtcTime->month)) ||
+        (!validateBcdValue (rtcTime->dayOfMonth)) ||
+        (!validateBcdValue (rtcTime->hours)) ||
+        (!validateBcdValue (rtcTime->minutes)) ||
+        (!validateBcdValue (rtcTime->seconds))) {
+        return false;
+    }
+
+    // Get integer values.
+    year = gmosDriverRtcBcdToUint8 (rtcTime->year);
+    month = gmosDriverRtcBcdToUint8 (rtcTime->month);
+    dayOfMonth = gmosDriverRtcBcdToUint8 (rtcTime->dayOfMonth);
+    hours = gmosDriverRtcBcdToUint8 (rtcTime->hours);
+    minutes = gmosDriverRtcBcdToUint8 (rtcTime->minutes);
+    seconds = gmosDriverRtcBcdToUint8 (rtcTime->seconds);
+
+    // Range check fixed fields.
+    if ((hours >= 24) || (minutes >= 60) || (seconds >= 60) ||
+        (month < 1) || (month > 12)) {
+        return false;
+    }
+
+    // Range check day of month.
+    monthLength = monthLengths [month - 1];
+    if (((year & 0x03) == 0) && (month == 2)) {
+        monthLength += 1;
+    }
+    if ((dayOfMonth < 1) || (dayOfMonth > monthLength)) {
+        return false;
+    }
+
+    // The day of the week can be derived directly from the number of
+    // days since 1st of January 2000, which was a Saturday (day 6).
+    rtcTime->dayOfWeek = 1 + (getElapsedDays (rtcTime) + 5) % 7;
+    return true;
 }

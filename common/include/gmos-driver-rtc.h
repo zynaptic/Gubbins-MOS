@@ -185,6 +185,18 @@ bool gmosDriverRtcConvertToUtcTime (gmosDriverRtcTime_t* rtcTime,
     uint32_t* utcTime);
 
 /**
+ * This function may be used to check that a specified RTC time data
+ * structure contains a valid BCD representation of time and date. It
+ * also automatically sets the day of week field to the correct value.
+ * @param rtcTime This is the real time clock data structure that is to
+ *     be checked for a valid time and date representation.
+ * @return Returns a boolean value which will be set to 'true' if the
+ *     data structure contains a valid BCD encoded time and date and
+ *     'false' otherwise.
+ */
+bool gmosDriverRtcValidateRtcTime (gmosDriverRtcTime_t* rtcTime);
+
+/**
  * Initialises a real time clock for subsequent use. This should be
  * called for each RTC instance prior to accessing it via any of the
  * other API functions.
@@ -214,7 +226,9 @@ bool gmosDriverRtcGetTime (
 
 /**
  * Assigns the specified time and date to the real time clock,
- * regardless of the current time and date value.
+ * regardless of the current time and date value. The new time value
+ * must specify a valid time and date. If necessary, this can be checked
+ * by using the time validation function prior to calling this function.
  * @param rtc This is the RTC data structure which is associated with
  *     the real time clock to be accessed.
  * @param newTime This is an RTC time data structure which is populated
@@ -223,6 +237,20 @@ bool gmosDriverRtcGetTime (
  */
 bool gmosDriverRtcSetTime (
     gmosDriverRtc_t* rtc, gmosDriverRtcTime_t* newTime);
+
+/**
+ * Attempts to synchronize the real time clock to the specified UTC
+ * time value. If there is a significant disparity between the current
+ * time and date value this will be equivalent to setting the real time
+ * clock value. Otherwise the local clock source may be adjusted to
+ * compensate for relative clock drift.
+ * @param rtc This is the RTC data structure which is associated with
+ *     the real time clock to be accessed.
+ * @param utcTime This is a the UTC time value which specifies the
+ *     number of seconds that have elapsed since the millenial epoch.
+ */
+bool gmosDriverRtcSyncTime (
+    gmosDriverRtc_t* rtc, uint32_t utcTime);
 
 #ifdef __cplusplus
 }
