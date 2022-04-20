@@ -48,7 +48,7 @@ endif
 # Specifies the target device to use. By default this is the STM32L010RB
 # device.
 ifndef TARGET_DEVICE
-TARGET_DEVICE = STM32L072CZ
+TARGET_DEVICE = STM32L010RB
 endif
 
 # Include the platform setup makefile fragment. This defines the

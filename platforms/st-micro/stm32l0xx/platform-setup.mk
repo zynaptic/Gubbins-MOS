@@ -65,6 +65,7 @@ LDFLAGS += -mthumb
 LDFLAGS += -mfloat-abi=soft
 LDFLAGS += -nostdlib
 LDFLAGS += -Wl,--gc-sections
+LDFLAGS += -T${GMOS_BUILD_DIR}/platform/target.ld
 
 # Required linker library names.
 LDLIBS += gcc
