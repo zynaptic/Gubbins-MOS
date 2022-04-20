@@ -178,4 +178,21 @@
 #define GMOS_CONFIG_I2C_BUFFER_SIZE 32
 #endif
 
+/**
+ * This configuration option specifies the size of the platform EEPROM
+ * tags which are used to identify distinct EEPROM data records in tag,
+ * length, value format.
+ */
+#ifndef GMOS_CONFIG_EEPROM_TAG_SIZE
+#define GMOS_CONFIG_EEPROM_TAG_SIZE 1
+#endif
+
+/**
+ * This configuration option specifies the length field of the platform
+ * EEPROM data records in tag, length, value format.
+ */
+#ifndef GMOS_CONFIG_EEPROM_LENGTH_SIZE
+#define GMOS_CONFIG_EEPROM_LENGTH_SIZE 1
+#endif
+
 #endif // GMOS_CONFIG_H
