@@ -48,6 +48,12 @@ static const uint8_t eepromEndTag [GMOS_DRIVER_EEPROM_HEADER_SIZE] = {
     0 };
 
 /*
+ * Specify the main EEPROM instance that will be used for storing system
+ * data.
+ */
+static gmosDriverEeprom_t* mainInstance = NULL;
+
+/*
  * Searches for an EEPROM record, updating the record base offset to
  * select the start of the record if a matching record tag is found.
  */
@@ -209,7 +215,7 @@ static gmosTaskStatus_t gmosDriverEepromTask (void* taskData)
  * the current EEPROM records.
  */
 bool gmosDriverEepromInit (gmosDriverEeprom_t* eeprom,
-    bool factoryReset, uint32_t factoryResetKey)
+    bool isMainInstance, bool factoryReset, uint32_t factoryResetKey)
 {
     // First initialise the platform abstraction layer.
     if (!gmosPalEepromInit (eeprom)) {
@@ -229,6 +235,11 @@ bool gmosDriverEepromInit (gmosDriverEeprom_t* eeprom,
         return false;
     }
 
+    // Set the EEPROM as the main instance for storing system data.
+    if (isMainInstance) {
+        mainInstance = eeprom;
+    }
+
     // Start the EEPROM driver task.
     eeprom->workerTask.taskTickFn = gmosDriverEepromTask;
     eeprom->workerTask.taskData = eeprom;
@@ -238,12 +249,22 @@ bool gmosDriverEepromInit (gmosDriverEeprom_t* eeprom,
 }
 
 /*
+ * Accesses the main EEPROM instance to be used for storing system
+ * information. For most configurations this will be the only EEPROM
+ * on the device.
+ */
+gmosDriverEeprom_t* gmosDriverEepromGetInstance (void)
+{
+    return mainInstance;
+}
+
+/*
  * Creates a new EEPROM data record with the specified tag, length and
  * default value. This will fail if a record with the specified tag
  * already exists.
  */
 gmosDriverEepromStatus_t gmosDriverEepromRecordCreate (
-    gmosDriverEeprom_t* eeprom, uint32_t recordTag,
+    gmosDriverEeprom_t* eeprom, gmosDriverEepromTag_t recordTag,
     uint8_t* defaultValue, uint16_t recordLength,
     gmosPalEepromCallback_t callbackHandler, void* callbackData)
 {
@@ -295,7 +316,7 @@ gmosDriverEepromStatus_t gmosDriverEepromRecordCreate (
  * write data byte array.
  */
 gmosDriverEepromStatus_t gmosDriverEepromRecordWrite (
-    gmosDriverEeprom_t* eeprom, uint32_t recordTag,
+    gmosDriverEeprom_t* eeprom, gmosDriverEepromTag_t recordTag,
     uint8_t* writeData, uint16_t writeOffset, uint16_t writeSize,
     gmosPalEepromCallback_t callbackHandler, void* callbackData)
 {
@@ -334,8 +355,8 @@ gmosDriverEepromStatus_t gmosDriverEepromRecordWrite (
  * read data octet array.
  */
 gmosDriverEepromStatus_t gmosDriverEepromRecordRead (
-    gmosDriverEeprom_t* eeprom, uint32_t recordTag, uint8_t* readData,
-    uint16_t readOffset, uint16_t readSize)
+    gmosDriverEeprom_t* eeprom, gmosDriverEepromTag_t recordTag,
+    uint8_t* readData, uint16_t readOffset, uint16_t readSize)
 {
     gmosDriverEepromStatus_t status;
     uint16_t recordBase;

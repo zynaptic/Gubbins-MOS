@@ -54,7 +54,7 @@ extern "C" {
     ((1 << (8 * GMOS_CONFIG_EEPROM_TAG_SIZE)) - 1)
 
 /**
- * Define a reserved value that may subsequentlay be used to indicate a
+ * Define a reserved value that may subsequently be used to indicate a
  * deleted record in the EEPROM record list.
  */
 #define GMOS_DRIVER_EEPROM_TAG_FREE_SPACE \
@@ -64,6 +64,22 @@ extern "C" {
  * Define the EEPROM factory reset key value.
  */
 #define GMOS_DRIVER_EEPROM_FACTORY_RESET_KEY 0x706E6DF1
+
+/**
+ * This selects the appropriate EEPROM tag type based on the configured
+ * tag size.
+ */
+#if (GMOS_CONFIG_EEPROM_TAG_SIZE == 1)
+typedef uint8_t gmosDriverEepromTag_t;
+#elif (GMOS_CONFIG_EEPROM_TAG_SIZE == 2)
+typedef uint16_t gmosDriverEepromTag_t;
+#elif (GMOS_CONFIG_EEPROM_TAG_SIZE == 3)
+typedef uint32_t gmosDriverEepromTag_t;
+#elif (GMOS_CONFIG_EEPROM_TAG_SIZE == 4)
+typedef uint32_t gmosDriverEepromTag_t;
+#else
+#error "Unsupported EEPROM tag size."
+#endif
 
 /**
  * This enumeration specifies the EEPROM status values that may be
@@ -199,6 +215,9 @@ typedef struct gmosDriverEeprom_t {
  * of the current EEPROM records.
  * @param eeprom This is a pointer to the EEPROM driver data structure
  *     for the EEPROM that is to be initialised.
+ * @param isMainInstance This is a boolean flag, which when set to
+ *     'true' indicates that this is the main EEPROM instance that will
+ *     be used for storing system information.
  * @param factoryReset This is a boolean flag, which when set to 'true'
  *     will initialise the EEPROM to its factory reset state,
  *     invalidating all of the current EEPROM records.
@@ -208,7 +227,17 @@ typedef struct gmosDriverEeprom_t {
  *     successfully initialising the EEPROM and 'false' otherwise.
  */
 bool gmosDriverEepromInit (gmosDriverEeprom_t* eeprom,
-    bool factoryReset, uint32_t factoryResetKey);
+    bool isMainInstance, bool factoryReset, uint32_t factoryResetKey);
+
+/**
+ * Accesses the main EEPROM instance to be used for storing system
+ * information. For most configurations this will be the only EEPROM
+ * on the device.
+ * @return Returns the main EEPROM instance that is to be used for
+ *     storing system information, or a null reference if no main EEPROM
+ *     instance has been specified.
+ */
+gmosDriverEeprom_t* gmosDriverEepromGetInstance (void);
 
 /**
  * Creates a new EEPROM data record with the specified tag, length and
@@ -234,7 +263,7 @@ bool gmosDriverEepromInit (gmosDriverEeprom_t* eeprom,
  *     the callback handler on completion.
  */
 gmosDriverEepromStatus_t gmosDriverEepromRecordCreate (
-    gmosDriverEeprom_t* eeprom, uint32_t recordTag,
+    gmosDriverEeprom_t* eeprom, gmosDriverEepromTag_t recordTag,
     uint8_t* defaultValue, uint16_t recordLength,
     gmosPalEepromCallback_t callbackHandler, void* callbackData);
 
@@ -262,7 +291,7 @@ gmosDriverEepromStatus_t gmosDriverEepromRecordCreate (
  *     the callback handler on completion.
  */
 gmosDriverEepromStatus_t gmosDriverEepromRecordWrite (
-    gmosDriverEeprom_t* eeprom, uint32_t recordTag,
+    gmosDriverEeprom_t* eeprom, gmosDriverEepromTag_t recordTag,
     uint8_t* writeData, uint16_t writeOffset, uint16_t writeSize,
     gmosPalEepromCallback_t callbackHandler, void* callbackData);
 
@@ -284,8 +313,8 @@ gmosDriverEepromStatus_t gmosDriverEepromRecordWrite (
  *     updated prior to returning a successful status value.
  */
 gmosDriverEepromStatus_t gmosDriverEepromRecordRead (
-    gmosDriverEeprom_t* eeprom, uint32_t recordTag, uint8_t* readData,
-    uint16_t readOffset, uint16_t readSize);
+    gmosDriverEeprom_t* eeprom, gmosDriverEepromTag_t recordTag,
+    uint8_t* readData, uint16_t readOffset, uint16_t readSize);
 
 /**
  * Initialises the EEPROM driver platform abstraction layer. This will
