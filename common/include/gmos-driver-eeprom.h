@@ -61,6 +61,13 @@ extern "C" {
     ((1 << (8 * GMOS_CONFIG_EEPROM_TAG_SIZE)) - 2)
 
 /**
+ * Define an invalid EEPROM tag value for use in situations where EEPROM
+ * access is disabled.
+ */
+#define GMOS_DRIVER_EEPROM_TAG_INVALID \
+    GMOS_DRIVER_EEPROM_TAG_END_MARKER
+
+/**
  * Define the EEPROM factory reset key value.
  */
 #define GMOS_DRIVER_EEPROM_FACTORY_RESET_KEY 0x706E6DF1

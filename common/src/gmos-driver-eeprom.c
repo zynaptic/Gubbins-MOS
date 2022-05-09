@@ -278,7 +278,11 @@ gmosDriverEepromStatus_t gmosDriverEepromRecordCreate (
     status = gmosDriverEepromRecordSearch (
         eeprom, recordTag, &searchBase, &searchLength);
     if (status == GMOS_DRIVER_EEPROM_STATUS_SUCCESS) {
-        return GMOS_DRIVER_EEPROM_STATUS_TAG_EXISTS;
+        if (recordLength == searchLength) {
+            return GMOS_DRIVER_EEPROM_STATUS_TAG_EXISTS;
+        } else {
+            return GMOS_DRIVER_EEPROM_STATUS_INVALID_LENGTH;
+        }
     } else if (status != GMOS_DRIVER_EEPROM_STATUS_NO_RECORD) {
         return status;
     }
@@ -378,9 +382,9 @@ gmosDriverEepromStatus_t gmosDriverEepromRecordRead (
     // Copy over the record data.
     recordData = eeprom->baseAddress + recordBase;
     recordData += readOffset + GMOS_DRIVER_EEPROM_HEADER_SIZE;
-    while (recordLength > 0) {
+    while (readSize > 0) {
         *(readData++) = *(recordData++);
-        recordLength -= 1;
+        readSize -= 1;
     }
     return GMOS_DRIVER_EEPROM_STATUS_SUCCESS;
 }
