@@ -209,6 +209,16 @@ static gmosTaskStatus_t gmosDriverEepromTask (void* taskData)
 }
 
 /*
+ * Run the EEPROM state machine as a blocking operation.
+ */
+static void gmosDriverEepromRunToIdle (gmosDriverEeprom_t* eeprom)
+{
+    while (eeprom->eepromState != GMOS_DRIVER_EEPROM_STATE_IDLE) {
+        gmosDriverEepromTask (eeprom);
+    }
+}
+
+/*
  * Initialises the EEPROM driver. This should be called once on startup
  * in order to initialise the EEPROM driver state. If required, it may
  * also perform a factory reset on the EEPROM contents, deleting all of
@@ -309,9 +319,14 @@ gmosDriverEepromStatus_t gmosDriverEepromRecordCreate (
     eeprom->callbackHandler = callbackHandler;
     eeprom->callbackData = callbackData;
 
-    // Initiate the create record sequence.
+    // Initiate the create record sequence. If a callback handler has
+    // not been provided, this will block until completion.
     eeprom->eepromState = GMOS_DRIVER_EEPROM_STATE_CREATE_END_TAG_WRITE;
-    gmosSchedulerTaskResume (&(eeprom->workerTask));
+    if (callbackHandler != NULL) {
+        gmosSchedulerTaskResume (&(eeprom->workerTask));
+    } else {
+        gmosDriverEepromRunToIdle (eeprom);
+    }
     return GMOS_DRIVER_EEPROM_STATUS_SUCCESS;
 }
 
@@ -348,9 +363,14 @@ gmosDriverEepromStatus_t gmosDriverEepromRecordWrite (
     eeprom->callbackHandler = callbackHandler;
     eeprom->callbackData = callbackData;
 
-    // Initiate the write record sequence.
+    // Initiate the write record sequence. If a callback handler has
+    // not been provided, this will block until completion.
     eeprom->eepromState = GMOS_DRIVER_EEPROM_STATE_UPDATE_VALUE_WRITE;
-    gmosSchedulerTaskResume (&(eeprom->workerTask));
+    if (callbackHandler != NULL) {
+        gmosSchedulerTaskResume (&(eeprom->workerTask));
+    } else {
+        gmosDriverEepromRunToIdle (eeprom);
+    }
     return GMOS_DRIVER_EEPROM_STATUS_SUCCESS;
 }
 

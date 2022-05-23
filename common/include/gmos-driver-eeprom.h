@@ -262,7 +262,8 @@ gmosDriverEeprom_t* gmosDriverEepromGetInstance (void);
  * @param recordLength This is the length of the EEPROM data record to
  *     be created.
  * @param callbackHandler This is the callback handler that will be
- *     called on transaction completion.
+ *     called on transaction completion. If a null callback handler is
+ *     specified, this call will block until completion.
  * @param callbackData This is a pointer to an opaque data item that
  *     will be passed back as a callback handler parameter.
  * @return Returns the status of the transaction request. On returning
@@ -290,7 +291,8 @@ gmosDriverEepromStatus_t gmosDriverEepromRecordCreate (
  *     written to the EEPROM record. This must match the stored record
  *     length if the entire record is being written.
  * @param callbackHandler This is the callback handler that will be
- *     called on transaction completion.
+ *     called on transaction completion. If a null callback handler is
+ *     specified, this call will block until completion.
  * @param callbackData This is a pointer to an opaque data item that
  *     will be passed back as a callback handler parameter.
  * @return Returns the status of the transaction request. On returning

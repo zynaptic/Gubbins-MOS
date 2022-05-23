@@ -83,8 +83,8 @@ static void gmosPalEepromWriteNextData (gmosDriverEeprom_t* eeprom)
             writeDataValue |= ((uint32_t) *(dataPtr++)) << 8;
             writeDataValue |= ((uint32_t) *(dataPtr++)) << 16;
             writeDataValue |= ((uint32_t) *(dataPtr++)) << 24;
+            palData->writeData += 4;
         }
-        palData->writeData += 4;
         palData->writeCount -= 4;
         palData->addrOffset += 4;
         *writeAddr = writeDataValue;
@@ -101,8 +101,8 @@ static void gmosPalEepromWriteNextData (gmosDriverEeprom_t* eeprom)
         } else {
             writeDataValue = (uint16_t) *(dataPtr++);
             writeDataValue |= ((uint16_t) *(dataPtr++)) << 8;
+            palData->writeData += 2;
         }
-        palData->writeData += 2;
         palData->writeCount -= 2;
         palData->addrOffset += 2;
         *writeAddr = writeDataValue;
@@ -117,8 +117,8 @@ static void gmosPalEepromWriteNextData (gmosDriverEeprom_t* eeprom)
             writeDataValue = 0;
         } else {
             writeDataValue = (uint8_t) *(dataPtr++);
+            palData->writeData += 1;
         }
-        palData->writeData += 1;
         palData->writeCount -= 1;
         palData->addrOffset += 1;
         *writeAddr = writeDataValue;
