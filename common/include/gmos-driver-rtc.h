@@ -27,6 +27,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include "gmos-config.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -118,11 +119,15 @@ typedef struct gmosDriverRtcTime_t {
     // This is the seconds field, as a BCD value from 0 to 59.
     uint8_t seconds;
 
-    // This is the local time zone and daylight saving indicator. Bit
-    // 7 is the daylight saving flag. Bits 0 to 6 represent the
-    // UTC timezone offset as a signed number of quarter hours, from
+    // This is the local time zone indicator. It represents the UTC
+    // timezone offset as a signed number of quarter hours, from
     // -12 hours (ie, -48) up to +14 hours (ie, +56).
-    uint8_t timeZone;
+    int8_t timeZone;
+
+    // This is the daylight saving flag. It is set to zero if daylight
+    // saving is not in effect and a non-zero value if daylight saving
+    // is active.
+    uint8_t daylightSaving;
 
 } gmosDriverRtcTime_t;
 
@@ -203,11 +208,24 @@ bool gmosDriverRtcValidateRtcTime (gmosDriverRtcTime_t* rtcTime);
  * @param rtc This is the RTC data structure that is to be initialised.
  *     It should previously have been configured using the
  *     'GMOS_DRIVER_RTC_PAL_CONFIG' macro.
+ * @param isMainInstance This is a boolean flag, which when set to
+ *     'true' indicates that this is the main real time clock instance
+ *     that will be used for storing the current system time.
  * @return Returns a boolean value which will be set to 'true' on
  *     successfully setting up the real time clock and 'false' on
  *     failure.
  */
-bool gmosDriverRtcInit (gmosDriverRtc_t* rtc);
+bool gmosDriverRtcInit (gmosDriverRtc_t* rtc, bool isMainInstance);
+
+/**
+ * Accesses the main real time clock instance to be used for storing
+ * the current system time. For most configurations this will be the
+ * only real time clock on the device.
+ * @return Returns the main real time clock instance that is to be used
+ *     for storing the current system time, or a null reference if no
+ *     main real time clock instance has been specified.
+ */
+gmosDriverRtc_t* gmosDriverRtcGetInstance (void);
 
 /**
  * Retrieves the current time and date from the real time clock,
@@ -227,16 +245,47 @@ bool gmosDriverRtcGetTime (
 /**
  * Assigns the specified time and date to the real time clock,
  * regardless of the current time and date value. The new time value
- * must specify a valid time and date. If necessary, this can be checked
- * by using the time validation function prior to calling this function.
+ * will be checked for a valid time and date.
  * @param rtc This is the RTC data structure which is associated with
  *     the real time clock to be accessed.
  * @param newTime This is an RTC time data structure which is populated
  *     with the time and date that are to be assigned to the real time
  *     clock. The various time and date fields must be valid.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully setting the new time and 'false' on failure.
  */
 bool gmosDriverRtcSetTime (
     gmosDriverRtc_t* rtc, gmosDriverRtcTime_t* newTime);
+
+/**
+ * Sets the current time zone for the real time clock, using platform
+ * specific hardware support when available.
+ * @param rtc This is the RTC data structure which is associated with
+ *     the real time clock to be accessed.
+ * @param timeZone This is the time zone to be used for the RTC time,
+ *     represented as a signed offset from UTC in quarter hour
+ *     increments in the valid range from -48 to +56.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully setting the time zone and 'false' if the time zone
+ *     setting can not be safely updated at this time.
+ */
+bool gmosDriverRtcSetTimeZone (
+    gmosDriverRtc_t* rtc, int8_t timeZone);
+
+/**
+ * Sets the daylight saving time for the real time clock, using platform
+ * specific hardware support when available.
+ * @param rtc This is the RTC data structure which is associated with
+ *     the real time clock to be accessed.
+ * @param daylightSaving This is a boolean value which when set to
+ *     'true' will select dalight saving time and when set to 'false'
+ *     will select standard local time.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully setting daylight saving time and 'false' if the
+ *     daylight savings setting can not be safely updated at this time.
+ */
+bool gmosDriverRtcSetDaylightSaving (
+    gmosDriverRtc_t* rtc, bool daylightSaving);
 
 /**
  * Attempts to synchronize the real time clock to the specified UTC
@@ -251,6 +300,54 @@ bool gmosDriverRtcSetTime (
  */
 bool gmosDriverRtcSyncTime (
     gmosDriverRtc_t* rtc, uint32_t utcTime);
+
+/**
+ * Initialises the real time clock driver platform abstraction layer.
+ * This will be called once on startup in order to initialise the
+ * platform specific real time clock driver state.
+ * @param rtc This is a pointer to the real time clock driver data
+ *     structure for the real time clock that is to be initialised.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successful initialisation and 'false' otherwise.
+ */
+bool gmosPalRtcInit (gmosDriverRtc_t* rtc);
+
+/**
+ * Assigns the specified time and date to the platform specific real
+ * time clock, regardless of the current time and date value. The new
+ * time value must specify a valid time and date.
+ * @param rtc This is the RTC data structure which is associated with
+ *     the real time clock to be accessed.
+ * @param newTime This is an RTC time data structure which is populated
+ *     with the time and date that are to be assigned to the real time
+ *     clock. The various time and date fields must be valid.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully setting the new time and 'false' on failure.
+ */
+bool gmosPalRtcSetTime (
+    gmosDriverRtc_t* rtc, gmosDriverRtcTime_t* newTime);
+
+// Define the platform abstraction layer data structures for RTC
+// software emulation when a dedicated RTC peripheral is not available.
+#if GMOS_CONFIG_RTC_SOFTWARE_EMULATION
+
+/**
+ * Defines the platform specific real time clock driver configuration
+ * settings data structure for software emulation.
+ */
+typedef struct gmosPalRtcConfig_t {
+
+} gmosPalRtcConfig_t;
+
+/**
+ * Defines the platform specific real time clock driver dynamic data
+ * structure for software emulation.
+ */
+typedef struct gmosPalRtcState_t {
+
+} gmosPalRtcState_t;
+
+#endif // GMOS_CONFIG_RTC_SOFTWARE_EMULATION
 
 #ifdef __cplusplus
 }

@@ -24,6 +24,12 @@
 #ifndef STM32_DRIVER_RTC_H
 #define STM32_DRIVER_RTC_H
 
+#include <stdint.h>
+#include "gmos-config.h"
+
+// Use RTC software implementation instead of dedicated hardware.
+#if !GMOS_CONFIG_RTC_SOFTWARE_EMULATION
+
 /**
  * Defines the platform specific real time clock driver configuration
  * settings data structure.
@@ -38,6 +44,10 @@ typedef struct gmosPalRtcConfig_t {
  */
 typedef struct gmosPalRtcState_t {
 
+    // Specifies the current time zone setting.
+    int8_t timeZone;
+
 } gmosPalRtcState_t;
 
+#endif // GMOS_CONFIG_RTC_SOFTWARE_EMULATION
 #endif // STM32_DRIVER_RTC_H

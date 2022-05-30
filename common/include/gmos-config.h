@@ -195,4 +195,14 @@
 #define GMOS_CONFIG_EEPROM_LENGTH_SIZE 1
 #endif
 
+/**
+ * This configuration option is used to select the real time clock
+ * implementation to be used. This may be either a platform specific
+ * hardware peripheral or a software emulation running off the system
+ * timer.
+ */
+#ifndef GMOS_CONFIG_RTC_SOFTWARE_EMULATION
+#define GMOS_CONFIG_RTC_SOFTWARE_EMULATION false
+#endif
+
 #endif // GMOS_CONFIG_H

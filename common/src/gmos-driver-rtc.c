@@ -17,14 +17,21 @@
  */
 
 /*
- * This header implements the common functionality for accessing
- * integrated real time clock peripherals.
+ * This file implements the common functionality for accessing
+ * integrated hardware or software emulated real time clocks.
  */
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "gmos-driver-rtc.h"
+
+/*
+ * Specify the time synchronization tracking window as an integer number
+ * of seconds.
+ */
+#define GMOS_DRIVER_RTC_TRACKING_WINDOW 10
 
 /*
  * Store the standard month lengths.
@@ -43,6 +50,12 @@ static uint8_t monthLengths [] = {
     30, // November.
     31, // December.
 };
+
+/*
+ * Specify the main real time clock instance that will be used for
+ * storing the current system time.
+ */
+static gmosDriverRtc_t* mainInstance = NULL;
 
 /*
  * This function may be used to validate a two digit BCD value to
@@ -211,10 +224,8 @@ bool gmosDriverRtcConvertFromUtcTime (gmosDriverRtcTime_t* rtcTime,
     rtcTime->seconds = gmosDriverRtcBcdFromUint8 (timeSeconds);
 
     // Set the current time zone.
-    rtcTime->timeZone = 0x7F & ((uint8_t) timeZone);
-    if (daylightSaving) {
-        rtcTime->timeZone |= 0x80;
-    }
+    rtcTime->timeZone = timeZone;
+    rtcTime->daylightSaving = daylightSaving ? 1 : 0;
     return true;
 }
 
@@ -228,7 +239,6 @@ bool gmosDriverRtcConvertToUtcTime (gmosDriverRtcTime_t* rtcTime,
     uint32_t* utcTime)
 {
     uint32_t localSeconds;
-    int8_t timeZone;
     int32_t timeZoneAdjustment;
 
     // Derive the number of seconds that have elapsed for full days.
@@ -240,10 +250,8 @@ bool gmosDriverRtcConvertToUtcTime (gmosDriverRtcTime_t* rtcTime,
     localSeconds += gmosDriverRtcBcdToUint8 (rtcTime->seconds);
 
     // Apply time zone correction.
-    timeZone = 0x7F & rtcTime->timeZone;
-    timeZone |= (timeZone & 40) << 1;
-    timeZoneAdjustment = ((int32_t) timeZone) * (15 * 60);
-    if ((rtcTime->timeZone & 0x80) != 0) {
+    timeZoneAdjustment = ((int32_t) rtcTime->timeZone) * (15 * 60);
+    if (rtcTime->daylightSaving != 0) {
         timeZoneAdjustment += 60 * 60;
     }
     if ((timeZoneAdjustment > 0) &&
@@ -307,4 +315,89 @@ bool gmosDriverRtcValidateRtcTime (gmosDriverRtcTime_t* rtcTime)
     // days since 1st of January 2000, which was a Saturday (day 6).
     rtcTime->dayOfWeek = 1 + (getElapsedDays (rtcTime) + 5) % 7;
     return true;
+}
+
+/*
+ * Initialises a real time clock for subsequent use. This should be
+ * called for each RTC instance prior to accessing it via any of the
+ * other API functions.
+ */
+bool gmosDriverRtcInit (gmosDriverRtc_t* rtc, bool isMainInstance)
+{
+    // First initialise the platform abstraction layer.
+    if (!gmosPalRtcInit (rtc)) {
+        return false;
+    }
+
+    // Set the RTC as the main instance for storing current system time.
+    if (isMainInstance) {
+        mainInstance = rtc;
+    }
+    return true;
+}
+
+/*
+ * Accesses the main real time clock instance to be used for storing
+ * the current system time. For most configurations this will be the
+ * only real time clock on the device.
+ */
+gmosDriverRtc_t* gmosDriverRtcGetInstance (void)
+{
+    return mainInstance;
+}
+
+/*
+ * Assigns the specified time and date to the real time clock,
+ * regardless of the current time and date value. The new time value
+ * will be checked for a valid time and date.
+ */
+bool gmosDriverRtcSetTime (
+    gmosDriverRtc_t* rtc, gmosDriverRtcTime_t* newTime)
+{
+    // Check for a valid time and date.
+    if (!gmosDriverRtcValidateRtcTime (newTime)) {
+        return false;
+    }
+
+    // Assign the new time and date to the platform specific RTC.
+    return gmosPalRtcSetTime (rtc, newTime);
+}
+
+/*
+ * Attempts to synchronize the real time clock to the specified UTC
+ * time value. If there is a significant disparity between the current
+ * time and date value this will be equivalent to setting the real time
+ * clock value. Otherwise the local clock source may be adjusted to
+ * compensate for relative clock drift.
+ */
+bool gmosDriverRtcSyncTime (
+    gmosDriverRtc_t* rtc, uint32_t utcTime)
+{
+    gmosDriverRtcTime_t currentTime;
+    gmosDriverRtcTime_t syncTime;
+    uint32_t currentUtc;
+
+    // Get the current RTC time settings.
+    if ((!gmosDriverRtcGetTime (rtc, &currentTime)) ||
+        (!gmosDriverRtcConvertToUtcTime (&currentTime, &currentUtc))) {
+        return false;
+    }
+
+    // If the current time is outside the tracking window, overwrite the
+    // current time. This preserves the existing time zone settings.
+    if ((currentUtc > utcTime + GMOS_DRIVER_RTC_TRACKING_WINDOW) ||
+        (currentUtc < utcTime - GMOS_DRIVER_RTC_TRACKING_WINDOW)) {
+        if (!gmosDriverRtcConvertFromUtcTime (&syncTime, utcTime,
+            currentTime.timeZone, currentTime.daylightSaving)) {
+            return false;
+        } else {
+            return gmosPalRtcSetTime (rtc, &syncTime);
+        }
+    }
+
+    // Implement fine adjustment within the tracking window.
+    else {
+        // Not currently implemented.
+        return true;
+    }
 }

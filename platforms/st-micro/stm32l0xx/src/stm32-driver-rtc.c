@@ -24,18 +24,24 @@
 #include <stdint.h>
 #include <stdbool.h>
 
+#include "gmos-config.h"
 #include "gmos-driver-rtc.h"
 #include "stm32-device.h"
 #include "stm32-driver-rtc.h"
+
+// Use RTC software implementation instead of dedicated hardware.
+#if !GMOS_CONFIG_RTC_SOFTWARE_EMULATION
 
 /*
  * Initialises a real time clock for subsequent use. The RTC clock is
  * set up as part of the device clock initialisation process, and the
  * default configuration is correct for use with the 32.7768 kHz
- * external clock. No further initialisation is required.
+ * external clock. The time zone defaults to UTC+0 on reset.
  */
-bool gmosDriverRtcInit (gmosDriverRtc_t* rtc)
+bool gmosPalRtcInit (gmosDriverRtc_t* rtc)
 {
+    gmosPalRtcState_t* palData = rtc->palData;
+    palData->timeZone = 0;
     return true;
 }
 
@@ -46,6 +52,7 @@ bool gmosDriverRtcInit (gmosDriverRtc_t* rtc)
 bool gmosDriverRtcGetTime (
     gmosDriverRtc_t* rtc, gmosDriverRtcTime_t* currentTime)
 {
+    gmosPalRtcState_t* palData = rtc->palData;
     uint32_t timeValue;
     uint32_t dateValue;
     uint32_t checkValue;
@@ -73,27 +80,30 @@ bool gmosDriverRtcGetTime (
     // Only years 2000 to 2099 are supported by the RTC.
     currentTime->year = (dateValue >> 16) & 0xFF;
 
-    // Set the daylight saving bit if required. No other time zone
-    // information is stored by the RTC.
+    // Set the daylight saving flag if required.
     if ((RTC->CR & RTC_CR_BKP) != 0) {
-        currentTime->timeZone = 0x80;
+        currentTime->daylightSaving = 1;
     } else {
-        currentTime->timeZone = 0x00;
+        currentTime->daylightSaving = 0;
     }
+
+    // The current time zone information is stored in RAM.
+    currentTime->timeZone = palData->timeZone;
     return true;
 }
 
 /*
  * Assigns the specified time and date to the real time clock,
- * regardless of the current time and date value.
+ * regardless of the current time and date value. The new time value
+ * must specify a valid time and date. If necessary, this can be checked
+ * by using the time validation function prior to calling this function.
  */
-bool gmosDriverRtcSetTime (
+bool gmosPalRtcSetTime (
     gmosDriverRtc_t* rtc, gmosDriverRtcTime_t* newTime)
 {
+    gmosPalRtcState_t* palData = rtc->palData;
     uint32_t timeValue;
     uint32_t dateValue;
-
-    // TODO: Add time validation check.
 
     // Ensure the power control DBP bit is set to enable RTC clock
     // domain register access.
@@ -121,13 +131,15 @@ bool gmosDriverRtcSetTime (
     dateValue |= (newTime->year) << 16;
     RTC->DR = dateValue;
 
-    // Set the daylight saving bit if required. No other time zone
-    // information is stored by the RTC.
-    if ((newTime->timeZone & 0x80) != 0) {
+    // Set the daylight saving bit if required.
+    if (newTime->daylightSaving != 0) {
         RTC->CR |= RTC_CR_BKP;
     } else {
         RTC->CR &= ~RTC_CR_BKP;
     }
+
+    // Store the current time zone in RAM.
+    palData->timeZone = newTime->timeZone;
 
     // Clear the initialisation flag, allowing the RTC to run.
     RTC->ISR &= ~RTC_ISR_INIT;
@@ -137,3 +149,61 @@ bool gmosDriverRtcSetTime (
     return true;
 }
 
+/*
+ * Sets the current time zone for the real time clock, using platform
+ * specific hardware support when available.
+ */
+bool gmosDriverRtcSetTimeZone (
+    gmosDriverRtc_t* rtc, int8_t timeZone)
+{
+    gmosPalRtcState_t* palData = rtc->palData;
+
+    // Check for valid time zone range.
+    if ((timeZone < -48) || (timeZone > 56)) {
+        return false;
+    }
+
+    // Store the current time zone in RAM.
+    palData->timeZone = timeZone;
+    return true;
+}
+
+/*
+ * Sets the daylight saving time for the real time clock, using platform
+ * specific hardware support when available.
+ */
+bool gmosDriverRtcSetDaylightSaving (
+    gmosDriverRtc_t* rtc, bool daylightSaving)
+{
+    uint32_t regValue;
+    uint32_t hoursValue;
+
+    // Make no change if the settings are consistent.
+    regValue = RTC->CR;
+    if (daylightSaving && ((regValue & RTC_CR_BKP) != 0)) {
+        return true;
+    }
+    else if (!daylightSaving && ((regValue & RTC_CR_BKP) == 0)) {
+        return true;
+    }
+
+    // Implement 'spring forward'. Since this increments the hours it
+    // should always work, regardless of the current hours setting.
+    if (daylightSaving) {
+        RTC->CR = regValue | RTC_CR_ADD1H | RTC_CR_BKP;
+        return true;
+    }
+
+    // Implement 'fall back'. This only works if the current hours
+    // setting can be safely decremented without having a knock-on
+    // effect on the days counter. The safe range is 1 to 22 hours.
+    hoursValue = (RTC->TR >> 16) & 0x3F;
+    if ((hoursValue > 0x00) && (hoursValue < 0x23)) {
+        RTC->CR = (regValue | RTC_CR_SUB1H) & ~RTC_CR_BKP;
+        return true;
+    } else {
+        return false;
+    }
+}
+
+#endif // GMOS_CONFIG_RTC_SOFTWARE_EMULATION
