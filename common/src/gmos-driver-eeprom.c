@@ -24,12 +24,12 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "gmos-config.h"
 #include "gmos-driver-eeprom.h"
 
 /*
  * Define the EEPROM end of record marker. This consists of the end of
- * EEPROM tag followed by a length of zero. This supports tag and length
- * values of
+ * EEPROM tag followed by a length of zero.
  */
 static const uint8_t eepromEndTag [GMOS_DRIVER_EEPROM_HEADER_SIZE] = {
     (GMOS_DRIVER_EEPROM_TAG_END_MARKER) & 0xFF,

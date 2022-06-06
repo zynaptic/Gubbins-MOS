@@ -196,13 +196,25 @@
 #endif
 
 /**
- * This configuration option is used to select the real time clock
- * implementation to be used. This may be either a platform specific
- * hardware peripheral or a software emulation running off the system
- * timer.
+ * This configuration option is used to select real time clock software
+ * emulation for platforms that do not have dedicated RTC hardware.
+ * The software emulation uses the system timer, so the emulated RTC
+ * accuracy will depend on the accuracy of the system timer clock
+ * source.
  */
 #ifndef GMOS_CONFIG_RTC_SOFTWARE_EMULATION
 #define GMOS_CONFIG_RTC_SOFTWARE_EMULATION false
+#endif
+
+/**
+ * This configuration option is used to select EEPROM software emulation
+ * for platforms that do not have dedicated EEPROM memory. The software
+ * emulation uses RAM data storage, so stored data will not be persisted
+ * over system resets. This will typically be used for development
+ * purposes only.
+ */
+#ifndef GMOS_CONFIG_EEPROM_SOFTWARE_EMULATION
+#define GMOS_CONFIG_EEPROM_SOFTWARE_EMULATION false
 #endif
 
 #endif // GMOS_CONFIG_H

@@ -369,6 +369,36 @@ bool gmosPalEepromWriteData (gmosDriverEeprom_t* eeprom,
  */
 bool gmosPalEepromWritePoll (gmosDriverEeprom_t* eeprom);
 
+// Define the platform abstraction layer data structures for EEPROM
+// software emulation when a dedicated EEPROM is not available.
+#if GMOS_CONFIG_EEPROM_SOFTWARE_EMULATION
+
+/**
+ * Defines the platform specific EEPROM driver configuration settings
+ * data structure for software emulation.
+ */
+typedef struct gmosPalEepromConfig_t {
+
+    // This is the memory mapped base address used for emulated EEPROM
+    // read accesses.
+    uint8_t* memAddress;
+
+    // This is the emulated EEPROM size as an integer number of bytes
+    // not exceeding 64K.
+    uint16_t memSize;
+
+} gmosPalEepromConfig_t;
+
+/**
+ * Defines the platform specific EEPROM driver dynamic data structure
+ * for software emulation.
+ */
+typedef struct gmosPalEepromState_t {
+
+} gmosPalEepromState_t;
+
+#endif // GMOS_CONFIG_EEPROM_SOFTWARE_EMULATION
+
 #ifdef __cplusplus
 }
 #endif // __cplusplus

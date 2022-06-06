@@ -39,9 +39,11 @@ COMMON_OBJ_FILE_NAMES = \
 	gmos-driver-i2c.o \
 	gmos-driver-spi.o \
 	gmos-driver-rtc.o \
+	gmos-driver-rtc-sw.o \
 	gmos-driver-lcd.o \
 	gmos-driver-touch.o \
-	gmos-driver-eeprom.o
+	gmos-driver-eeprom.o \
+	gmos-driver-eeprom-sw.o
 
 # Specify the local build directory.
 LOCAL_DIR = ${GMOS_BUILD_DIR}/common
