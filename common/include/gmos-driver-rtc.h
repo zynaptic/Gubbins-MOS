@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "gmos-config.h"
+#include "gmos-scheduler.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -70,6 +71,14 @@ typedef struct gmosDriverRtc_t {
     // configuration data structure that is used for setting up the
     // RTC hardware. The data structure will be platform specific.
     const gmosPalRtcConfig_t* palConfig;
+
+    // This is the reference UTC timestamp from the last RTC
+    // synchronisation cycle.
+    uint32_t lastRefTimestamp;
+
+    // The is the local RTC UTC timestamp from the last RTC
+    // synchronisation cycle.
+    uint32_t lastRtcTimestamp;
 
 } gmosDriverRtc_t;
 
@@ -208,6 +217,11 @@ bool gmosDriverRtcValidateRtcTime (gmosDriverRtcTime_t* rtcTime);
  * @param rtc This is the RTC data structure that is to be initialised.
  *     It should previously have been configured using the
  *     'GMOS_DRIVER_RTC_PAL_CONFIG' macro.
+ * @param calibration This is the initial calibration setting for the
+ *     RTC, expressed as parts per 2^20 (about the same as parts per
+ *     million). A positive value indicates that the RTC should run
+ *     faster than its nominal frequency, and a negative value
+ *     indiciates that it should run slower.
  * @param isMainInstance This is a boolean flag, which when set to
  *     'true' indicates that this is the main real time clock instance
  *     that will be used for storing the current system time.
@@ -215,7 +229,8 @@ bool gmosDriverRtcValidateRtcTime (gmosDriverRtcTime_t* rtcTime);
  *     successfully setting up the real time clock and 'false' on
  *     failure.
  */
-bool gmosDriverRtcInit (gmosDriverRtc_t* rtc, bool isMainInstance);
+bool gmosDriverRtcInit (gmosDriverRtc_t* rtc,
+    int32_t calibration, bool isMainInstance);
 
 /**
  * Accesses the main real time clock instance to be used for storing
@@ -307,10 +322,15 @@ bool gmosDriverRtcSyncTime (
  * platform specific real time clock driver state.
  * @param rtc This is a pointer to the real time clock driver data
  *     structure for the real time clock that is to be initialised.
+ * @param calibration This is the initial calibration setting for the
+ *     RTC, expressed as parts per 2^20 (about the same as parts per
+ *     million). A positive value indicates that the RTC should run
+ *     faster than its nominal frequency, and a negative value
+ *     indiciates that it should run slower.
  * @return Returns a boolean value which will be set to 'true' on
  *     successful initialisation and 'false' otherwise.
  */
-bool gmosPalRtcInit (gmosDriverRtc_t* rtc);
+bool gmosPalRtcInit (gmosDriverRtc_t* rtc, int32_t calibration);
 
 /**
  * Assigns the specified time and date to the platform specific real
@@ -326,6 +346,27 @@ bool gmosPalRtcInit (gmosDriverRtc_t* rtc);
  */
 bool gmosPalRtcSetTime (
     gmosDriverRtc_t* rtc, gmosDriverRtcTime_t* newTime);
+
+/**
+ * Requests a clock source adjustment from the platform specific real
+ * time clock, given the current clock offset and drift relative to the
+ * reference clock.
+ * @param rtc This is the RTC data structure which is associated with
+ *     the real time clock to be adjusted.
+ * @param clockOffset This is the number of seconds difference between
+ *     the current real time clock and the reference clock. A positive
+ *     value implies that the local real time clock is running ahead of
+ *     the reference clock.
+ * @param clockDrift This is the relative frequency drift between the
+ *     local real time clock and the reference clock, expressed in parts
+ *     per 2^20 (approximately parts per million). A positive value
+ *     implies that the local real time clock is running fast.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully adjusting the local real time clock and 'false' on
+ *     failure.
+ */
+bool gmosPalRtcAdjustClock (
+    gmosDriverRtc_t* rtc, int8_t clockOffset, int32_t clockDrift);
 
 // Define the platform abstraction layer data structures for RTC
 // software emulation when a dedicated RTC peripheral is not available.
@@ -344,6 +385,58 @@ typedef struct gmosPalRtcConfig_t {
  * structure for software emulation.
  */
 typedef struct gmosPalRtcState_t {
+
+    // Allocate memory for the counter update task.
+    gmosTaskState_t timerTask;
+
+    // Specify the timestamp of the last sub-second increment, taken
+    // from the platform timer.
+    uint32_t subSecTimestamp;
+
+    // Specify the sub-second counter. This will wrap once per second,
+    // incrementing the RTC seconds counter.
+    uint32_t subSecCounter;
+
+    // Specify the per-tick sub-second calibration adjustment. This
+    // will be adjusted to track the external reference clock.
+    int32_t subSecCalibration;
+
+    // This is the two digit year, expressed as an integer value from
+    // 0 to 99 and representing years 2000 to 2099.
+    uint8_t year;
+
+    // This is the two digit year, expressed as a BCD value from 0 to
+    // 99 and representing years 2000 to 2099.
+    uint8_t yearBcd;
+
+    // This is the month of the year, as a BCD value from 1 to 12.
+    uint8_t monthBcd;
+
+    // This is the day of the month, as a BCD value from 1 to 31.
+    uint8_t dayOfMonthBcd;
+
+    // This is the day of the week, where 1 represents Monday and 7
+    // represents Sunday.
+    uint8_t dayOfWeek;
+
+    // This is the hours field, as a BCD value from 0 to 23.
+    uint8_t hoursBcd;
+
+    // This is the minutes field, as a BCD value from 0 to 59.
+    uint8_t minutesBcd;
+
+    // This is the seconds field, as a BCD value from 0 to 59.
+    uint8_t secondsBcd;
+
+    // This is the local time zone indicator. It represents the UTC
+    // timezone offset as a signed number of quarter hours, from
+    // -12 hours (ie, -48) up to +14 hours (ie, +56).
+    int8_t timeZone;
+
+    // This is the daylight saving flag. It is set to zero if daylight
+    // saving is not in effect and a non-zero value if daylight saving
+    // is active.
+    uint8_t daylightSaving;
 
 } gmosPalRtcState_t;
 

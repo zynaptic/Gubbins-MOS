@@ -25,6 +25,7 @@
 #include <stdbool.h>
 
 #include "gmos-config.h"
+#include "gmos-platform.h"
 #include "gmos-driver-rtc.h"
 #include "stm32-device.h"
 #include "stm32-driver-rtc.h"
@@ -33,15 +34,80 @@
 #if !GMOS_CONFIG_RTC_SOFTWARE_EMULATION
 
 /*
+ * Specify the gain for the time offset error, expressed as parts per
+ * 2^20. The reciprocal of this can be interpreted as the time taken to
+ * correct for a one second offset error given no other adjustments.
+ */
+#define GMOS_DRIVER_RTC_OFFSET_GAIN 12        // 24 hour correction.
+
+/*
+ * Specify the gain for the clock drift error, which is implemented as
+ * a right shift operation such that the gain is 1/2^N.
+ */
+#define GMOS_DRIVER_RTC_DRIFT_GAIN_SHIFT 3    // 1/8 gain correction.
+
+/*
+ * Specify the limiting factor for the clock calibration corrections.
+ * All calibration corrections will be saturated at this level.
+ */
+#define GMOS_DRIVER_RTC_CORRECTION_LIMIT 64   // No more than 64 ppm.
+
+/*
+ * Sets the RTC calibration register to the specified value.
+ */
+static int32_t gmosPalRtcSetCalibration (int32_t calibration)
+{
+    uint32_t regValue;
+    uint32_t calmValue;
+
+    // Restrict the calibration setting to the valid range.
+    if (calibration > 512) {
+        calibration = 512;
+    } else if (calibration < -511) {
+        calibration = -511;
+    }
+
+    // Disable RTC write protection.
+    RTC->WPR = 0xCA;
+    RTC->WPR = 0x53;
+
+    // Check for recalibration register ready.
+    while ((RTC->ISR & RTC_ISR_RECALPF) != 0) {};
+
+    // Write the new calibration values to the RTC.
+    regValue = RTC->CALR;
+    if (calibration > 0) {
+        calmValue = calibration - 512;
+        regValue |= RTC_CALR_CALP;
+    } else {
+        calmValue = calibration;
+        regValue &= ~RTC_CALR_CALP;
+    }
+    regValue &= ~RTC_CALR_CALM_Msk;
+    regValue |= ((-calmValue) << RTC_CALR_CALM_Pos) & RTC_CALR_CALM_Msk;
+    RTC->CALR = regValue;
+
+    // Enable RTC write protection.
+    RTC->WPR = 0xFF;
+    return calibration;
+}
+
+/*
  * Initialises a real time clock for subsequent use. The RTC clock is
  * set up as part of the device clock initialisation process, and the
  * default configuration is correct for use with the 32.7768 kHz
  * external clock. The time zone defaults to UTC+0 on reset.
  */
-bool gmosPalRtcInit (gmosDriverRtc_t* rtc)
+bool gmosPalRtcInit (gmosDriverRtc_t* rtc, int32_t calibration)
 {
-    gmosPalRtcState_t* palData = rtc->palData;
-    palData->timeZone = 0;
+    // Ensure the power control DBP bit is set to enable RTC clock
+    // domain register access.
+    PWR->CR |= PWR_CR_DBP;
+    while ((PWR->CR & PWR_CR_DBP) == 0) {};
+
+    // Assign the initial RTC calibration and time zone settings.
+    gmosPalRtcSetCalibration (calibration);
+    rtc->palData->timeZone = 0;
     return true;
 }
 
@@ -56,6 +122,10 @@ bool gmosDriverRtcGetTime (
     uint32_t timeValue;
     uint32_t dateValue;
     uint32_t checkValue;
+
+    // Ensure that the RTC shadow registers have been synchronised after
+    // a clock adjustment.
+    while ((RTC->ISR & RTC_ISR_RSF) == 0) {};
 
     // To avoid race conditions between the time and date registers,
     // the time is read first, then the date, followed by a second read
@@ -105,11 +175,6 @@ bool gmosPalRtcSetTime (
     uint32_t timeValue;
     uint32_t dateValue;
 
-    // Ensure the power control DBP bit is set to enable RTC clock
-    // domain register access.
-    PWR->CR |= PWR_CR_DBP;
-    while ((PWR->CR & PWR_CR_DBP) == 0) {};
-
     // Disable RTC write protection.
     RTC->WPR = 0xCA;
     RTC->WPR = 0x53;
@@ -150,6 +215,51 @@ bool gmosPalRtcSetTime (
 }
 
 /*
+ * Requests a clock source adjustment from the platform specific real
+ * time clock, given the current clock offset and drift relative to the
+ * reference clock.
+ */
+bool gmosPalRtcAdjustClock (
+    gmosDriverRtc_t* rtc, int8_t clockOffset, int32_t clockDrift)
+{
+    uint32_t regValue;
+    int32_t calibration;
+    int32_t adjustment;
+
+    // Read the current calibration setting from the RTC, which is an
+    // offset in units of parts per 2^20.
+    regValue = RTC->CALR;
+    calibration = -((regValue & RTC_CALR_CALM_Msk) >> RTC_CALR_CALM_Pos);
+    if ((regValue & RTC_CALR_CALP) != 0) {
+        calibration += 512;
+    }
+
+    // Calculate the adjustment required to compensate for clock drift,
+    // with rounding.
+    adjustment = (-clockDrift) +
+        (1 << (GMOS_DRIVER_RTC_DRIFT_GAIN_SHIFT - 1));
+    adjustment >>= GMOS_DRIVER_RTC_DRIFT_GAIN_SHIFT;
+
+    // Calculate the scaled adjustment derived from the clock offset.
+    adjustment += (-clockOffset) * GMOS_DRIVER_RTC_OFFSET_GAIN;
+    if (adjustment > GMOS_DRIVER_RTC_CORRECTION_LIMIT) {
+        adjustment = GMOS_DRIVER_RTC_CORRECTION_LIMIT;
+    } else if (adjustment < -GMOS_DRIVER_RTC_CORRECTION_LIMIT) {
+        adjustment = -GMOS_DRIVER_RTC_CORRECTION_LIMIT;
+    }
+
+    // Adjust the calibration value to modify the clock frequency.
+    calibration += adjustment;
+    calibration = gmosPalRtcSetCalibration (calibration);
+
+    // Log RTC updates if required.
+    GMOS_LOG_FMT (LOG_VERBOSE,
+        "STM32 RTC adjustment %d -> calibration %d.",
+        adjustment, calibration);
+    return true;
+}
+
+/*
  * Sets the current time zone for the real time clock, using platform
  * specific hardware support when available.
  */
@@ -177,6 +287,7 @@ bool gmosDriverRtcSetDaylightSaving (
 {
     uint32_t regValue;
     uint32_t hoursValue;
+    bool isAdjusted;
 
     // Make no change if the settings are consistent.
     regValue = RTC->CR;
@@ -187,23 +298,33 @@ bool gmosDriverRtcSetDaylightSaving (
         return true;
     }
 
+    // Disable RTC write protection.
+    RTC->WPR = 0xCA;
+    RTC->WPR = 0x53;
+
     // Implement 'spring forward'. Since this increments the hours it
     // should always work, regardless of the current hours setting.
     if (daylightSaving) {
         RTC->CR = regValue | RTC_CR_ADD1H | RTC_CR_BKP;
-        return true;
+        isAdjusted = true;
     }
 
     // Implement 'fall back'. This only works if the current hours
     // setting can be safely decremented without having a knock-on
     // effect on the days counter. The safe range is 1 to 22 hours.
-    hoursValue = (RTC->TR >> 16) & 0x3F;
-    if ((hoursValue > 0x00) && (hoursValue < 0x23)) {
-        RTC->CR = (regValue | RTC_CR_SUB1H) & ~RTC_CR_BKP;
-        return true;
-    } else {
-        return false;
+    else {
+        hoursValue = (RTC->TR >> 16) & 0x3F;
+        if ((hoursValue > 0x00) && (hoursValue < 0x23)) {
+            RTC->CR = (regValue | RTC_CR_SUB1H) & ~RTC_CR_BKP;
+            isAdjusted = true;
+        } else {
+            isAdjusted = false;
+        }
     }
+
+    // Enable RTC write protection.
+    RTC->WPR = 0xFF;
+    return isAdjusted;
 }
 
 #endif // GMOS_CONFIG_RTC_SOFTWARE_EMULATION

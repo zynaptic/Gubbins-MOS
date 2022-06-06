@@ -25,13 +25,15 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "gmos-config.h"
+#include "gmos-platform.h"
 #include "gmos-driver-rtc.h"
 
 /*
  * Specify the time synchronization tracking window as an integer number
  * of seconds.
  */
-#define GMOS_DRIVER_RTC_TRACKING_WINDOW 10
+#define GMOS_DRIVER_RTC_TRACKING_WINDOW 15
 
 /*
  * Store the standard month lengths.
@@ -322,10 +324,11 @@ bool gmosDriverRtcValidateRtcTime (gmosDriverRtcTime_t* rtcTime)
  * called for each RTC instance prior to accessing it via any of the
  * other API functions.
  */
-bool gmosDriverRtcInit (gmosDriverRtc_t* rtc, bool isMainInstance)
+bool gmosDriverRtcInit (gmosDriverRtc_t* rtc,
+    int32_t calibration, bool isMainInstance)
 {
     // First initialise the platform abstraction layer.
-    if (!gmosPalRtcInit (rtc)) {
+    if (!gmosPalRtcInit (rtc, calibration)) {
         return false;
     }
 
@@ -333,6 +336,10 @@ bool gmosDriverRtcInit (gmosDriverRtc_t* rtc, bool isMainInstance)
     if (isMainInstance) {
         mainInstance = rtc;
     }
+
+    // Clear the local RTC state.
+    rtc->lastRefTimestamp = 0;
+    rtc->lastRtcTimestamp = 0;
     return true;
 }
 
@@ -376,6 +383,10 @@ bool gmosDriverRtcSyncTime (
     gmosDriverRtcTime_t currentTime;
     gmosDriverRtcTime_t syncTime;
     uint32_t currentUtc;
+    uint32_t refTimeElapsed;
+    uint32_t rtcTimeElapsed;
+    int32_t clockDrift;
+    int8_t clockOffset;
 
     // Get the current RTC time settings.
     if ((!gmosDriverRtcGetTime (rtc, &currentTime)) ||
@@ -390,14 +401,55 @@ bool gmosDriverRtcSyncTime (
         if (!gmosDriverRtcConvertFromUtcTime (&syncTime, utcTime,
             currentTime.timeZone, currentTime.daylightSaving)) {
             return false;
+        } else if (!gmosPalRtcSetTime (rtc, &syncTime)) {
+            return false;
         } else {
-            return gmosPalRtcSetTime (rtc, &syncTime);
+            GMOS_LOG_FMT (LOG_VERBOSE,
+                "RTC Common : Time %d out of tracking, set to %d UTC.",
+                currentUtc, utcTime);
+            rtc->lastRefTimestamp = utcTime;
+            rtc->lastRtcTimestamp = utcTime;
+            return true;
         }
     }
 
-    // Implement fine adjustment within the tracking window.
-    else {
-        // Not currently implemented.
+    // Determine the current clock offset and drift since the last
+    // synchronisation cycle. The offset and drift values are negative
+    // if the RTC is running slow and positive if it is running fast.
+    refTimeElapsed = utcTime - rtc->lastRefTimestamp;
+    rtcTimeElapsed = currentUtc - rtc->lastRtcTimestamp;
+    clockDrift = (int32_t) (rtcTimeElapsed - refTimeElapsed);
+    clockOffset = (int8_t) (currentUtc - utcTime);
+
+    // Skip clock adjustment if the RTC matches the reference.
+    if ((clockOffset == 0) && (clockDrift == 0)) {
+        GMOS_LOG_FMT (LOG_VERBOSE,
+            "RTC Common : Time already synchronised to %d UTC.", utcTime);
         return true;
     }
+
+    // Normalise the clock drift to parts per 2^20. This is about the
+    // same as parts per million and corresponds to approximately one
+    // second in 12 days. Conventional rounding is used.
+    clockDrift = (clockDrift << 21) / ((int32_t) refTimeElapsed);
+    clockDrift = (clockDrift + 1) / 2;
+
+    // Run the platform specific clock source adjustment, given the
+    // calculated clock offset and drift.
+    if (!gmosPalRtcAdjustClock (rtc, clockOffset, clockDrift)) {
+        return false;
+    }
+
+    // Update the local timestamp values ready for the next cycle. This
+    // only occurs if there has been a detected clock drift, so that
+    // slow clock drift corrections are generated using their full
+    // elapsed time.
+    if (clockDrift != 0) {
+        rtc->lastRefTimestamp = utcTime;
+        rtc->lastRtcTimestamp = currentUtc;
+    }
+    GMOS_LOG_FMT (LOG_VERBOSE,
+        "RTC Common : Time offset %d and drift %d adjusted to %d UTC.",
+        clockOffset, clockDrift, utcTime);
+    return true;
 }
