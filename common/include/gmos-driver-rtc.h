@@ -258,6 +258,19 @@ bool gmosDriverRtcGetTime (
     gmosDriverRtc_t* rtc, gmosDriverRtcTime_t* currentTime);
 
 /**
+ * Retrieves the current internal calibration setting for the real time
+ * clock.
+ * @param rtc This is the RTC data structure which is associated with
+ *     the real time clock to be accessed.
+ * @return Returns the internal calibration setting for the RTC,
+ *     expressed as parts per 2^20 (about the same as parts per
+ *     million). A positive value indicates that the RTC is running
+ *     faster than its nominal frequency, and a negative value
+ *     indiciates that it is running slower.
+ */
+int32_t gmosDriverRtcGetCalibration (gmosDriverRtc_t* rtc);
+
+/**
  * Assigns the specified time and date to the real time clock,
  * regardless of the current time and date value. The new time value
  * will be checked for a valid time and date.

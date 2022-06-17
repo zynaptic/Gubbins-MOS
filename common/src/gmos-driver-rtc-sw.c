@@ -288,6 +288,24 @@ bool gmosDriverRtcGetTime (
 }
 
 /*
+ * Retrieves the current internal calibration setting for the real time
+ * clock.
+ */
+int32_t gmosDriverRtcGetCalibration (gmosDriverRtc_t* rtc)
+{
+    gmosPalRtcState_t* palData = rtc->palData;
+    int64_t scaledCalibration;
+
+    // Scale the calibration value from the subsecond increment to the
+    // parts per 2^20 representation, with conventional rounding.
+    scaledCalibration = (int64_t) palData->subSecCalibration;
+    scaledCalibration <<= 21;
+    scaledCalibration /= (int64_t) GMOS_DRIVER_RTC_SUBSECOND_INCREMENT;
+    scaledCalibration = (scaledCalibration + 1) / 2;
+    return (int32_t) scaledCalibration;
+}
+
+/*
  * Assigns the specified time and date to the real time clock,
  * regardless of the current time and date value. The new time value
  * must specify a valid time and date. If necessary, this can be checked

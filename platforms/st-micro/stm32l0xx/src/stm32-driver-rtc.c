@@ -53,6 +53,11 @@
 #define GMOS_DRIVER_RTC_CORRECTION_LIMIT 64   // No more than 64 ppm.
 
 /*
+ * Specify the backup register to be used for time zone storage.
+ */
+#define GMOS_DRIVER_RTC_TIME_ZONE_REG (RTC->BKP4R)
+
+/*
  * Sets the RTC calibration register to the specified value.
  */
 static int32_t gmosPalRtcSetCalibration (int32_t calibration)
@@ -105,9 +110,8 @@ bool gmosPalRtcInit (gmosDriverRtc_t* rtc, int32_t calibration)
     PWR->CR |= PWR_CR_DBP;
     while ((PWR->CR & PWR_CR_DBP) == 0) {};
 
-    // Assign the initial RTC calibration and time zone settings.
+    // Assign the initial RTC calibration setting.
     gmosPalRtcSetCalibration (calibration);
-    rtc->palData->timeZone = 0;
     return true;
 }
 
@@ -118,10 +122,10 @@ bool gmosPalRtcInit (gmosDriverRtc_t* rtc, int32_t calibration)
 bool gmosDriverRtcGetTime (
     gmosDriverRtc_t* rtc, gmosDriverRtcTime_t* currentTime)
 {
-    gmosPalRtcState_t* palData = rtc->palData;
     uint32_t timeValue;
     uint32_t dateValue;
-    uint32_t checkValue;
+    uint32_t timeCheckValue;
+    uint32_t dateCheckValue;
 
     // Ensure that the RTC shadow registers have been synchronised after
     // a clock adjustment.
@@ -129,13 +133,18 @@ bool gmosDriverRtcGetTime (
 
     // To avoid race conditions between the time and date registers,
     // the time is read first, then the date, followed by a second read
-    // of the time register. If there is no change in the two time
-    // register values, the register values are consistent.
+    // of the time and date registers. If there is no change in the two
+    // sets of register values, the register values are consistent.
     do {
         timeValue = RTC->TR;
         dateValue = RTC->DR;
-        checkValue = RTC->TR;
-    } while (timeValue != checkValue);
+        timeCheckValue = RTC->TR;
+        dateCheckValue = RTC->DR;
+    } while ((timeValue != timeCheckValue) ||
+        (dateValue != dateCheckValue));
+
+    // Clear the shadow register synchronisation flag after reads.
+    RTC->ISR &= ~RTC_ISR_RSF;
 
     // Extract the time register fields.
     currentTime->seconds = timeValue & 0x7F;
@@ -157,9 +166,28 @@ bool gmosDriverRtcGetTime (
         currentTime->daylightSaving = 0;
     }
 
-    // The current time zone information is stored in RAM.
-    currentTime->timeZone = palData->timeZone;
+    // The current time zone information is stored in a backup register.
+    currentTime->timeZone = GMOS_DRIVER_RTC_TIME_ZONE_REG;
     return true;
+}
+
+/*
+ * Retrieves the current internal calibration setting for the real time
+ * clock.
+ */
+int32_t gmosDriverRtcGetCalibration (gmosDriverRtc_t* rtc)
+{
+    uint32_t regValue;
+    int32_t calibration;
+
+    // Read the current calibration setting from the RTC, which is an
+    // offset in units of parts per 2^20.
+    regValue = RTC->CALR;
+    calibration = -((regValue & RTC_CALR_CALM_Msk) >> RTC_CALR_CALM_Pos);
+    if ((regValue & RTC_CALR_CALP) != 0) {
+        calibration += 512;
+    }
+    return calibration;
 }
 
 /*
@@ -171,7 +199,6 @@ bool gmosDriverRtcGetTime (
 bool gmosPalRtcSetTime (
     gmosDriverRtc_t* rtc, gmosDriverRtcTime_t* newTime)
 {
-    gmosPalRtcState_t* palData = rtc->palData;
     uint32_t timeValue;
     uint32_t dateValue;
 
@@ -203,11 +230,12 @@ bool gmosPalRtcSetTime (
         RTC->CR &= ~RTC_CR_BKP;
     }
 
-    // Store the current time zone in RAM.
-    palData->timeZone = newTime->timeZone;
+    // Store the current time zone in a backup register.
+    GMOS_DRIVER_RTC_TIME_ZONE_REG = newTime->timeZone;
 
     // Clear the initialisation flag, allowing the RTC to run.
     RTC->ISR &= ~RTC_ISR_INIT;
+    while ((RTC->ISR & RTC_ISR_INITF) != 0) {};
 
     // Enable RTC write protection.
     RTC->WPR = 0xFF;
@@ -222,17 +250,12 @@ bool gmosPalRtcSetTime (
 bool gmosPalRtcAdjustClock (
     gmosDriverRtc_t* rtc, int8_t clockOffset, int32_t clockDrift)
 {
-    uint32_t regValue;
     int32_t calibration;
     int32_t adjustment;
 
     // Read the current calibration setting from the RTC, which is an
     // offset in units of parts per 2^20.
-    regValue = RTC->CALR;
-    calibration = -((regValue & RTC_CALR_CALM_Msk) >> RTC_CALR_CALM_Pos);
-    if ((regValue & RTC_CALR_CALP) != 0) {
-        calibration += 512;
-    }
+    calibration = gmosDriverRtcGetCalibration (rtc);
 
     // Calculate the adjustment required to compensate for clock drift,
     // with rounding.
@@ -266,15 +289,13 @@ bool gmosPalRtcAdjustClock (
 bool gmosDriverRtcSetTimeZone (
     gmosDriverRtc_t* rtc, int8_t timeZone)
 {
-    gmosPalRtcState_t* palData = rtc->palData;
-
     // Check for valid time zone range.
     if ((timeZone < -48) || (timeZone > 56)) {
         return false;
     }
 
-    // Store the current time zone in RAM.
-    palData->timeZone = timeZone;
+    // Store the current time zone in a backup register.
+    GMOS_DRIVER_RTC_TIME_ZONE_REG = timeZone;
     return true;
 }
 
@@ -286,8 +307,7 @@ bool gmosDriverRtcSetDaylightSaving (
     gmosDriverRtc_t* rtc, bool daylightSaving)
 {
     uint32_t regValue;
-    uint32_t hoursValue;
-    bool isAdjusted;
+    uint32_t hoursMinsValue;
 
     // Make no change if the settings are consistent.
     regValue = RTC->CR;
@@ -298,6 +318,17 @@ bool gmosDriverRtcSetDaylightSaving (
         return true;
     }
 
+    // Perform safety check for 'fall back'. This only works if the
+    // current hours setting can be safely decremented without having a
+    // knock-on effect on the days counter. The safe range is 1:05 to
+    // 23:55 hours.
+    if (!daylightSaving) {
+        hoursMinsValue = (RTC->TR >> 8) & 0x3F7F;
+        if ((hoursMinsValue > 0x2355) || (hoursMinsValue < 0x0105)) {
+            return false;
+        }
+    }
+
     // Disable RTC write protection.
     RTC->WPR = 0xCA;
     RTC->WPR = 0x53;
@@ -306,25 +337,17 @@ bool gmosDriverRtcSetDaylightSaving (
     // should always work, regardless of the current hours setting.
     if (daylightSaving) {
         RTC->CR = regValue | RTC_CR_ADD1H | RTC_CR_BKP;
-        isAdjusted = true;
     }
 
-    // Implement 'fall back'. This only works if the current hours
-    // setting can be safely decremented without having a knock-on
-    // effect on the days counter. The safe range is 1 to 22 hours.
+    // Implement 'fall back'. This should always work if the prior
+    // safety check was successful.
     else {
-        hoursValue = (RTC->TR >> 16) & 0x3F;
-        if ((hoursValue > 0x00) && (hoursValue < 0x23)) {
-            RTC->CR = (regValue | RTC_CR_SUB1H) & ~RTC_CR_BKP;
-            isAdjusted = true;
-        } else {
-            isAdjusted = false;
-        }
+        RTC->CR = (regValue | RTC_CR_SUB1H) & ~RTC_CR_BKP;
     }
 
     // Enable RTC write protection.
     RTC->WPR = 0xFF;
-    return isAdjusted;
+    return true;
 }
 
 #endif // GMOS_CONFIG_RTC_SOFTWARE_EMULATION

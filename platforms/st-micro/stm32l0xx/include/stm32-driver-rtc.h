@@ -44,9 +44,6 @@ typedef struct gmosPalRtcConfig_t {
  */
 typedef struct gmosPalRtcState_t {
 
-    // Specifies the current time zone setting.
-    int8_t timeZone;
-
 } gmosPalRtcState_t;
 
 #endif // GMOS_CONFIG_RTC_SOFTWARE_EMULATION
