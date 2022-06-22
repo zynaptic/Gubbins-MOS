@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2022 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -220,6 +220,12 @@ uint32_t gmosSchedulerStep (void)
     uint32_t execDelay = 0;
     gmosTaskState_t* queuedTask;
 
+    // Lock out host operating system access while the scheduler is
+    // active.
+    if (GMOS_CONFIG_HOST_OS_SUPPORT) {
+        while (!gmosPalHostOsMutexLock (0xFFFF)) {};
+    }
+
     // Process waiting event consumer tasks, marking them ready to run.
     queuedTask = gmosEventGetNextConsumer ();
     while (queuedTask != NULL) {
@@ -267,6 +273,11 @@ uint32_t gmosSchedulerStep (void)
     else if (stayAwakeCounter == 0) {
         int32_t delay = gmosSchedulerGetPendingTaskDelay (&scheduledTasks);
         execDelay = (delay < 0) ? 0 : (uint32_t) delay;
+    }
+
+    // Allow host operating system access while the scheduler is idle.
+    if (GMOS_CONFIG_HOST_OS_SUPPORT) {
+        gmosPalHostOsMutexUnlock ();
     }
     return execDelay;
 }

@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2021 Zynaptic Limited
+ * Copyright 2020-2022 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -43,14 +43,31 @@ static const char* logLevelNames [] = {
     "GMOS-WARNING", "GMOS-ERROR  ", "GMOS-FAILURE" };
 
 // Specify the platform mutex lock state variables.
-static uint32_t mutexLockCount = 0;
-static OSAL_CRITSECT_DATA_TYPE mutexLockState;
+static uint32_t palMutexLockCount = 0;
+static OSAL_CRITSECT_DATA_TYPE palMutexLockState;
+
+// Specify host operating system mutex lock state variables.
+#if GMOS_CONFIG_HOST_OS_SUPPORT
+static OSAL_MUTEX_DECLARE (hostOsMutexLockState);
+#endif
+
+// Specify operating system specific variables for the latest version
+// of FreeRTOS
+#if GMOS_CONFIG_HOST_OS_SUPPORT && (OSAL_USE_RTOS == 9)
+#include "FreeRTOS.h"
+#include "task.h"
+static TaskHandle_t hostOsTaskHandle = NULL;
+#endif
 
 /*
  * Initialises the platform abstraction layer on startup.
  */
 void gmosPalInit (void)
 {
+    // Initialise the host operating system mutex if required.
+#if GMOS_CONFIG_HOST_OS_SUPPORT
+    OSAL_MUTEX_Create (&hostOsMutexLockState);
+#endif
 }
 
 /*
@@ -69,10 +86,10 @@ void gmosPalExit (uint8_t status)
 void gmosPalMutexLock (void)
 {
     // Ensure interrupts are disabled before modifying the lock count.
-    if (mutexLockCount == 0) {
-        mutexLockState = OSAL_CRIT_Enter (OSAL_CRIT_TYPE_HIGH);
+    if (palMutexLockCount == 0) {
+        palMutexLockState = OSAL_CRIT_Enter (OSAL_CRIT_TYPE_HIGH);
     }
-    mutexLockCount += 1;
+    palMutexLockCount += 1;
 }
 
 /*
@@ -81,11 +98,39 @@ void gmosPalMutexLock (void)
 void gmosPalMutexUnlock (void)
 {
     // Decrement the lock count and enable interrupts if required.
-    mutexLockCount -= 1;
-    if (mutexLockCount == 0) {
-        OSAL_CRIT_Leave (OSAL_CRIT_TYPE_HIGH, mutexLockState);
+    palMutexLockCount -= 1;
+    if (palMutexLockCount == 0) {
+        OSAL_CRIT_Leave (OSAL_CRIT_TYPE_HIGH, palMutexLockState);
     }
 }
+
+/*
+ * Claims the host operating system mutex lock. This is only used for
+ * configurations where the GubbinsMOS platform is implemented within a
+ * single thread of a multithreaded host operating system, such as a
+ * conventional RTOS or a UNIX based emulation environment.
+ */
+#if GMOS_CONFIG_HOST_OS_SUPPORT
+bool gmosPalHostOsMutexLock (uint16_t timeout)
+{
+    OSAL_RESULT osalResult;
+    if (timeout == 0xFFFF) {
+        timeout = OSAL_WAIT_FOREVER;
+    }
+    osalResult = OSAL_MUTEX_Lock (&hostOsMutexLockState, timeout);
+    return (osalResult == OSAL_RESULT_TRUE) ? true : false;
+}
+#endif
+
+/*
+ * Releases the host operating system mutex lock.
+ */
+#if GMOS_CONFIG_HOST_OS_SUPPORT
+void gmosPalHostOsMutexUnlock (void)
+{
+    OSAL_MUTEX_Unlock (&hostOsMutexLockState);
+}
+#endif
 
 /*
  * Provides a platform specific method of adding entropy to the random
@@ -194,16 +239,64 @@ uint32_t gmosPalGetTimer (void) {
 
 /*
  * Requests that the platform abstraction layer enter idle state for
- * the specified number of system timer ticks.
+ * the specified number of system timer ticks. The GubbinsMOS native
+ * version of this call just implements busy waiting.
  */
+#if !GMOS_CONFIG_HOST_OS_SUPPORT
 void gmosPalIdle (uint32_t duration)
 {
 }
+#endif
 
 /*
  * Requests that the platform abstraction layer wake the scheduler from
- * its idle state.
+ * its idle state. The GubbinsMOS native version of this call has no
+ * effect.
  */
+#if !GMOS_CONFIG_HOST_OS_SUPPORT
 void gmosPalWake (void)
 {
 }
+#endif
+
+/*
+ * Requests that the platform abstraction layer enter idle state for
+ * the specified number of system timer ticks. The FreeRTOS version of
+ * this call uses the FreeRTOS timed task delay function.
+ */
+#if GMOS_CONFIG_HOST_OS_SUPPORT && (OSAL_USE_RTOS == 9)
+void gmosPalIdle (uint32_t duration)
+{
+    TickType_t hostOsTicks;
+
+    // This function should only ever be called by the GubbinsMOS
+    // thread. It uses lazy initialisation to set the task handle on
+    // the first call from the GubbinsMOS scheduler loop.
+    if (hostOsTaskHandle == NULL) {
+        hostOsTaskHandle = xTaskGetCurrentTaskHandle ();
+    }
+
+    // If the GubbinsMOS scheduler and FreeRTOS scheduler are using the
+    // same system timer, the time base conversion should optimise out.
+    if (GMOS_CONFIG_SYSTEM_TIMER_FREQUENCY == configTICK_RATE_HZ) {
+        hostOsTicks = duration;
+    } else {
+        hostOsTicks = pdMS_TO_TICKS (GMOS_TICKS_TO_MS (duration));
+    }
+    vTaskDelay (hostOsTicks);
+}
+#endif
+
+/*
+ * Requests that the platform abstraction layer wake the scheduler from
+ * its idle state. The FreeRTOS version of this call uses the delay
+ * cancellation function.
+ */
+#if GMOS_CONFIG_HOST_OS_SUPPORT && (OSAL_USE_RTOS == 9)
+void gmosPalWake (void)
+{
+    if (hostOsTaskHandle != NULL) {
+        xTaskAbortDelay (hostOsTaskHandle);
+    }
+}
+#endif

@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2021 Zynaptic Limited
+ * Copyright 2020-2022 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -137,6 +137,20 @@ void gmosPalInit (void);
 void gmosAppInit (void);
 
 /**
+ * Initialises and starts the GubbinsMOS scheduler when it is being run
+ * in the context of a host operating system thread. This will
+ * initialise any required host operating system resources before
+ * starting the GubbinsMOS execution thread. This new execution thread
+ * will carry out all GubbinsMOS initialisation, including calls to
+ * 'gmosPalInit' and 'gmosAppInit' before entering the GubbinsMOS
+ * scheduler loop.
+ * @return Returns a boolean value which will be set to 'true' if the
+ *     new GubbinsMOS execution thread has been started and 'false'
+ *     otherwise.
+ */
+bool gmosPalHostOsInit (void);
+
+/**
  * Converts the specified number of milliseconds to the closest number
  * of system timer ticks (rounding down).
  * @param _ms_ This is the number of milliseconds that are to be
@@ -207,11 +221,36 @@ void gmosPalMutexLock (void);
 
 /**
  * Releases the main platform mutex lock. This is a recursive counting
- * mutex, so the unlock request must be called once for each prior lock
- * request. For most microcontroller platforms this will map to a
- * global interrupt enable request.
+ * mutex, so the unlock request must be called exactly once for each
+ * prior lock request. For most microcontroller platforms this will map
+ * to a global interrupt enable request.
  */
 void gmosPalMutexUnlock (void);
+
+/**
+ * Claims the host operating system mutex lock. This is only used for
+ * configurations where the GubbinsMOS platform is implemented within a
+ * single thread of a multithreaded host operating system, such as a
+ * conventional RTOS or a UNIX based emulation environment. Application
+ * code running outside the GubbinsMOS scheduler loop must claim this
+ * mutex prior to interacting with any GubbinsMOS software components
+ * or any user application code that is running inside the GubbinsMOS
+ * scheduler loop. This is a non-recursive mutex, so may be called at
+ * most once from the same execution context.
+ * @param timeout This is the mutex lock request timeout to be used,
+ *     expressed as an integer number of milliseconds. A value of
+ *     0xFFFF implies that no timeout should be used.
+ * @return Returns a boolean value which will be set to 'true' if the
+ *     mutex lock was obtained and 'false' if a timeout occurred.
+ */
+bool gmosPalHostOsMutexLock (uint16_t timeout);
+
+/**
+ * Releases the host operating system mutex lock. This is a
+ * non-recursive mutex, so the unlock request must be called exactly
+ * once after each prior lock request.
+ */
+void gmosPalHostOsMutexUnlock (void);
 
 /**
  * Provides a platform specific method of adding entropy to the random

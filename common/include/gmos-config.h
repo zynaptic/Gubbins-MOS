@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2022 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,6 +52,26 @@
  */
 #ifndef GMOS_CONFIG_BACKGROUND_TASK_INTERVAL
 #define GMOS_CONFIG_BACKGROUND_TASK_INTERVAL 10
+#endif
+
+/**
+ * This configuration option specifies whether the GubbinsMOS platform
+ * is hosted by a multithreaded operating system, such as a conventional
+ * RTOS or a UNIX based emulation environment.
+ */
+#ifndef GMOS_CONFIG_HOST_OS_SUPPORT
+#define GMOS_CONFIG_HOST_OS_SUPPORT false
+#endif
+
+/**
+ * This configuration option specifies the size of the 'C' language call
+ * stack to be used for platforms where this needs to be explicitly
+ * stated. It is expressed as an integer number of bytes. Most platforms
+ * will ignore this setting and use the maximum amount of available
+ * memory after all static memory allocations have been accounted for.
+ */
+#ifndef GMOS_CONFIG_STACK_SIZE
+#define GMOS_CONFIG_STACK_SIZE 0x10000
 #endif
 
 /**

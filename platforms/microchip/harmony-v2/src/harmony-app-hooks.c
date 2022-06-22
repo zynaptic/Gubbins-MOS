@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2022 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,10 @@
 #include "gmos-scheduler.h"
 #include "gmos-mempool.h"
 
+// These task hook functions are not used when a host operating system
+// is in use.
+#if !GMOS_CONFIG_HOST_OS_SUPPORT
+
 // Derive the names of the Harmony function hooks.
 #define HOOK_NAME_CONCATENATE(_a_, _b_) _a_ ## _b_
 #define HOOK_NAME_APPEND(_a_, _b_) HOOK_NAME_CONCATENATE(_a_, _b_)
@@ -51,7 +55,6 @@ void HARMONY_INIT_HOOK_NAME (void) {
  * tick.
  */
 void HARMONY_TASK_HOOK_NAME (void) {
-    uint32_t idlePeriod;
 
     // Perform application initialisation on first run. This approach
     // ensures that all the Harmony system tasks have been initialised
@@ -68,13 +71,13 @@ void HARMONY_TASK_HOOK_NAME (void) {
         // Initialise the application code.
         gmosAppInit ();
 
-        // Enter the scheduler loop.
+        // Indicate scheduler startup.
         gmosLifecycleNotify (SCHEDULER_STARTUP);
     }
 
-    // Run a single scheduler step.
-    idlePeriod = gmosSchedulerStep ();
-
-    // Idle for the specified period before re-running the task.
-    gmosPalIdle (idlePeriod);
+    // Run a single scheduler step. Do not use the idle function, since
+    // other Harmony framework tasks will still need to run.
+    gmosSchedulerStep ();
 }
+
+#endif // GMOS_CONFIG_HOST_OS_SUPPORT

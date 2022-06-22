@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2021 Zynaptic Limited
+ * Copyright 2020-2022 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -36,7 +36,7 @@
 typedef struct gmosPalTimerConfig_t {
 
     // Specifies the Harmony driver index (for example DRV_TMR_INDEX_1).
-    // Note that this corresponds to the SPI driver instance specified
+    // Note that this corresponds to the timer driver instance specified
     // in the Harmony configuration tool, not the hardware timer ID.
     SYS_MODULE_INDEX harmonyDeviceIndex;
 
@@ -58,7 +58,7 @@ typedef struct gmosPalTimerState_t {
 
 // Device not currently supported.
 #else
-#error ("Microchip Harmony Target Device Not Supported By Timer Driver");
+#error "Microchip Harmony Target Device Not Supported By Timer Driver."
 #endif
 
 #endif // HARMONY_DRIVER_TIMER_H
