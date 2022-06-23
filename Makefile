@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2020-2021 Zynaptic Limited
+# Copyright 2020-2022 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,10 +35,10 @@ endif
 
 # Specifies the path to the target platform directory. By default this
 # is the STM32L0XX target.
-ifndef TARGET_PLATFORM
-TARGET_PLATFORM = st-micro/stm32l0xx
+ifndef GMOS_TARGET_PLATFORM
+GMOS_TARGET_PLATFORM = st-micro/stm32l0xx
 endif
-TARGET_PLATFORM_DIR = ${GMOS_GIT_DIR}/platforms/${TARGET_PLATFORM}
+TARGET_PLATFORM_DIR = ${GMOS_GIT_DIR}/platforms/${GMOS_TARGET_PLATFORM}
 
 # Compile the platform specific demo application by default.
 ifndef GMOS_APP_DIR
@@ -47,8 +47,8 @@ endif
 
 # Specifies the target device to use. By default this is the STM32L010RB
 # device.
-ifndef TARGET_DEVICE
-TARGET_DEVICE = STM32L010RB
+ifndef GMOS_TARGET_DEVICE
+GMOS_TARGET_DEVICE = STM32L010RB
 endif
 
 # Include the platform setup makefile fragment. This defines the
@@ -82,12 +82,12 @@ COMPONENT_OBJECT_FILES = \
 
 # If one or more target radio directories have been specified, add them
 # to the set of common components.
-ifdef TARGET_RADIO_DIRS
+ifdef GMOS_TARGET_RADIO_DIRS
 RADIO_BUILD_PATH = ${GMOS_BUILD_DIR}/radios/$(DIR)
 COMPONENT_TIMESTAMPS += \
-	$(foreach DIR, ${TARGET_RADIO_DIRS}, $(RADIO_BUILD_PATH)/timestamp)
+	$(foreach DIR, ${GMOS_TARGET_RADIO_DIRS}, $(RADIO_BUILD_PATH)/timestamp)
 COMPONENT_OBJECT_FILES += \
-	$(foreach DIR, ${TARGET_RADIO_DIRS}, $(RADIO_BUILD_PATH)/*.o)
+	$(foreach DIR, ${GMOS_TARGET_RADIO_DIRS}, $(RADIO_BUILD_PATH)/*.o)
 endif
 
 # Link all the generated object files. Note that 'shell ls' is used to
@@ -110,9 +110,9 @@ include ${GMOS_GIT_DIR}/common/common-build.mk
 include ${TARGET_PLATFORM_DIR}/platform-build.mk
 
 # Include the target radio makefile fragments if specified.
-ifdef TARGET_RADIO_DIRS
+ifdef GMOS_TARGET_RADIO_DIRS
 RADIO_SOURCE_PATH = ${GMOS_GIT_DIR}/radios/$(DIR)
-include $(foreach DIR, ${TARGET_RADIO_DIRS}, $(RADIO_SOURCE_PATH)/radio-build.mk)
+include $(foreach DIR, ${GMOS_TARGET_RADIO_DIRS}, $(RADIO_SOURCE_PATH)/radio-build.mk)
 endif
 
 # Remove all build files.

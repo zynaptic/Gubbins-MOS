@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2020 Zynaptic Limited
+# Copyright 2020-2022 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -56,7 +56,7 @@ PLATFORM_OBJ_FILES = ${addprefix ${LOCAL_DIR}/, ${PLATFORM_OBJ_FILE_NAMES}}
 
 # Generate the linker script for the specified target device.
 ${LOCAL_DIR}/target.ld : ${TARGET_PLATFORM_DIR}/tools/linker-script-gen.py | ${LOCAL_DIR}
-	python3 $< --device ${TARGET_DEVICE} --output $@
+	python3 $< --device ${GMOS_TARGET_DEVICE} --output $@
 
 # Run the assembler with the standard options.
 ${LOCAL_DIR}/%.o : ${TARGET_PLATFORM_DIR}/src/%.s | ${LOCAL_DIR}
@@ -78,3 +78,7 @@ ${LOCAL_DIR}/timestamp : ${PLATFORM_OBJ_FILES} ${LOCAL_DIR}/target.ld
 # Create the local build directory.
 ${LOCAL_DIR} :
 	mkdir -p $@
+
+# Load the compiled image to flash.
+install : ${GMOS_BUILD_DIR}/firmware.bin
+	st-flash --reset write $< 0x08000000

@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2020 Zynaptic Limited
+# Copyright 2020-2022 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -55,7 +55,7 @@ CFLAGS += -ffunction-sections
 CFLAGS += -fdata-sections
 CFLAGS += -nostdlib
 CFLAGS += -lgcc
-CFLAGS += -DTARGET_DEVICE=${TARGET_DEVICE}
+CFLAGS += -DTARGET_DEVICE=${GMOS_TARGET_DEVICE}
 CFLAGS += -MMD
 
 # Linker options.
