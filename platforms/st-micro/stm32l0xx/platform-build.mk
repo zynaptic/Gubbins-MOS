@@ -79,6 +79,14 @@ ${LOCAL_DIR}/timestamp : ${PLATFORM_OBJ_FILES} ${LOCAL_DIR}/target.ld
 ${LOCAL_DIR} :
 	mkdir -p $@
 
+# Generate the firmware binary in Intel hex format.
+${GMOS_BUILD_DIR}/firmware.hex : ${GMOS_BUILD_DIR}/firmware.elf
+	${OC} -S -O ihex $< $@
+
+# Generate the firmware binary as a raw binary file.
+${GMOS_BUILD_DIR}/firmware.bin : ${GMOS_BUILD_DIR}/firmware.elf
+	${OC} -S -O binary $< $@
+
 # Load the compiled image to flash.
 install : ${GMOS_BUILD_DIR}/firmware.bin
 	st-flash --reset write $< 0x08000000

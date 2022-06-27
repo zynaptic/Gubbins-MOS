@@ -61,14 +61,6 @@ all : \
 	${GMOS_BUILD_DIR}/firmware.hex \
 	${GMOS_BUILD_DIR}/firmware.bin
 
-# Generate the firmware binary in Intel hex format.
-${GMOS_BUILD_DIR}/firmware.hex : ${GMOS_BUILD_DIR}/firmware.elf
-	${OC} -S -O ihex $< $@
-
-# Generate the firmware binary as a raw binary file.
-${GMOS_BUILD_DIR}/firmware.bin : ${GMOS_BUILD_DIR}/firmware.elf
-	${OC} -S -O binary $< $@
-
 # Specify the common component timestamps and object files.
 COMPONENT_TIMESTAMPS = \
 	${GMOS_BUILD_DIR}/app/timestamp \
