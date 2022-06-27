@@ -22,6 +22,13 @@
 # ARM gcc cross compiler.
 #
 
+# Specifies the target device to use. By default this is the
+# STM32L010RB device.
+ifndef GMOS_TARGET_DEVICE
+GMOS_TARGET_DEVICE = STM32L010RB
+endif
+
+# All STM32L0XX devices use the Cortex-M0+ core.
 ARCH_NAME = cortex-m0plus
 
 # Specify the location of the toolchain directory. By default this

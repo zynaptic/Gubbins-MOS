@@ -27,12 +27,6 @@
 # source code directory.
 GMOS_GIT_DIR := ${abspath ${CURDIR}/$(dir $(firstword $(MAKEFILE_LIST)))}
 
-# Specifies the location of the gateway build directory if not defined
-# by an environment variable.
-ifndef GMOS_BUILD_DIR
-GMOS_BUILD_DIR = /tmp/gmos_build
-endif
-
 # Specifies the path to the target platform directory. By default this
 # is the STM32L0XX target.
 ifndef GMOS_TARGET_PLATFORM
@@ -40,20 +34,26 @@ GMOS_TARGET_PLATFORM = st-micro/stm32l0xx
 endif
 TARGET_PLATFORM_DIR = ${GMOS_GIT_DIR}/platforms/${GMOS_TARGET_PLATFORM}
 
+# Specifies the location of the GubbinsMOS build directory if not
+# defined by an environment variable.
+ifndef GMOS_BUILD_DIR
+GMOS_BUILD_DIR = /tmp/gmos_build/${GMOS_TARGET_PLATFORM}
+endif
+
 # Compile the platform specific demo application by default.
 ifndef GMOS_APP_DIR
 GMOS_APP_DIR = ${TARGET_PLATFORM_DIR}/demo
 endif
 
-# Specifies the target device to use. By default this is the STM32L010RB
-# device.
-ifndef GMOS_TARGET_DEVICE
-GMOS_TARGET_DEVICE = STM32L010RB
-endif
-
 # Include the platform setup makefile fragment. This defines the
 # platform specific compiler options.
 include ${TARGET_PLATFORM_DIR}/platform-setup.mk
+
+# Optionally include the application setup makefile fragment. This
+# allows application specific options to be applied if required.
+ifneq ($(wildcard ${GMOS_APP_DIR}/app-setup.mk),)
+include ${GMOS_APP_DIR}/app-setup.mk
+endif
 
 # Generate both binary and hex format files.
 all : \
