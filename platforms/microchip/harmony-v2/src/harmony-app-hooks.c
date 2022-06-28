@@ -22,6 +22,9 @@
  * main Harmony execution loop.
  */
 
+#include <stdbool.h>
+#include <stddef.h>
+
 #include "gmos-config.h"
 #include "gmos-platform.h"
 #include "gmos-scheduler.h"
@@ -31,22 +34,13 @@
 // is in use.
 #if !GMOS_CONFIG_HOST_OS_SUPPORT
 
-// Derive the names of the Harmony function hooks.
-#define HOOK_NAME_CONCATENATE(_a_, _b_) _a_ ## _b_
-#define HOOK_NAME_APPEND(_a_, _b_) HOOK_NAME_CONCATENATE(_a_, _b_)
-
-#define HARMONY_INIT_HOOK_NAME \
-    HOOK_NAME_APPEND (GMOS_CONFIG_HARMONY_GMOS_APP_NAME, _Initialize)
-#define HARMONY_TASK_HOOK_NAME \
-    HOOK_NAME_APPEND (GMOS_CONFIG_HARMONY_GMOS_APP_NAME, _Tasks)
-
 // Specify the 'first run' initialisation flag.
 static bool firstRun;
 
 /*
  * Perform GMOS initialisation on Harmony framework startup.
  */
-void HARMONY_INIT_HOOK_NAME (void) {
+void GMOS_SCHEDULER_APP_Initialize (void) {
     firstRun = true;
 }
 
@@ -54,7 +48,7 @@ void HARMONY_INIT_HOOK_NAME (void) {
  * Process a single GMOS scheduler step on each Harmony framework task
  * tick.
  */
-void HARMONY_TASK_HOOK_NAME (void) {
+void GMOS_SCHEDULER_APP_Tasks (void) {
 
     // Perform application initialisation on first run. This approach
     // ensures that all the Harmony system tasks have been initialised
@@ -78,6 +72,24 @@ void HARMONY_TASK_HOOK_NAME (void) {
     // Run a single scheduler step. Do not use the idle function, since
     // other Harmony framework tasks will still need to run.
     gmosSchedulerStep ();
+}
+
+/*
+ * Implement the main Harmony event loop.
+ */
+int main (void)
+{
+    // Initialize all MPLAB Harmony modules, including the GubbinsMOS
+    // scheduler.
+    SYS_Initialize (NULL);
+
+    // Maintain state machines of all polled MPLAB Harmony modules.
+    while (true) {
+        SYS_Tasks ();
+    }
+
+    // The main function should never exit.
+    return -1;
 }
 
 #endif // GMOS_CONFIG_HOST_OS_SUPPORT

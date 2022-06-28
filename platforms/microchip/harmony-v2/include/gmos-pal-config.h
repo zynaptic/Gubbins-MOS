@@ -44,14 +44,6 @@
 #endif
 
 /**
- * Specify the name of the Harmony application task name that is used
- * to wrap the GMOS scheduler loop.
- */
-#ifndef GMOS_CONFIG_HARMONY_GMOS_APP_NAME
-#define GMOS_CONFIG_HARMONY_GMOS_APP_NAME GMOS_APP
-#endif
-
-/**
  * Specify the system timer frequency. The default option is to use the
  * host OS tick timer or the configured Harmony system timer frequency.
  */

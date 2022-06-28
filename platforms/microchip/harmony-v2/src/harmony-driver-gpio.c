@@ -291,7 +291,7 @@ void gmosDriverGpioInterruptDisable (uint16_t gpioPinId)
 
 // Implement ISR for external interrupt 0.
 #if ((GMOS_CONFIG_HARMONY_RESERVED_EXTI_MASK & 0x01) == 0)
-void __ISR (_EXTERNAL_0_VECTOR) harmonyIsrExti0 (void) {
+void __ISR (_EXTERNAL_0_VECTOR, IPL2AUTO) harmonyIsrExti0 (void) {
     PLIB_INT_SourceFlagClear(INT_ID_0, INT_SOURCE_EXTERNAL_0);
     if (gpioIsrMap [0] != NULL) {
         gpioIsrMap [0] (gpioIsrDataMap [0]);
@@ -301,7 +301,7 @@ void __ISR (_EXTERNAL_0_VECTOR) harmonyIsrExti0 (void) {
 
 // Implement ISR for external interrupt 1.
 #if ((GMOS_CONFIG_HARMONY_RESERVED_EXTI_MASK & 0x02) == 0)
-void __ISR (_EXTERNAL_1_VECTOR) harmonyIsrExti1 (void) {
+void __ISR (_EXTERNAL_1_VECTOR, IPL2AUTO) harmonyIsrExti1 (void) {
     PLIB_INT_SourceFlagClear(INT_ID_0, INT_SOURCE_EXTERNAL_1);
     if (gpioIsrMap [1] != NULL) {
         gpioIsrMap [1] (gpioIsrDataMap [1]);
@@ -311,7 +311,7 @@ void __ISR (_EXTERNAL_1_VECTOR) harmonyIsrExti1 (void) {
 
 // Implement ISR for external interrupt 2.
 #if ((GMOS_CONFIG_HARMONY_RESERVED_EXTI_MASK & 0x04) == 0)
-void __ISR (_EXTERNAL_2_VECTOR) harmonyIsrExti2 (void) {
+void __ISR (_EXTERNAL_2_VECTOR, IPL2AUTO) harmonyIsrExti2 (void) {
     PLIB_INT_SourceFlagClear(INT_ID_0, INT_SOURCE_EXTERNAL_2);
     if (gpioIsrMap [2] != NULL) {
         gpioIsrMap [2] (gpioIsrDataMap [2]);
@@ -321,7 +321,7 @@ void __ISR (_EXTERNAL_2_VECTOR) harmonyIsrExti2 (void) {
 
 // Implement ISR for external interrupt 3.
 #if ((GMOS_CONFIG_HARMONY_RESERVED_EXTI_MASK & 0x08) == 0)
-void __ISR (_EXTERNAL_3_VECTOR) harmonyIsrExti3 (void) {
+void __ISR (_EXTERNAL_3_VECTOR, IPL2AUTO) harmonyIsrExti3 (void) {
     PLIB_INT_SourceFlagClear(INT_ID_0, INT_SOURCE_EXTERNAL_3);
     if (gpioIsrMap [3] != NULL) {
         gpioIsrMap [3] (gpioIsrDataMap [3]);
@@ -331,7 +331,7 @@ void __ISR (_EXTERNAL_3_VECTOR) harmonyIsrExti3 (void) {
 
 // Implement ISR for external interrupt 4.
 #if ((GMOS_CONFIG_HARMONY_RESERVED_EXTI_MASK & 0x10) == 0)
-void __ISR (_EXTERNAL_4_VECTOR) harmonyIsrExti4 (void) {
+void __ISR (_EXTERNAL_4_VECTOR, IPL2AUTO) harmonyIsrExti4 (void) {
     PLIB_INT_SourceFlagClear(INT_ID_0, INT_SOURCE_EXTERNAL_4);
     if (gpioIsrMap [4] != NULL) {
         gpioIsrMap [4] (gpioIsrDataMap [4]);
