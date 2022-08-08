@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2021 Zynaptic Limited
+ * Copyright 2020-2022 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,7 @@ typedef void (*gmosDriverTimerIsr_t) (void* timerIsrData);
  * Defines the timer active state enumeration.
  */
 typedef enum  {
-    GMOS_DRIVER_TIMER_STATE_RESET,
+    GMOS_DRIVER_TIMER_STATE_RESET = 0,
     GMOS_DRIVER_TIMER_STATE_ONE_SHOT,
     GMOS_DRIVER_TIMER_STATE_CONTINUOUS
 } gmosDriverTimerState_t;
@@ -96,7 +96,7 @@ typedef struct gmosDriverTimer_t {
     uint16_t maxValue;
 
     // Specifies the current active timer state.
-    uint16_t activeState;
+    uint8_t activeState;
 
 } gmosDriverTimer_t;
 
@@ -157,22 +157,9 @@ bool gmosDriverTimerEnable (gmosDriverTimer_t* timer);
  * @param timer This is the hardware timer data structure for the timer
  *     that is to be enabled.
  * @return Returns a boolean value which will be set to 'true' on
- *     successfully enabling the timer and 'false' on failure.
+ *     successfully disabling the timer and 'false' on failure.
  */
 bool gmosDriverTimerDisable (gmosDriverTimer_t* timer);
-
-/**
- * Masks the timer interrupts, controlling when the timer interrupt
- * service routine will be allowed to run.
- * @param timer This is the hardware timer data structure for the timer
- *     which is to be modified.
- * @param isrMask This is a boolean value which when set to 'true' will
- *     cause interrupts from the timer to be masked and which when set
- *     to 'false' will allow interrupts from the timer to be processed.
- * @return Returns a boolean value which will be set to 'true' on
- *     successfully setting the interrupt mask and 'false' on failure.
- */
-bool gmosDriverTimerIsrMask (gmosDriverTimer_t* timer, bool isrMask);
 
 /**
  * Resets the current value of the timer counter to zero. The timer must

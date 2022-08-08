@@ -70,7 +70,16 @@ COMPONENT_TIMESTAMPS = \
 COMPONENT_OBJECT_FILES = \
 	${GMOS_BUILD_DIR}/app/*.o \
 	${GMOS_BUILD_DIR}/common/*.o \
-	${GMOS_BUILD_DIR}/platform/*.o
+	${GMOS_BUILD_DIR}/platform/*.o \
+	${GMOS_BUILD_DIR}/platform/*/*.o
+
+# Specify the network support timestamp and object files.
+ifdef GMOS_TARGET_NETWORK_DIR
+COMPONENT_TIMESTAMPS += \
+	${GMOS_BUILD_DIR}/network/timestamp
+COMPONENT_OBJECT_FILES += \
+	${GMOS_BUILD_DIR}/network/*.o
+endif
 
 # If one or more target radio directories have been specified, add them
 # to the set of common components.
@@ -100,6 +109,11 @@ include ${GMOS_GIT_DIR}/common/common-build.mk
 # Include the platform build makefile fragment. This defines the
 # platform specific source build process.
 include ${TARGET_PLATFORM_DIR}/platform-build.mk
+
+# Include the network build makefile fragment if required.
+ifdef GMOS_TARGET_NETWORK_DIR
+include ${GMOS_GIT_DIR}/network/${GMOS_TARGET_NETWORK_DIR}/network-build.mk
+endif
 
 # Include the target radio makefile fragments if specified.
 ifdef GMOS_TARGET_RADIO_DIRS

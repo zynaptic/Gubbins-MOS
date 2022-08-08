@@ -159,8 +159,10 @@ bool gmosPalHostOsInit (void);
  *     system timer ticks that correspond to the specified number of
  *     milliseconds.
  */
+#ifndef GMOS_MS_TO_TICKS
 #define GMOS_MS_TO_TICKS(_ms_) ((uint32_t) \
     ((((uint64_t) _ms_) * GMOS_CONFIG_SYSTEM_TIMER_FREQUENCY) / 1000))
+#endif
 
 /**
  * Converts the specified number of system timer ticks to the closest
@@ -171,8 +173,10 @@ bool gmosPalHostOsInit (void);
  *     milliseconds that correspond to the specified number of system
  *     timer ticks.
  */
+#ifndef GMOS_TICKS_TO_MS
 #define GMOS_TICKS_TO_MS(_ticks_) ((uint32_t) \
     ((((uint64_t) _ticks_) * 1000) / GMOS_CONFIG_SYSTEM_TIMER_FREQUENCY))
+#endif
 
 /**
  * Reads the contents of the system timer. This is a 32-bit timer that
