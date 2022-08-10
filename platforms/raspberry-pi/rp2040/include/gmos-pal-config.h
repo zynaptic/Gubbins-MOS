@@ -23,6 +23,8 @@
 #ifndef GMOS_PAL_CONFIG_H
 #define GMOS_PAL_CONFIG_H
 
+#include "pico-driver-gpio.h"
+
 /**
  * Specify the maximum number of supported GPIO interrupt service
  * routines. In principle, all RP2040 GPIO pins may be used as interrupt
@@ -82,6 +84,13 @@
  */
 #ifndef GMOS_CONFIG_PICO_DEBUG_CONSOLE_INCLUDE_UPTIME
 #define GMOS_CONFIG_PICO_DEBUG_CONSOLE_INCLUDE_UPTIME false
+#endif
+
+/**
+ * Select the GPIO drive strength to use for the SPI interface pins.
+ */
+#ifndef GMOS_CONFIG_SPI_GPIO_DRIVE_STRENGTH
+#define GMOS_CONFIG_SPI_GPIO_DRIVE_STRENGTH PICO_GPIO_DRIVER_SLEW_FAST_4MA
 #endif
 
 /*

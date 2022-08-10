@@ -154,20 +154,64 @@ void gmosPalLogFmt (const char* fileName, uint32_t lineNo,
     va_end (args);
 }
 
-// Provide a temporary printf stub.
+/*
+ * Provides platform level handling of assert conditions.
+ */
+void gmosPalAssertFail (const char* fileName, uint32_t lineNo,
+    const char* message)
+{
+    // Not currently implemented.
+    while (true) {};
+}
+
+/*
+ * Provides a temporary printf stub.
+ */
 int printf (const char* fmt, ...)
 {
     return 0;
 }
 
-// Provide a temporary vprintf stub.
+/*
+ * Provides a temporary vprintf stub.
+ */
 int vprintf (const char* fmt, va_list arg)
 {
     return 0;
 }
 
-// Provide a temporary puts stub.
+/*
+ * Provides a temporary puts stub.
+ */
 int puts (const char* msg)
 {
     return 0;
+}
+
+/*
+ * Provides a simple strcmp implementation.
+ */
+int strcmp (const char* cs, const char* ct) {
+    int i, result;
+    for (i = 0; true; i++) {
+        result = (int)(cs[i]) - (int)(ct[i]);
+        if ((cs[i] == '\0') || (result != 0)) {
+            break;
+        }
+    }
+    return result;
+}
+
+/*
+ * Provides a simple memcmp implementation.
+ */
+int memcmp (const char* cs, const char* ct, size_t n) {
+    int i, result;
+    for (i = 0; i < n; i++) {
+        result = (int)(cs[i]) - (int)(ct[i]);
+        if (result != 0) {
+            break;
+        }
+    }
+    return result;
 }

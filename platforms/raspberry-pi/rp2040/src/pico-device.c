@@ -162,3 +162,31 @@ out:
     gmosPalMutexUnlock ();
     return attachOk;
 }
+
+/*
+ * Enables a DMA interrupt service routine for the specified DMA
+ * channel. The corresponding ISR should previously have been attached
+ * to the DMA interrupt handler using the same CPU core.
+ */
+bool gmosPalDmaIsrSetEnabled (uint8_t channel, bool enabled)
+{
+    uint16_t channelMask = (1 << channel);
+    bool setOk = false;
+
+    // Enable the ISR for core 0.
+    if (get_core_num () == 0) {
+        if ((enabledDmaIsrs0 & channelMask) != 0) {
+            dma_channel_set_irq0_enabled (channel, enabled);
+            setOk = true;
+        }
+    }
+
+    // Enable the ISR for core 1.
+    else if (get_core_num () == 1) {
+        if ((enabledDmaIsrs1 & channelMask) != 0) {
+            dma_channel_set_irq1_enabled (channel, enabled);
+            setOk = true;
+        }
+    }
+    return setOk;
+}

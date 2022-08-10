@@ -60,6 +60,7 @@ bool gmosPalSerialConsoleWrite (uint8_t* writeData, uint16_t writeSize);
  * channel. The attached ISR will be be invoked when a DMA interrupt
  * for the specified channel occurs and the associated interrupt
  * condition is cleared when the ISR returns a boolean value of 'true'.
+ * The ISR is not enabled at this stage.
  * @param channel This is the DMA channel to which the interrupt service
  *     routine is to be attached, numbered from 0 to 11.
  * @param isr This is the interrupt service routine which is to be
@@ -68,5 +69,18 @@ bool gmosPalSerialConsoleWrite (uint8_t* writeData, uint16_t writeSize);
  *     successfully attaching the ISR and 'false' otherwise.
  */
 bool gmosPalDmaIsrAttach (uint8_t channel, gmosPalDmaIsr_t isr);
+
+/**
+ * Enables a DMA interrupt service routine for the specified DMA
+ * channel. The corresponding ISR should previously have been attached
+ * to the DMA interrupt handler using the same CPU core.
+ * @param channel This is the DMA channel for which the interrupt
+ *     service routine is to be enabled, numbered from 0 to 11.
+ * @param enabled This is a boolean flag which should be set to 'true'
+ *     to enable the ISR and 'false' to disable it.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully enabling the ISR and 'false' otherwise.
+ */
+bool gmosPalDmaIsrSetEnabled (uint8_t channel, bool enabled);
 
 #endif // PICO_DEVICE_H
