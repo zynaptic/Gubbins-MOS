@@ -388,15 +388,12 @@ bool gmosDriverRtcSyncTime (
     int32_t clockDrift;
     int8_t clockOffset;
 
-    // Get the current RTC time settings.
+    // Get the current time. If it is not valid or the current time is
+    // outside the tracking window, overwrite the current time. This
+    // preserves the existing time zone settings.
     if ((!gmosDriverRtcGetTime (rtc, &currentTime)) ||
-        (!gmosDriverRtcConvertToUtcTime (&currentTime, &currentUtc))) {
-        return false;
-    }
-
-    // If the current time is outside the tracking window, overwrite the
-    // current time. This preserves the existing time zone settings.
-    if ((currentUtc > utcTime + GMOS_DRIVER_RTC_TRACKING_WINDOW) ||
+        (!gmosDriverRtcConvertToUtcTime (&currentTime, &currentUtc)) ||
+        (currentUtc > utcTime + GMOS_DRIVER_RTC_TRACKING_WINDOW) ||
         (currentUtc < utcTime - GMOS_DRIVER_RTC_TRACKING_WINDOW)) {
         if (!gmosDriverRtcConvertFromUtcTime (&syncTime, utcTime,
             currentTime.timeZone, currentTime.daylightSaving)) {

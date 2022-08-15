@@ -51,6 +51,7 @@ PLATFORM_HEADER_DIRS = \
 	${GMOS_PICO_SDK_DIR}/src/rp2_common/hardware_gpio/include \
 	${GMOS_PICO_SDK_DIR}/src/rp2_common/hardware_uart/include \
 	${GMOS_PICO_SDK_DIR}/src/rp2_common/hardware_spi/include \
+	${GMOS_PICO_SDK_DIR}/src/rp2_common/hardware_rtc/include \
 	${GMOS_PICO_SDK_DIR}/src/rp2_common/hardware_resets/include \
 	${GMOS_PICO_SDK_DIR}/src/rp2_common/hardware_sync/include \
 	${GMOS_PICO_SDK_DIR}/src/rp2_common/hardware_timer/include \
@@ -70,6 +71,7 @@ PLATFORM_OBJ_FILE_NAMES = \
 	pico-driver-gpio.o \
 	pico-driver-timer.o \
 	pico-driver-spi.o \
+	pico-driver-rtc.o \
 	boot2.o \
 	pico_standard_link/crt0.o \
 	pico_mem_ops/mem_ops.o \
@@ -90,6 +92,7 @@ PLATFORM_OBJ_FILE_NAMES = \
 	hardware_gpio/gpio.o \
 	hardware_uart/uart.o \
 	hardware_spi/spi.o \
+	hardware_rtc/rtc.o \
 	hardware_sync/sync.o \
 	hardware_xosc/xosc.o \
 	hardware_clocks/clocks.o \
@@ -147,6 +150,7 @@ ${LOCAL_DIR} :
 	mkdir -p $@/hardware_gpio
 	mkdir -p $@/hardware_uart
 	mkdir -p $@/hardware_spi
+	mkdir -p $@/hardware_rtc
 	mkdir -p $@/hardware_sync
 	mkdir -p $@/hardware_xosc
 	mkdir -p $@/hardware_clocks
