@@ -94,6 +94,13 @@
 #endif
 
 /*
+ * The Raspberry Pi SDK includes fast memcpy implementations that will
+ * be used for stream and buffer data transfers.
+ */
+#define GMOS_CONFIG_STREAMS_USE_MEMCPY 1
+#define GMOS_CONFIG_BUFFERS_USE_MEMCPY 1
+
+/*
  * Set the system timer frequency. This is set by dividing the Pico SDK
  * 1MHz system timer value by 1024. This is an integer approximation
  * with rounding, since the corresponding frequency actually works out

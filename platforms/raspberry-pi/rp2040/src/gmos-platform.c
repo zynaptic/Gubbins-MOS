@@ -189,15 +189,33 @@ int puts (const char* msg)
 }
 
 /*
+ * Provides a simple strlen implementation.
+ */
+size_t strlen (const char *cs) {
+    uint8_t* pcs = (uint8_t*) cs;
+    size_t count = 0;
+    while (*pcs != '\0') {
+        pcs++;
+        count++;
+    }
+    return count;
+}
+
+/*
  * Provides a simple strcmp implementation.
  */
 int strcmp (const char* cs, const char* ct) {
-    int i, result;
+    uint8_t* pcs = (uint8_t*) cs;
+    uint8_t* pct = (uint8_t*) ct;
+    int result = 0;
+    int i;
     for (i = 0; true; i++) {
-        result = (int)(cs[i]) - (int)(ct[i]);
-        if ((cs[i] == '\0') || (result != 0)) {
+        result = (int)(*pcs) - (int)(*pct);
+        if ((*pcs == '\0') || (result != 0)) {
             break;
         }
+        pcs++;
+        pct++;
     }
     return result;
 }
@@ -205,13 +223,18 @@ int strcmp (const char* cs, const char* ct) {
 /*
  * Provides a simple memcmp implementation.
  */
-int memcmp (const char* cs, const char* ct, size_t n) {
-    int i, result;
+int memcmp (const void* cs, const void* ct, size_t n) {
+    uint8_t* pcs = (uint8_t*) cs;
+    uint8_t* pct = (uint8_t*) ct;
+    int result = 0;
+    int i;
     for (i = 0; i < n; i++) {
-        result = (int)(cs[i]) - (int)(ct[i]);
+        result = (int)(*pcs) - (int)(*pct);
         if (result != 0) {
             break;
         }
+        pcs++;
+        pct++;
     }
     return result;
 }
