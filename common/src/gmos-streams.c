@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2022 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -77,6 +77,19 @@ void gmosStreamInit (gmosStream_t* stream,
 }
 
 /*
+ * Dynamically set the consumer task associated with a given stream,
+ * resuming consumer task execution if stream data is available.
+ */
+void gmosStreamSetConsumerTask (
+    gmosStream_t* stream, gmosTaskState_t* consumerTask)
+{
+    stream->consumerTask = consumerTask;
+    if ((consumerTask != NULL) && (stream->size > 0)) {
+        gmosSchedulerTaskResume (consumerTask);
+    }
+}
+
+/*
  * Determines the maximum number of free bytes that are available for
  * stream write operations, including newly allocated segments.
  */
@@ -113,6 +126,35 @@ uint16_t gmosStreamGetWriteCapacity (gmosStream_t* stream)
 uint16_t gmosStreamGetReadCapacity (gmosStream_t* stream)
 {
     return stream->size;
+}
+
+/*
+ * Determines the maximum number of free bytes that are available for
+ * stream push back operations, including newly allocated segments.
+ */
+uint16_t gmosStreamGetPushBackCapacity (gmosStream_t* stream)
+{
+    uint32_t maxFreeBytes;
+    uint16_t maxStreamBytes;
+
+    // There is no space in an empty segment list.
+    if (stream->segmentList == NULL) {
+        maxFreeBytes = 0;
+    } else {
+        maxFreeBytes = stream->readOffset;
+    }
+
+    // The number of free bytes is increased by the number of available
+    // memory pool segments.
+    maxFreeBytes += GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE *
+        ((uint32_t) gmosMempoolSegmentsAvailable ());
+
+    // Limit the number of free bytes to the maximum for the stream.
+    maxStreamBytes = stream->maxSize - stream->size;
+    if (maxFreeBytes < maxStreamBytes) {
+        maxStreamBytes = (uint16_t) maxFreeBytes;
+    }
+    return maxStreamBytes;
 }
 
 /*
@@ -476,6 +518,76 @@ bool gmosStreamPeekByte (gmosStream_t* stream,
 }
 
 /*
+ * Pushes data from a local byte array back to the head of a GubbinsMOS
+ * byte stream. Either the specified number of bytes will be pushed back
+ * as a single transfer or no data will be transferred. The first byte
+ * of the local byte array will become the next byte that may be read
+ * from the stream.
+ */
+bool gmosStreamPushBack (gmosStream_t* stream,
+    uint8_t* pushBackData, uint16_t pushBackSize)
+{
+    uint16_t remainingBytes = pushBackSize;
+    uint8_t* sourcePtr = pushBackData + pushBackSize;
+    uint16_t copySize;
+    uint8_t* copyPtr;
+    uint16_t copyOffset;
+    gmosMempoolSegment_t* segment;
+
+    // Determine if there is insufficient space for the entire transfer.
+    if (gmosStreamGetPushBackCapacity (stream) < pushBackSize) {
+        return false;
+    }
+
+    // Allocate a new segment if the stream is empty, otherwise select
+    // the start of the segment list.
+    if (stream->segmentList == NULL) {
+        segment = gmosMempoolAlloc ();
+        segment->nextSegment = NULL;
+        stream->segmentList = segment;
+        stream->size = 0;
+        stream->writeOffset = GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE;
+        stream->readOffset = GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE;
+    } else {
+        segment = stream->segmentList;
+    }
+
+    // Write data into the initial segment if there is space.
+    copySize = stream->readOffset;
+    if (pushBackSize < copySize) {
+        copySize = pushBackSize;
+    }
+    if (copySize > 0) {
+        sourcePtr -= copySize;
+        copyOffset = stream->readOffset - copySize;
+        copyPtr = segment->data.bytes + copyOffset;
+        STREAM_COPY (copyPtr, sourcePtr, copySize);
+        remainingBytes -= copySize;
+        stream->readOffset = copyOffset;
+        stream->size += copySize;
+    }
+
+    // Write data into subsequent newly allocated segments.
+    while (remainingBytes > 0) {
+        stream->segmentList = gmosMempoolAlloc ();
+        stream->segmentList->nextSegment = segment;
+        segment = stream->segmentList;
+        copySize = GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE;
+        if (remainingBytes < copySize) {
+            copySize = remainingBytes;
+        }
+        sourcePtr -= copySize;
+        copyOffset = GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE - copySize;
+        copyPtr = segment->data.bytes + copyOffset;
+        STREAM_COPY (copyPtr, sourcePtr, copySize);
+        remainingBytes -= copySize;
+        stream->readOffset = copyOffset;
+        stream->size += copySize;
+    }
+    return true;
+}
+
+/*
  * Sends the contents of a data buffer over a GubbinsMOS stream using
  * 'pass by reference' semantics to avoid excessive data copying.
  */
@@ -510,4 +622,27 @@ bool gmosStreamAcceptBuffer (gmosStream_t* stream, gmosBuffer_t* buffer)
 
     // Attempt to read the buffer data structure from the stream.
     return gmosStreamReadAll (stream, readData, readSize);
+}
+
+/*
+ * Pushes a data buffer back to the head of a GubbinsMOS stream using
+ * 'pass by reference' semantics to avoid excessive data copying. This
+ * is useful for situations where a buffer is accepted from the stream,
+ * but not all of the buffer contents can be immediately processed.
+ */
+bool gmosStreamPushBackBuffer (gmosStream_t* stream, gmosBuffer_t* buffer)
+{
+    bool pushBackOk = false;
+    uint8_t* pushBackData = (uint8_t*) buffer;
+    uint16_t pushBackSize = sizeof (gmosBuffer_t);
+
+    // Attempt to push back the buffer data structure to the stream. On
+    // success, set the buffer as empty to avoid duplicate references
+    // to the segment list.
+    if (gmosStreamPushBack (stream, pushBackData, pushBackSize)) {
+        buffer->segmentList = NULL;
+        buffer->bufferSize = 0;
+        pushBackOk = true;
+    }
+    return pushBackOk;
 }

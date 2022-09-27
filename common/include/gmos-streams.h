@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2022 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -146,6 +146,18 @@ void gmosStreamInit (gmosStream_t* stream,
     gmosTaskState_t* consumerTask, uint16_t maxStreamSize);
 
 /**
+ * Dynamically set the consumer task associated with a given stream,
+ * resuming consumer task execution if stream data is available.
+ * @param stream This is the stream state data structure that is to
+ *     be associated with a new consumer task.
+ * @param consumerTask This is the new consumer task that is to be
+ *     assigned to the stream, or a null reference if no consumer task
+ *     is to be used.
+ */
+void gmosStreamSetConsumerTask (
+    gmosStream_t* stream, gmosTaskState_t* consumerTask);
+
+/**
  * Determines the maximum number of free bytes that are available for
  * stream write operations, including any newly allocated segments.
  * @param stream This is the stream state data structure which is
@@ -164,6 +176,16 @@ uint16_t gmosStreamGetWriteCapacity (gmosStream_t* stream);
  *     stream.
  */
 uint16_t gmosStreamGetReadCapacity (gmosStream_t* stream);
+
+/**
+ * Determines the maximum number of free bytes that are available for
+ * stream push back operations, including any newly allocated segments.
+ * @param stream This is the stream state data structure which is
+ *     associated with the capacity request.
+ * @return Returns the number of bytes that may be pushed back to the
+ *     stream without exceeding the available capacity.
+ */
+uint16_t gmosStreamGetPushBackCapacity (gmosStream_t* stream);
 
 /**
  * Writes data from a local byte array to a GubbinsMOS byte stream. Up
@@ -311,6 +333,25 @@ bool gmosStreamPeekByte (gmosStream_t* stream,
     uint8_t* peekByte, uint16_t offset);
 
 /**
+ * Pushes data from a local byte array back to the head of a GubbinsMOS
+ * byte stream. Either the specified number of bytes will be pushed back
+ * as a single transfer or no data will be transferred. The first byte
+ * of the local byte array will become the next byte that may be read
+ * from the stream.
+ * @param stream This is the stream state data structure which is
+ *     associated with the push back data stream.
+ * @param pushBackData This is a pointer to the start of the byte array
+ *     that is to be pushed back to the byte stream.
+ * @param pushBackSize This is the number of bytes that are to be pushed
+ *     back to the byte stream.
+ * @return Returns a boolean value which will be set to 'true' if all
+ *     the push back data was transferred to the byte stream and 'false'
+ *     if no push back data was transferred to the byte stream.
+ */
+bool gmosStreamPushBack (gmosStream_t* stream,
+    uint8_t* pushBackData, uint16_t pushBackSize);
+
+/**
  * Sends the contents of a data buffer over a GubbinsMOS stream using
  * 'pass by reference' semantics to avoid excessive data copying.
  * @param stream This is the stream state data structure which is
@@ -321,8 +362,8 @@ bool gmosStreamPeekByte (gmosStream_t* stream,
  *     ownership of the buffer data having been transferred to the
  *     stream.
  * @return Returns a boolean value which will be set to 'true' if
- *     ownership of the buffer data was transferred to the byte stream
- *     and 'false' if no data was transferred to the byte stream.
+ *     ownership of the buffer data was transferred to the stream and
+ *     'false' on failure.
  */
 bool gmosStreamSendBuffer (gmosStream_t* stream, gmosBuffer_t* buffer);
 
@@ -340,6 +381,24 @@ bool gmosStreamSendBuffer (gmosStream_t* stream, gmosBuffer_t* buffer);
  *     available.
  */
 bool gmosStreamAcceptBuffer (gmosStream_t* stream, gmosBuffer_t* buffer);
+
+/**
+ * Pushes a data buffer back to the head of a GubbinsMOS stream using
+ * 'pass by reference' semantics to avoid excessive data copying. This
+ * is useful for situations where a buffer is accepted from the stream,
+ * but not all of the buffer contents can be immediately processed.
+ * @param stream This is the stream state data structure which is
+ *     associated with the push back data stream.
+ * @param buffer This is the buffer containing the data which is to be
+ *     pushed back to the stream. On successful completion the buffer
+ *     instance will automatically be reset to a length of zero, with
+ *     ownership of the buffer data having been transferred to the
+ *     stream.
+ * @return Returns a boolean value which will be set to 'true' if
+ *     ownership of the buffer data was transferred to the stream and
+ *     'false' on failure.
+ */
+bool gmosStreamPushBackBuffer (gmosStream_t* stream, gmosBuffer_t* buffer);
 
 #ifdef __cplusplus
 }
