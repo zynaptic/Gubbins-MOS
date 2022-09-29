@@ -76,9 +76,9 @@ COMPONENT_OBJECT_FILES = \
 # Specify the network support timestamp and object files.
 ifdef GMOS_TARGET_NETWORK_DIR
 COMPONENT_TIMESTAMPS += \
-	${GMOS_BUILD_DIR}/network/timestamp
+	${GMOS_BUILD_DIR}/network/$(GMOS_TARGET_NETWORK_DIR)/timestamp
 COMPONENT_OBJECT_FILES += \
-	${GMOS_BUILD_DIR}/network/*.o
+	${GMOS_BUILD_DIR}/network/$(GMOS_TARGET_NETWORK_DIR)/*.o
 endif
 
 # If one or more target radio directories have been specified, add them
