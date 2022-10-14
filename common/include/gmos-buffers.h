@@ -207,14 +207,30 @@ bool gmosBufferPrepend (gmosBuffer_t* buffer,
  * Implements a zero copy move operation, transferring the contents of a
  * source buffer into a destination buffer. Any existing contents of the
  * destination buffer will be discarded. After the buffer move operation
- * the destination source buffer will hold the original contents of the
- * source buffer and the source buffer will be empty.
+ * the destination buffer will hold the original contents of the source
+ * buffer and the source buffer will be empty.
  * @param source This is a pointer to the source buffer from which the
  *     buffer data will be transferred.
- * @param desintation This is a pointer to the destination buffer to
+ * @param destination This is a pointer to the destination buffer to
  *     which the buffer data will be transferred.
  */
 void gmosBufferMove (gmosBuffer_t* source, gmosBuffer_t* destination);
+
+/**
+ * Implements a buffer copy operation, replicating the contents of a
+ * source buffer in a destination buffer. Any existing contents of the
+ * destination buffer will be discarded. After the buffer copy operation
+ * the destination buffer will hold an exact copy of the contents of the
+ * source buffer and the source buffer will be unchanged.
+ * @param source This is a pointer to the source buffer from which the
+ *     buffer data will be replicated.
+ * @param destination This is a pointer to the destination buffer into
+ *     which the buffer data will be replicated.
+ * @return Returns a boolean value which will be set to 'true' if the
+ *     buffer copy operation was successful and 'false' if an attempt
+ *     to allocate memory for the destination buffer failed.
+ */
+bool gmosBufferCopy (gmosBuffer_t* source, gmosBuffer_t* destination);
 
 /**
  * Gets a reference to the buffer segment that contains data at the

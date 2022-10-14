@@ -526,6 +526,49 @@ void gmosBufferMove (gmosBuffer_t* source, gmosBuffer_t* destination)
 }
 
 /*
+ * Implements a buffer copy operation, replicating the contents of a
+ * source buffer in a destination buffer.
+ */
+bool gmosBufferCopy (gmosBuffer_t* source, gmosBuffer_t* destination)
+{
+    uint16_t segmentCount;
+    gmosMempoolSegment_t* segmentList;
+    gmosMempoolSegment_t* sourceSegment;
+    gmosMempoolSegment_t* targetSegment;
+
+    // Ensure that the destination buffer is empty. This is sufficient
+    // to copy an empty source buffer.
+    gmosBufferDiscardContents (destination);
+    if (source->bufferSize == 0) {
+        return true;
+    }
+
+    // Allocate the required number of destination buffer segments.
+    segmentCount = 1 + (source->bufferOffset + source->bufferSize - 1) /
+        GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE;
+    segmentList = gmosMempoolAllocSegments (segmentCount);
+    if (segmentList == NULL) {
+        return false;
+    }
+
+    // Copy the contents of each buffer segment in turn.
+    sourceSegment = source->segmentList;
+    targetSegment = segmentList;
+    while ((sourceSegment != NULL) && (targetSegment != NULL)) {
+        BUFFER_COPY (targetSegment->data.bytes,
+            sourceSegment->data.bytes, GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE);
+        sourceSegment = sourceSegment->nextSegment;
+        targetSegment = targetSegment->nextSegment;
+    }
+
+    // Update the destination buffer state.
+    destination->segmentList = segmentList;
+    destination->bufferSize = source->bufferSize;
+    destination->bufferOffset = source->bufferOffset;
+    return true;
+}
+
+/*
  * Gets a reference to the buffer segment that contains data at the
  * specified buffer offset.
  */
