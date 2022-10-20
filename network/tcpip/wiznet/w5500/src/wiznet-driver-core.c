@@ -28,6 +28,7 @@
 
 #include "gmos-config.h"
 #include "gmos-platform.h"
+#include "gmos-scheduler.h"
 #include "gmos-driver-tcpip.h"
 #include "gmos-tcpip-stack.h"
 #include "wiznet-driver-config.h"
@@ -453,52 +454,99 @@ static inline bool wiznetCoreCommonCfgIntCheck (
 /*
  * Read the Ethernet PHY status register.
  */
-static inline bool wiznetCoreStartupPhyRead (
+static bool wiznetCoreCommonPhyRead (
     gmosDriverTcpip_t* tcpipStack)
 {
     gmosNalTcpipState_t* nalData = tcpipStack->nalData;
-    wiznetSpiAdaptorCmd_t cfgCommand;
+    wiznetSpiAdaptorCmd_t phyCommand;
 
     // Set up the command to read from the 8-bit Ethernet PHY status
     // register at address 0x002E.
-    cfgCommand.address = 0x002E;
-    cfgCommand.control =
+    phyCommand.address = 0x002E;
+    phyCommand.control =
         WIZNET_SPI_ADAPTOR_CTRL_COMMON_REGS |
         WIZNET_SPI_ADAPTOR_CTRL_READ_ENABLE;
-    cfgCommand.size = 1;
+    phyCommand.size = 1;
 
     // Issue the version readback request.
     return wiznetSpiAdaptorStream_write (
-        &nalData->spiCommandStream, &cfgCommand);
+        &nalData->spiCommandStream, &phyCommand);
 }
 
 /*
- * Check whether the Ethernet PHY link is connected.
+ * Detect changes in the PHY connectivity state.
+ */
+static bool wiznetCoreCommonPhyCheck (
+    gmosDriverTcpip_t* tcpipStack, uint8_t phyStatus)
+{
+    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosTcpipStackSocket_t* socketData;
+    bool newPhyIsUp;
+    bool oldPhyIsUp;
+    uint8_t phyNotification;
+    uint8_t i;
+
+    // Determine the new and existing PHY status settings.
+    newPhyIsUp = ((phyStatus & 0x01) != 0) ? true : false;
+    oldPhyIsUp = ((nalData->wiznetCoreFlags &
+        WIZNET_SPI_ADAPTOR_CORE_FLAG_PHY_UP) != 0) ? true : false;
+
+    // No further action is required if there is no change in the PHY
+    // connection status.
+    if (newPhyIsUp == oldPhyIsUp) {
+        return newPhyIsUp;
+    }
+
+    // Indicate that a PHY connection or reconnection has occurred.
+    if (newPhyIsUp) {
+        nalData->wiznetCoreFlags |= WIZNET_SPI_ADAPTOR_CORE_FLAG_PHY_UP;
+        phyNotification = GMOS_TCPIP_STACK_NOTIFY_PHY_LINK_UP;
+        GMOS_LOG_FMT (LOG_INFO,
+            "WIZnet TCP/IP : PHY link established (%d Mbps, %s Duplex).",
+            ((phyStatus & 0x02) == 0) ? 10 : 100,
+            ((phyStatus & 0x04) == 0) ? "Half" : "Full");
+    }
+
+    // Indicate that a PHY disconnection has occurred.
+    else {
+        nalData->wiznetCoreFlags &= ~WIZNET_SPI_ADAPTOR_CORE_FLAG_PHY_UP;
+        phyNotification = GMOS_TCPIP_STACK_NOTIFY_PHY_LINK_DOWN;
+        GMOS_LOG (LOG_INFO, "WIZnet TCP/IP : PHY link disconnected.");
+    }
+
+    // Issue socket notifications for change of PHY link status.
+    for (i = 0; i < GMOS_CONFIG_TCPIP_MAX_SOCKETS; i++) {
+        socketData = &(nalData->socketData [i]);
+        if (socketData->notifyHandler != NULL) {
+            socketData->notifyHandler (socketData->notifyData,
+                phyNotification);
+        }
+    }
+    return newPhyIsUp;
+}
+
+/*
+ * Check whether the Ethernet PHY link is connected on startup.
  */
 static inline bool wiznetCoreStartupPhyCheck (
     gmosDriverTcpip_t* tcpipStack, bool* statusOk)
 {
     gmosNalTcpipState_t* nalData = tcpipStack->nalData;
-    wiznetSpiAdaptorCmd_t cfgResponse;
-    uint8_t phyStatus;
+    wiznetSpiAdaptorCmd_t phyResponse;
 
     // Attempt to read back the next SPI transaction response.
     *statusOk = false;
     if (!wiznetSpiAdaptorStream_read (
-        &nalData->spiResponseStream, &cfgResponse)) {
+        &nalData->spiResponseStream, &phyResponse)) {
         return false;
     }
 
-    // Check the payload for the PHY link established bit.
-    if (cfgResponse.size == 1) {
-        phyStatus = cfgResponse.data.bytes [0];
-        if ((phyStatus & 0x01) != 0) {
-            *statusOk = true;
-            GMOS_LOG_FMT (LOG_INFO,
-                "WIZnet TCP/IP : PHY link established (%d Mbps, %s Duplex).",
-                ((phyStatus & 0x02) == 0) ? 10 : 100,
-                ((phyStatus & 0x04) == 0) ? "Half" : "Full");
-        }
+    // Check the current PHY status.
+    if ((phyResponse.address == 0x002E) && (phyResponse.size == 1) &&
+        (wiznetCoreCommonPhyCheck (tcpipStack, phyResponse.data.bytes [0]))) {
+        nalData->phyPollTimestamp = (uint16_t) gmosPalGetTimer () +
+            GMOS_MS_TO_TICKS (WIZNET_PHY_LINK_POLLING_INTERVAL);
+        *statusOk = true;
     }
     return true;
 }
@@ -566,6 +614,13 @@ static inline void wiznetCoreProcessSpiResponses (
         nalData->wiznetSocketSelect |=
             socketSelectMask & spiResponse->data.bytes [2];
     }
+
+    // Check PHY status for loss of low level connection.
+    if ((spiResponse->address == 0x002E) &&
+        (spiResponse->size == 1)) {
+        wiznetCoreCommonPhyCheck (
+            tcpipStack, spiResponse->data.bytes [0]);
+    }
 }
 
 /*
@@ -624,6 +679,7 @@ static inline gmosTaskStatus_t wiznetCoreRunning (
     gmosTaskStatus_t taskStatus;
     uint8_t socketSelect;
     uint8_t socketSelectMask;
+    int16_t phyPollingTicks;
     uint8_t i;
 
     // Process any outstanding SPI responses.
@@ -669,6 +725,23 @@ static inline gmosTaskStatus_t wiznetCoreRunning (
         }
     }
     taskStatus = gmosSchedulerPrioritise (taskStatus, intTaskStatus);
+
+    // On PHY link polling interval timeout, issue a request for the
+    // PHY status register.
+    phyPollingTicks = (int16_t) nalData->phyPollTimestamp -
+        (int16_t) gmosPalGetTimer ();
+    if (phyPollingTicks <= 0) {
+        if (wiznetCoreCommonPhyRead (tcpipStack)) {
+            phyPollingTicks =
+                GMOS_MS_TO_TICKS (WIZNET_PHY_LINK_POLLING_INTERVAL);
+            nalData->phyPollTimestamp = (uint16_t) gmosPalGetTimer () +
+                (uint16_t) phyPollingTicks;
+        } else {
+            phyPollingTicks = 1;
+        }
+    }
+    taskStatus = gmosSchedulerPrioritise (taskStatus,
+        GMOS_TASK_RUN_LATER ((uint32_t) phyPollingTicks));
 
     // Run each socket state machine in turn.
     for (i = 0; i < GMOS_CONFIG_TCPIP_MAX_SOCKETS; i++) {
@@ -800,7 +873,7 @@ static gmosTaskStatus_t wiznetCoreWorkerTaskFn (void* taskData)
 
         // Request the startup status for the Ethernet PHY link.
         case WIZNET_CORE_STATE_STARTUP_PHY_READ :
-            if (wiznetCoreStartupPhyRead (tcpipStack)) {
+            if (wiznetCoreCommonPhyRead (tcpipStack)) {
                 nextState = WIZNET_CORE_STATE_STARTUP_PHY_CHECK;
             }
             break;
@@ -875,6 +948,7 @@ bool gmosDriverTcpipInit (
 
     // Initialise the worker task state machine.
     nalData->wiznetCoreState = WIZNET_CORE_STATE_COMMON_VER_READ;
+    nalData->wiznetCoreFlags = 0;
 
     // Initialise the socket specific state.
     for (i = 0; i < GMOS_CONFIG_TCPIP_MAX_SOCKETS; i++) {
@@ -966,10 +1040,9 @@ uint16_t gmosNalTcpipSocketGetBufferSize (
  */
 bool gmosDriverTcpipPhyLinkIsUp (gmosDriverTcpip_t* tcpipStack)
 {
-    uint8_t wiznetCoreState = tcpipStack->nalData->wiznetCoreState;
+    uint8_t wiznetCoreFlags = tcpipStack->nalData->wiznetCoreFlags;
 
-    if ((wiznetCoreState == WIZNET_CORE_STATE_RUNNING_INT_IDLE) ||
-        (wiznetCoreState == WIZNET_CORE_STATE_RUNNING_INT_ACTIVE)) {
+    if ((wiznetCoreFlags & WIZNET_SPI_ADAPTOR_CORE_FLAG_PHY_UP) != 0) {
         return true;
     } else {
         return false;

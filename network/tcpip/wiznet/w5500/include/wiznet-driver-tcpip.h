@@ -113,6 +113,9 @@ typedef struct gmosNalTcpipState_t {
     // Allocate memory for the required number of sockets.
     gmosTcpipStackSocket_t socketData [GMOS_CONFIG_TCPIP_MAX_SOCKETS];
 
+    // Specify the timestamp used for PHY connection state polling.
+    uint16_t phyPollTimestamp;
+
     // Specify the current offset for buffer based transfers.
     uint16_t spiBufferOffset;
 
@@ -121,6 +124,9 @@ typedef struct gmosNalTcpipState_t {
 
     // Specify the current WIZnet core processing state.
     uint8_t wiznetCoreState;
+
+    // Specify the WIZnet core processing interrupt and status flags.
+    uint8_t wiznetCoreFlags;
 
     // Specify the socket selection for the core state machine.
     uint8_t wiznetSocketSelect;

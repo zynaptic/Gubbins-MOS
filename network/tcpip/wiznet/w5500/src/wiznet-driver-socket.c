@@ -161,6 +161,10 @@ static inline void gmosNalTcpipSocketCleanup (
     while (gmosStreamAcceptBuffer (&(socket->rxStream), payloadData)) {
         gmosBufferReset (payloadData, 0);
     }
+
+    // Disable socket status notification callbacks.
+    socket->notifyHandler = NULL;
+    socket->notifyData = NULL;
 }
 
 /*
@@ -471,6 +475,10 @@ void gmosNalTcpipSocketInit (
     // Clear local interrupt flag state.
     socket->interruptFlags = 0;
     socket->interruptClear = 0;
+
+    // Disable socket status notification callbacks.
+    socket->notifyHandler = NULL;
+    socket->notifyData = NULL;
 }
 
 /*
@@ -491,9 +499,9 @@ gmosTcpipStackSocket_t* gmosTcpipStackUdpOpen (
 
     // Sockets can not be opened until a physical layer link has been
     // established.
-    if ((nalData->wiznetCoreState != WIZNET_CORE_STATE_RUNNING_INT_IDLE) &&
-        (nalData->wiznetCoreState != WIZNET_CORE_STATE_RUNNING_INT_ACTIVE)) {
-        return false;
+    if ((nalData->wiznetCoreFlags &
+        WIZNET_SPI_ADAPTOR_CORE_FLAG_PHY_UP) == 0) {
+        return NULL;
     }
 
     // UDP sockets are allocated from the 'end' of the socket list, so
@@ -538,9 +546,9 @@ gmosTcpipStackSocket_t* gmosTcpipStackTcpOpen (
 
     // Sockets can not be opened until a physical layer link has been
     // established.
-    if ((nalData->wiznetCoreState != WIZNET_CORE_STATE_RUNNING_INT_IDLE) &&
-        (nalData->wiznetCoreState != WIZNET_CORE_STATE_RUNNING_INT_ACTIVE)) {
-        return false;
+    if ((nalData->wiznetCoreFlags &
+        WIZNET_SPI_ADAPTOR_CORE_FLAG_PHY_UP) == 0) {
+        return NULL;
     }
 
     // TCP sockets are allocated from the 'start' of the socket list, so

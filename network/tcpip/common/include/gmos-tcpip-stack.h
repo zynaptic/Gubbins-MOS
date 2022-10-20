@@ -52,6 +52,10 @@ typedef enum {
     // specified socket was not open for the required protocol.
     GMOS_TCPIP_STACK_STATUS_NOT_OPEN,
 
+    // Indicates that a request is not valid, usually due to invalid or
+    // malformed parameters.
+    GMOS_TCPIP_STACK_STATUS_NOT_VALID,
+
     // Indicate that an operation can not be completed at this time,
     // but may be retried later.
     GMOS_TCPIP_STACK_STATUS_RETRY,
@@ -60,7 +64,15 @@ typedef enum {
     // transmission by the stack. This will normally be as a result of
     // hardware buffer size limitations rather than exceeding a protocol
     // imposed limit.
-    GMOS_TCPIP_STACK_STATUS_OVERSIZED
+    GMOS_TCPIP_STACK_STATUS_OVERSIZED,
+
+    // Indicates that the TCP/IP network connection is down. This may
+    // be due to a loss of local connectivity or lack of valid DHCP
+    // settings.
+    GMOS_TCPIP_STACK_STATUS_NETWORK_DOWN,
+
+    // Indicates that the TCP/IP network transaction timed out.
+    GMOS_TCPIP_STACK_STATUS_TIMEOUT
 
 }
 gmosTcpipStackStatus_t;
@@ -70,6 +82,12 @@ gmosTcpipStackStatus_t;
  * be sent via the notification callback handlers.
  */
 typedef enum {
+
+    // Indicates that the local PHY link has been reconnected.
+    GMOS_TCPIP_STACK_NOTIFY_PHY_LINK_UP,
+
+    // Indicates that the local PHY link has been disconnected.
+    GMOS_TCPIP_STACK_NOTIFY_PHY_LINK_DOWN,
 
     // Indicates that the UDP socket opening process has completed.
     GMOS_TCPIP_STACK_NOTIFY_UDP_SOCKET_OPENED,

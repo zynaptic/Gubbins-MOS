@@ -739,7 +739,7 @@ static inline void gmosTcpipDhcpClientParseDhcpOffer (
     // Log server information for debugging. Note that addresses are
     // decoded directly from network byte ordered integers.
     GMOS_LOG_FMT (LOG_DEBUG,
-        "DHPC : Server %d.%d.%d.%d offered address %d.%d.%d.%d.",
+        "DHCP : Server %d.%d.%d.%d offered address %d.%d.%d.%d.",
         ((uint8_t*) &rxMessage.dhcpServerAddr) [0],
         ((uint8_t*) &rxMessage.dhcpServerAddr) [1],
         ((uint8_t*) &rxMessage.dhcpServerAddr) [2],
@@ -1543,6 +1543,21 @@ bool gmosTcpipDhcpClientInit (gmosTcpipDhcpClient_t* dhcpClient,
  */
 bool gmosTcpipDhcpClientReady (gmosTcpipDhcpClient_t* dhcpClient)
 {
-    return (dhcpClient->dhcpState >=
-        GMOS_TCPIP_DHCP_CLIENT_STATE_BOUND) ? true : false;
+    gmosDriverTcpip_t* tcpipStack = dhcpClient->tcpipStack;
+    gmosTaskState_t* dhcpWorkerTask = &dhcpClient->dhcpWorkerTask;
+    bool dhcpReady = true;
+
+    // All states prior to the 'bound' state correspond to the DHCP
+    // acquisition process.
+    if (dhcpClient->dhcpState < GMOS_TCPIP_DHCP_CLIENT_STATE_BOUND) {
+        dhcpReady = false;
+    }
+
+    // Loss of local network connectivity invalidates the DHCP settings.
+    else if (!gmosDriverTcpipPhyLinkIsUp (tcpipStack)) {
+        dhcpClient->dhcpState = GMOS_TCPIP_DHCP_CLIENT_STATE_RESTARTING;
+        gmosSchedulerTaskResume (dhcpWorkerTask);
+        dhcpReady = false;
+    }
+    return dhcpReady;
 }

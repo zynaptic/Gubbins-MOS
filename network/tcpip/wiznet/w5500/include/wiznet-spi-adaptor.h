@@ -73,6 +73,14 @@ typedef enum {
 } wiznetSpiAdaptorSocketStatus_t;
 
 /**
+ * This enumeration specifies the core interrupt bit positions and
+ * control flags.
+ */
+typedef enum {
+    WIZNET_SPI_ADAPTOR_CORE_FLAG_PHY_UP = 0x01
+} wiznetSpiAdaptorCoreInts_t;
+
+/**
  * This enumeration specifies the socket interrupt bit positions and
  * control flags.
  */
