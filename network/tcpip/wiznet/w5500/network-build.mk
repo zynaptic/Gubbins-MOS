@@ -38,6 +38,7 @@ WIZNET_HEADER_DIRS = \
 # List all the application object files that need to be built.
 WIZNET_OBJ_FILE_NAMES = \
 	gmos-tcpip-dhcp.o \
+	gmos-tcpip-dns.o \
 	wiznet-driver-core.o \
 	wiznet-driver-socket.o \
 	wiznet-driver-socket-udp.o \
