@@ -30,6 +30,7 @@
 #include "gmos-scheduler.h"
 #include "gmos-buffers.h"
 #include "gmos-streams.h"
+#include "gmos-network.h"
 #include "gmos-driver-tcpip.h"
 #include "gmos-tcpip-stack.h"
 #include "wiznet-driver-tcpip.h"
@@ -344,7 +345,7 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketTcpTxInterruptCheck (
  * Initiates the TCP connection process as a TCP client, using the
  * specified server address and port.
  */
-gmosTcpipStackStatus_t gmosTcpipStackTcpConnect (
+gmosNetworkStatus_t gmosTcpipStackTcpConnect (
     gmosTcpipStackSocket_t* tcpSocket,
     uint8_t* serverAddr, uint16_t serverPort)
 {
@@ -357,17 +358,17 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpConnect (
     // Check that the specified socket has been opened for TCP data
     // transfer.
     if (nextPhase != WIZNET_SOCKET_PHASE_TCP) {
-        return GMOS_TCPIP_STACK_STATUS_NOT_OPEN;
+        return GMOS_NETWORK_STATUS_NOT_OPEN;
     }
 
     // Check that the specified socket is open but not connected.
     if (nextState != WIZNET_SOCKET_TCP_STATE_READY) {
-        return GMOS_TCPIP_STACK_STATUS_CONNECTED;
+        return GMOS_NETWORK_STATUS_CONNECTED;
     }
 
     // Allocate a temporary buffer for storing the server address.
     if (!gmosBufferReset (remoteAddrBuf, 6)) {
-        return GMOS_TCPIP_STACK_STATUS_RETRY;
+        return GMOS_NETWORK_STATUS_RETRY;
     }
 
     // Log the connection request for debug purposes.
@@ -387,14 +388,14 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpConnect (
     nextState = WIZNET_SOCKET_TCP_STATE_SET_REMOTE_ADDR;
     tcpSocket->socketState = nextPhase | nextState;
     gmosSchedulerTaskResume (&(nalData->coreWorkerTask));
-    return GMOS_TCPIP_STACK_STATUS_SUCCESS;
+    return GMOS_NETWORK_STATUS_SUCCESS;
 }
 
 /*
  * Sends the contents of a GubbinsMOS buffer over an established TCP
  * connection.
  */
-gmosTcpipStackStatus_t gmosTcpipStackTcpSend (
+gmosNetworkStatus_t gmosTcpipStackTcpSend (
     gmosTcpipStackSocket_t* tcpSocket, gmosBuffer_t* payload)
 {
     uint8_t socketPhase = tcpSocket->socketState & WIZNET_SOCKET_PHASE_MASK;
@@ -404,25 +405,25 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpSend (
     // Check that the specified socket has been opened for TCP data
     // transfer.
     if (socketPhase != WIZNET_SOCKET_PHASE_TCP) {
-        return GMOS_TCPIP_STACK_STATUS_NOT_OPEN;
+        return GMOS_NETWORK_STATUS_NOT_OPEN;
     }
 
     // Check that a TCP connection has been established.
     if (socketState < WIZNET_SOCKET_TCP_STATE_ACTIVE) {
-        return GMOS_TCPIP_STACK_STATUS_NOT_CONNECTED;
+        return GMOS_NETWORK_STATUS_NOT_CONNECTED;
     }
 
     // Check that the payload length does not exceed the available
     // buffer memory on the WIZnet device.
     if (payloadLength > gmosNalTcpipSocketGetBufferSize (tcpSocket)) {
-        return GMOS_TCPIP_STACK_STATUS_OVERSIZED;
+        return GMOS_NETWORK_STATUS_OVERSIZED;
     }
 
     // Queue the buffer for transmission.
     if (gmosStreamSendBuffer (&(tcpSocket->txStream), payload)) {
-        return GMOS_TCPIP_STACK_STATUS_SUCCESS;
+        return GMOS_NETWORK_STATUS_SUCCESS;
     } else {
-        return GMOS_TCPIP_STACK_STATUS_RETRY;
+        return GMOS_NETWORK_STATUS_RETRY;
     }
 }
 
@@ -430,13 +431,13 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpSend (
  * Attempts to write an array of octet data to an established TCP
  * connection.
  */
-gmosTcpipStackStatus_t gmosTcpipStackTcpWrite (
+gmosNetworkStatus_t gmosTcpipStackTcpWrite (
     gmosTcpipStackSocket_t* tcpSocket, uint8_t* writeData,
     uint16_t requestSize, uint16_t* transferSize)
 {
     uint32_t maxTransferSize;
     gmosBuffer_t writeBuffer = GMOS_BUFFER_INIT ();
-    gmosTcpipStackStatus_t stackStatus;
+    gmosNetworkStatus_t stackStatus;
 
     // Determine the maximum possible transfer size. This is set at half
     // the number of free buffers in the memory pool.
@@ -446,7 +447,7 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpWrite (
     // Indicate that no data can be transferred at this time.
     if (maxTransferSize == 0) {
         *transferSize = 0;
-        return GMOS_TCPIP_STACK_STATUS_RETRY;
+        return GMOS_NETWORK_STATUS_RETRY;
     }
 
     // Determine the actual transfer size to use.
@@ -460,9 +461,9 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpWrite (
 
     // Attempt to send the buffer using the TCP send API call.
     stackStatus = gmosTcpipStackTcpSend (tcpSocket, &writeBuffer);
-    if (stackStatus == GMOS_TCPIP_STACK_STATUS_SUCCESS) {
+    if (stackStatus == GMOS_NETWORK_STATUS_SUCCESS) {
         *transferSize = requestSize;
-        return GMOS_TCPIP_STACK_STATUS_SUCCESS;
+        return GMOS_NETWORK_STATUS_SUCCESS;
     }
 
     // Release the allocated write buffer memory on failure.
@@ -476,7 +477,7 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpWrite (
 /*
  * Receives a block of data over an established TCP connection.
  */
-gmosTcpipStackStatus_t gmosTcpipStackTcpReceive (
+gmosNetworkStatus_t gmosTcpipStackTcpReceive (
     gmosTcpipStackSocket_t* tcpSocket, gmosBuffer_t* payload)
 {
     uint8_t socketPhase = tcpSocket->socketState & WIZNET_SOCKET_PHASE_MASK;
@@ -485,19 +486,19 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpReceive (
     // Check that the specified socket has been opened for TCP data
     // transfer.
     if (socketPhase != WIZNET_SOCKET_PHASE_TCP) {
-        return GMOS_TCPIP_STACK_STATUS_NOT_OPEN;
+        return GMOS_NETWORK_STATUS_NOT_OPEN;
     }
 
     // Check that a TCP connection has been established.
     if (socketState < WIZNET_SOCKET_TCP_STATE_ACTIVE) {
-        return GMOS_TCPIP_STACK_STATUS_NOT_CONNECTED;
+        return GMOS_NETWORK_STATUS_NOT_CONNECTED;
     }
 
     // Receive the next payload buffer, if available.
     if (gmosStreamAcceptBuffer (&(tcpSocket->rxStream), payload)) {
-        return GMOS_TCPIP_STACK_STATUS_SUCCESS;
+        return GMOS_NETWORK_STATUS_SUCCESS;
     } else {
-        return GMOS_TCPIP_STACK_STATUS_RETRY;
+        return GMOS_NETWORK_STATUS_RETRY;
     }
 }
 
@@ -505,12 +506,12 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpReceive (
  * Attempts to read an array of octet data from an established TCP
  * connection.
  */
-gmosTcpipStackStatus_t gmosTcpipStackTcpRead (
+gmosNetworkStatus_t gmosTcpipStackTcpRead (
     gmosTcpipStackSocket_t* tcpSocket, uint8_t* readData,
     uint16_t requestSize, uint16_t* transferSize)
 {
     gmosBuffer_t payload = GMOS_BUFFER_INIT ();
-    gmosTcpipStackStatus_t stackStatus;
+    gmosNetworkStatus_t stackStatus;
     uint16_t payloadSize;
     uint16_t readSize;
     bool releaseBuffer;
@@ -518,7 +519,7 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpRead (
     // Attempt to receive a payload buffer from the recive data
     // stream.
     stackStatus = gmosTcpipStackTcpReceive (tcpSocket, &payload);
-    if (stackStatus != GMOS_TCPIP_STACK_STATUS_SUCCESS) {
+    if (stackStatus != GMOS_NETWORK_STATUS_SUCCESS) {
         *transferSize = 0;
         return stackStatus;
     }
@@ -546,14 +547,14 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpRead (
         gmosStreamPushBackBuffer (&(tcpSocket->rxStream), &payload);
     }
     *transferSize = readSize;
-    return GMOS_TCPIP_STACK_STATUS_SUCCESS;
+    return GMOS_NETWORK_STATUS_SUCCESS;
 }
 
 /*
  * Closes the specified TCP socket, terminating any active connection
  * and releasing all allocated resources.
  */
-gmosTcpipStackStatus_t gmosTcpipStackTcpClose (
+gmosNetworkStatus_t gmosTcpipStackTcpClose (
     gmosTcpipStackSocket_t* tcpSocket)
 {
     gmosNalTcpipState_t* nalData = tcpSocket->tcpipStack->nalData;
@@ -562,13 +563,13 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpClose (
     // Check that the specified socket has been opened for TCP data
     // transfer.
     if (socketPhase != WIZNET_SOCKET_PHASE_TCP) {
-        return GMOS_TCPIP_STACK_STATUS_NOT_OPEN;
+        return GMOS_NETWORK_STATUS_NOT_OPEN;
     }
 
     // Set the close request flag to initiate a clean shutdown.
     tcpSocket->interruptFlags |= WIZNET_SPI_ADAPTOR_SOCKET_FLAG_CLOSE_REQ;
     gmosSchedulerTaskResume (&(nalData->coreWorkerTask));
-    return GMOS_TCPIP_STACK_STATUS_SUCCESS;
+    return GMOS_NETWORK_STATUS_SUCCESS;
 }
 
 /*

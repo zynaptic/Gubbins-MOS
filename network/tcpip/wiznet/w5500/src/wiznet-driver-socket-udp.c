@@ -29,6 +29,7 @@
 #include "gmos-platform.h"
 #include "gmos-scheduler.h"
 #include "gmos-streams.h"
+#include "gmos-network.h"
 #include "gmos-driver-tcpip.h"
 #include "gmos-tcpip-stack.h"
 #include "wiznet-driver-tcpip.h"
@@ -294,7 +295,7 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketUdpTxInterruptCheck (
  * Sends a UDP datagram to the specified remote IP address using an
  * opened UDP socket.
  */
-gmosTcpipStackStatus_t gmosTcpipStackUdpSendTo (
+gmosNetworkStatus_t gmosTcpipStackUdpSendTo (
     gmosTcpipStackSocket_t* udpSocket, uint8_t* remoteAddr,
     uint16_t remotePort, gmosBuffer_t* payload)
 {
@@ -305,7 +306,7 @@ gmosTcpipStackStatus_t gmosTcpipStackUdpSendTo (
     // Check that the specified socket has been opened for UDP data
     // transfer.
     if (socketPhase != WIZNET_SOCKET_PHASE_UDP) {
-        return GMOS_TCPIP_STACK_STATUS_NOT_OPEN;
+        return GMOS_NETWORK_STATUS_NOT_OPEN;
     }
 
     // Check that the payload length does not exceed the available
@@ -313,7 +314,7 @@ gmosTcpipStackStatus_t gmosTcpipStackUdpSendTo (
     // TODO: Also check for length exceeding a single Ethernet frame,
     // since fragmentation is not supported.
     if (payloadLength > gmosNalTcpipSocketGetBufferSize (udpSocket)) {
-        return GMOS_TCPIP_STACK_STATUS_OVERSIZED;
+        return GMOS_NETWORK_STATUS_OVERSIZED;
     }
 
     // Append the remote IPv4 address and port to the payload buffer
@@ -323,10 +324,10 @@ gmosTcpipStackStatus_t gmosTcpipStackUdpSendTo (
     if ((gmosBufferAppend (payload, remoteAddr, 4)) &&
         (gmosBufferAppend (payload, remotePortBytes, 2)) &&
         (gmosStreamSendBuffer (&(udpSocket->txStream), payload))) {
-        return GMOS_TCPIP_STACK_STATUS_SUCCESS;
+        return GMOS_NETWORK_STATUS_SUCCESS;
     } else {
         gmosBufferResize (payload, payloadLength);
-        return GMOS_TCPIP_STACK_STATUS_RETRY;
+        return GMOS_NETWORK_STATUS_RETRY;
     }
 }
 
@@ -334,7 +335,7 @@ gmosTcpipStackStatus_t gmosTcpipStackUdpSendTo (
  * Receives a UDP datagram from a remote IP address using an opened UDP
  * socket.
  */
-gmosTcpipStackStatus_t gmosTcpipStackUdpReceiveFrom (
+gmosNetworkStatus_t gmosTcpipStackUdpReceiveFrom (
     gmosTcpipStackSocket_t* udpSocket, uint8_t* remoteAddr,
     uint16_t* remotePort, gmosBuffer_t* payload)
 {
@@ -345,12 +346,12 @@ gmosTcpipStackStatus_t gmosTcpipStackUdpReceiveFrom (
     // Check that the specified socket has been opened for UDP data
     // transfer.
     if (socketPhase != WIZNET_SOCKET_PHASE_UDP) {
-        return GMOS_TCPIP_STACK_STATUS_NOT_OPEN;
+        return GMOS_NETWORK_STATUS_NOT_OPEN;
     }
 
     // Attempt to read the next entry from the receive data stream.
     if (!gmosStreamAcceptBuffer (&(udpSocket->rxStream), payload)) {
-        return GMOS_TCPIP_STACK_STATUS_RETRY;
+        return GMOS_NETWORK_STATUS_RETRY;
     }
 
     // Extract the address and port number from the WIZnet UDP header.
@@ -362,13 +363,13 @@ gmosTcpipStackStatus_t gmosTcpipStackUdpReceiveFrom (
     // Rebase the payload buffer to strip the WIZnet UDP header.
     payloadLength = gmosBufferGetSize (payload);
     gmosBufferRebase (payload, payloadLength - 8);
-    return GMOS_TCPIP_STACK_STATUS_SUCCESS;
+    return GMOS_NETWORK_STATUS_SUCCESS;
 }
 
 /*
  * Closes the specified UDP socket, releasing all allocated resources.
  */
-gmosTcpipStackStatus_t gmosTcpipStackUdpClose (
+gmosNetworkStatus_t gmosTcpipStackUdpClose (
     gmosTcpipStackSocket_t* udpSocket)
 {
     gmosNalTcpipState_t* nalData = udpSocket->tcpipStack->nalData;
@@ -377,13 +378,13 @@ gmosTcpipStackStatus_t gmosTcpipStackUdpClose (
     // Check that the specified socket has been opened for UDP data
     // transfer.
     if (socketPhase != WIZNET_SOCKET_PHASE_UDP) {
-        return GMOS_TCPIP_STACK_STATUS_NOT_OPEN;
+        return GMOS_NETWORK_STATUS_NOT_OPEN;
     }
 
     // Set the close request flag to initiate a clean shutdown.
     udpSocket->interruptFlags |= WIZNET_SPI_ADAPTOR_SOCKET_FLAG_CLOSE_REQ;
     gmosSchedulerTaskResume (&(nalData->coreWorkerTask));
-    return GMOS_TCPIP_STACK_STATUS_SUCCESS;
+    return GMOS_NETWORK_STATUS_SUCCESS;
 }
 
 /*

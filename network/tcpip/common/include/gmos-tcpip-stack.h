@@ -31,51 +31,8 @@
 #include "gmos-config.h"
 #include "gmos-buffers.h"
 #include "gmos-scheduler.h"
+#include "gmos-network.h"
 #include "gmos-driver-tcpip.h"
-
-/**
- * This enumeration specifies the various status values which may be
- * reported by the TCP/IP stack.
- */
-typedef enum {
-
-    // Indicates successful completion of a TCP/IP stack operation.
-    GMOS_TCPIP_STACK_STATUS_SUCCESS,
-
-    // Indicates that a TCP socket is already connected.
-    GMOS_TCPIP_STACK_STATUS_CONNECTED,
-
-    // Indicates that a TCP socket is not connected.
-    GMOS_TCPIP_STACK_STATUS_NOT_CONNECTED,
-
-    // Indicates that a request can not be completed because the
-    // specified socket was not open for the required protocol.
-    GMOS_TCPIP_STACK_STATUS_NOT_OPEN,
-
-    // Indicates that a request is not valid, usually due to invalid or
-    // malformed parameters.
-    GMOS_TCPIP_STACK_STATUS_NOT_VALID,
-
-    // Indicate that an operation can not be completed at this time,
-    // but may be retried later.
-    GMOS_TCPIP_STACK_STATUS_RETRY,
-
-    // Indicates that a UDP datagram or TCP data buffer is too large for
-    // transmission by the stack. This will normally be as a result of
-    // hardware buffer size limitations rather than exceeding a protocol
-    // imposed limit.
-    GMOS_TCPIP_STACK_STATUS_OVERSIZED,
-
-    // Indicates that the TCP/IP network connection is down. This may
-    // be due to a loss of local connectivity or lack of valid DHCP
-    // settings.
-    GMOS_TCPIP_STACK_STATUS_NETWORK_DOWN,
-
-    // Indicates that the TCP/IP network transaction timed out.
-    GMOS_TCPIP_STACK_STATUS_TIMEOUT
-
-}
-gmosTcpipStackStatus_t;
 
 /**
  * This enumeration specifies the various TCP/IP notifications that may
@@ -179,7 +136,7 @@ gmosTcpipStackSocket_t* gmosTcpipStackUdpOpen (
  *     datagram was successfully queued for transmission or will specify
  *     the reason for failure.
  */
-gmosTcpipStackStatus_t gmosTcpipStackUdpSendTo (
+gmosNetworkStatus_t gmosTcpipStackUdpSendTo (
     gmosTcpipStackSocket_t* udpSocket, uint8_t* remoteAddr,
     uint16_t remotePort, gmosBuffer_t* payload);
 
@@ -206,7 +163,7 @@ gmosTcpipStackStatus_t gmosTcpipStackUdpSendTo (
  *     datagram was successfully received or will specify the reason
  *     for failure.
  */
-gmosTcpipStackStatus_t gmosTcpipStackUdpReceiveFrom (
+gmosNetworkStatus_t gmosTcpipStackUdpReceiveFrom (
     gmosTcpipStackSocket_t* udpSocket, uint8_t* remoteAddr,
     uint16_t* remotePort, gmosBuffer_t* payload);
 
@@ -217,7 +174,7 @@ gmosTcpipStackStatus_t gmosTcpipStackUdpReceiveFrom (
  * @return Returns a TCP/IP stack status value indicating success or
  *     the reason for failure.
  */
-gmosTcpipStackStatus_t gmosTcpipStackUdpClose (
+gmosNetworkStatus_t gmosTcpipStackUdpClose (
     gmosTcpipStackSocket_t* udpSocket);
 
 /**
@@ -259,7 +216,7 @@ gmosTcpipStackSocket_t* gmosTcpipStackTcpOpen (
  * @return Returns a TCP/IP stack status value indicating success or
  *     the reason for failure.
  */
-gmosTcpipStackStatus_t gmosTcpipStackTcpConnect (
+gmosNetworkStatus_t gmosTcpipStackTcpConnect (
     gmosTcpipStackSocket_t* tcpSocket,
     uint8_t* serverAddr, uint16_t serverPort);
 
@@ -273,7 +230,7 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpConnect (
  * @return Returns a TCP/IP stack status value indicating success or
  *     the reason for failure.
  */
-gmosTcpipStackStatus_t gmosTcpipStackTcpBind (
+gmosNetworkStatus_t gmosTcpipStackTcpBind (
     gmosTcpipStackSocket_t* tcpSocket, uint16_t serverPort);
 
 /**
@@ -287,7 +244,7 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpBind (
  * @return Returns a TCP/IP stack status value indicating success or
  *     the reason for failure.
  */
-gmosTcpipStackStatus_t gmosTcpipStackTcpSend (
+gmosNetworkStatus_t gmosTcpipStackTcpSend (
     gmosTcpipStackSocket_t* tcpSocket, gmosBuffer_t* payload);
 
 /**
@@ -305,7 +262,7 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpSend (
  * @return Returns a TCP/IP stack status value indicating success or
  *     the reason for failure.
  */
-gmosTcpipStackStatus_t gmosTcpipStackTcpWrite (
+gmosNetworkStatus_t gmosTcpipStackTcpWrite (
     gmosTcpipStackSocket_t* tcpSocket, uint8_t* writeData,
     uint16_t requestSize, uint16_t* transferSize);
 
@@ -320,7 +277,7 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpWrite (
  * @return Returns a TCP/IP stack status value indicating success or
  *     the reason for failure.
  */
-gmosTcpipStackStatus_t gmosTcpipStackTcpReceive (
+gmosNetworkStatus_t gmosTcpipStackTcpReceive (
     gmosTcpipStackSocket_t* tcpSocket, gmosBuffer_t* payload);
 
 /**
@@ -334,11 +291,11 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpReceive (
  *     used to store received data from the TCP connection.
  * @param transferSize This is a pointer to the transfer size value
  *     which will be updated with the actual number of octets read
- *     to the TCP connection.
+ *     from the TCP connection.
  * @return Returns a TCP/IP stack status value indicating success or
  *     the reason for failure.
  */
-gmosTcpipStackStatus_t gmosTcpipStackTcpRead (
+gmosNetworkStatus_t gmosTcpipStackTcpRead (
     gmosTcpipStackSocket_t* tcpSocket, uint8_t* readData,
     uint16_t requestSize, uint16_t* transferSize);
 
@@ -350,7 +307,7 @@ gmosTcpipStackStatus_t gmosTcpipStackTcpRead (
  * @return Returns a TCP/IP stack status value indicating success or
  *     the reason for failure.
  */
-gmosTcpipStackStatus_t gmosTcpipStackTcpClose (
+gmosNetworkStatus_t gmosTcpipStackTcpClose (
     gmosTcpipStackSocket_t* tcpSocket);
 
 /**
