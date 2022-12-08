@@ -28,6 +28,7 @@
 #include <stdbool.h>
 #include "gmos-scheduler.h"
 #include "gmos-driver-tcpip.h"
+#include "gmos-tcpip-stack.h"
 
 /**
  * Defines the GubbinsMOS TCP/IP stack DHCP client state that is used

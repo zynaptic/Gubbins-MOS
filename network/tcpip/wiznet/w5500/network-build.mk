@@ -30,6 +30,7 @@ TCPIP_COMMON_SRC_DIR = ${GMOS_GIT_DIR}/network/tcpip/common
 WIZNET_HEADER_DIRS = \
 	${GMOS_APP_DIR}/include \
 	${GMOS_GIT_DIR}/common/include \
+	${GMOS_GIT_DIR}/network/common/include \
 	${TARGET_PLATFORM_DIR}/include \
 	${TARGET_PLATFORM_DIR}/vendor/include \
 	${TCPIP_COMMON_SRC_DIR}/include \

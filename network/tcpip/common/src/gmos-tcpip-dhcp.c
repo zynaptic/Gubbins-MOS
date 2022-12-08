@@ -29,17 +29,11 @@
 #include "gmos-config.h"
 #include "gmos-platform.h"
 #include "gmos-scheduler.h"
+#include "gmos-network.h"
 #include "gmos-driver-tcpip.h"
+#include "gmos-tcpip-config.h"
 #include "gmos-tcpip-stack.h"
 #include "gmos-tcpip-dhcp.h"
-
-/*
- * Specify the default DNS server addresses in network byte order. These
- * are the CloudFlare public DNS servers, but other public servers may
- * be used instead.
- */
-#define GMOS_TCPIP_DHCP_DEFAULT_DNS1 0x01010101
-#define GMOS_TCPIP_DHCP_DEFAULT_DNS2 0x01000001
 
 /*
  * Specify the standard DHCP ports for local use.
@@ -725,7 +719,7 @@ static inline void gmosTcpipDhcpClientParseDhcpOffer (
         GMOS_TCPIP_DHCP_MESSAGE_OPTION_FLAG_DNS1_SERVER) != 0) {
         dhcpClient->dns1ServerAddr = rxMessage.dns1ServerAddr;
     } else {
-        dhcpClient->dns1ServerAddr = GMOS_TCPIP_DHCP_DEFAULT_DNS1;
+        dhcpClient->dns1ServerAddr = GMOS_CONFIG_TCPIP_DNS_IPV4_PRIMARY;
     }
 
     // Select the secondary DNS server.
@@ -733,7 +727,7 @@ static inline void gmosTcpipDhcpClientParseDhcpOffer (
         GMOS_TCPIP_DHCP_MESSAGE_OPTION_FLAG_DNS2_SERVER) != 0) {
         dhcpClient->dns2ServerAddr = rxMessage.dns2ServerAddr;
     } else {
-        dhcpClient->dns2ServerAddr = GMOS_TCPIP_DHCP_DEFAULT_DNS2;
+        dhcpClient->dns2ServerAddr = GMOS_CONFIG_TCPIP_DNS_IPV4_SECONDARY;
     }
 
     // Log server information for debugging. Note that addresses are
@@ -862,7 +856,7 @@ static inline bool gmosTcpipDhcpClientDiscoveryStart (
     gmosTcpipDhcpClient_t* dhcpClient)
 {
     gmosBuffer_t message = GMOS_BUFFER_INIT ();
-    gmosTcpipStackStatus_t stackStatus;
+    gmosNetworkStatus_t stackStatus;
 
     // The DHCP server address is set to all ones to indicate that a
     // server has not yet been found.
@@ -878,7 +872,7 @@ static inline bool gmosTcpipDhcpClientDiscoveryStart (
         gmosTcpipBroadcastAddr, GMOS_TCPIP_DHCP_SERVER_PORT, &message);
 
     // Set the discovery window timeout on success.
-    if (stackStatus == GMOS_TCPIP_STACK_STATUS_SUCCESS) {
+    if (stackStatus == GMOS_NETWORK_STATUS_SUCCESS) {
         dhcpClient->timestamp = gmosPalGetTimer () +
             GMOS_MS_TO_TICKS (GMOS_TCPIP_DHCP_DISCOVERY_WINDOW * 1000);
         return true;
@@ -898,7 +892,7 @@ static inline bool gmosTcpipDhcpClientDiscoveryStart (
 static inline gmosTaskStatus_t gmosTcpipDhcpClientSelectingWait (
     gmosTcpipDhcpClient_t* dhcpClient)
 {
-    gmosTcpipStackStatus_t stackStatus;
+    gmosNetworkStatus_t stackStatus;
     uint8_t remoteAddr [4];
     uint16_t remotePort;
     gmosBuffer_t payload = GMOS_BUFFER_INIT ();
@@ -915,7 +909,7 @@ static inline gmosTaskStatus_t gmosTcpipDhcpClientSelectingWait (
             dhcpClient->udpSocket, remoteAddr, &remotePort, &payload);
 
         // No further response messages to process.
-        if (stackStatus != GMOS_TCPIP_STACK_STATUS_SUCCESS) {
+        if (stackStatus != GMOS_NETWORK_STATUS_SUCCESS) {
             break;
         }
 
@@ -945,7 +939,7 @@ static inline bool gmosTcpipDhcpClientSelectingDone (
     gmosTcpipDhcpClient_t* dhcpClient)
 {
     gmosBuffer_t message = GMOS_BUFFER_INIT ();
-    gmosTcpipStackStatus_t stackStatus;
+    gmosNetworkStatus_t stackStatus;
 
     // Format the selecting request message.
     if (!gmosTcpipDhcpClientFormatDhcpRequest (
@@ -958,7 +952,7 @@ static inline bool gmosTcpipDhcpClientSelectingDone (
         gmosTcpipBroadcastAddr, GMOS_TCPIP_DHCP_SERVER_PORT, &message);
 
     // Set the requesting window timeout on success.
-    if (stackStatus == GMOS_TCPIP_STACK_STATUS_SUCCESS) {
+    if (stackStatus == GMOS_NETWORK_STATUS_SUCCESS) {
         dhcpClient->timestamp = gmosPalGetTimer () +
             GMOS_MS_TO_TICKS (GMOS_TCPIP_DHCP_RESPONSE_WINDOW * 1000);
         return true;
@@ -979,7 +973,7 @@ static inline bool gmosTcpipDhcpClientSelectingDone (
 static gmosTaskStatus_t gmosTcpipDhcpClientResponseWait (
     gmosTcpipDhcpClient_t* dhcpClient, uint8_t* messageType)
 {
-    gmosTcpipStackStatus_t stackStatus;
+    gmosNetworkStatus_t stackStatus;
     uint8_t remoteAddr [4];
     uint16_t remotePort;
     gmosBuffer_t payload = GMOS_BUFFER_INIT ();
@@ -998,7 +992,7 @@ static gmosTaskStatus_t gmosTcpipDhcpClientResponseWait (
             dhcpClient->udpSocket, remoteAddr, &remotePort, &payload);
 
         // No further response messages to process.
-        if (stackStatus != GMOS_TCPIP_STACK_STATUS_SUCCESS) {
+        if (stackStatus != GMOS_NETWORK_STATUS_SUCCESS) {
             break;
         }
 
@@ -1029,7 +1023,7 @@ static gmosTaskStatus_t gmosTcpipDhcpClientResponseWait (
 static bool gmosTcpipDhcpClientResponseDone (
     gmosTcpipDhcpClient_t* dhcpClient)
 {
-    gmosTcpipStackStatus_t stackStatus;
+    gmosNetworkStatus_t stackStatus;
     uint32_t currentTime = gmosPalGetTimer ();
     int32_t retryDelay;
     int32_t minRetryTicks;
@@ -1060,7 +1054,7 @@ static bool gmosTcpipDhcpClientResponseDone (
 
     // Attempt to close the UDP socket.
     stackStatus = gmosTcpipStackUdpClose (dhcpClient->udpSocket);
-    if (stackStatus == GMOS_TCPIP_STACK_STATUS_SUCCESS) {
+    if (stackStatus == GMOS_NETWORK_STATUS_SUCCESS) {
         dhcpClient->udpSocket = NULL;
         return true;
     } else {
@@ -1115,7 +1109,7 @@ static inline bool gmosTcpipDhcpClientRenewalInit (
     gmosTcpipDhcpClient_t* dhcpClient, bool* leaseExpired)
 {
     gmosBuffer_t message = GMOS_BUFFER_INIT ();
-    gmosTcpipStackStatus_t stackStatus;
+    gmosNetworkStatus_t stackStatus;
     int32_t leaseRemaining;
     int32_t leaseExpiryTime;
     uint8_t* serverAddr;
@@ -1154,7 +1148,7 @@ static inline bool gmosTcpipDhcpClientRenewalInit (
         serverAddr, GMOS_TCPIP_DHCP_SERVER_PORT, &message);
 
     // Set the requesting window timeout on success.
-    if (stackStatus == GMOS_TCPIP_STACK_STATUS_SUCCESS) {
+    if (stackStatus == GMOS_NETWORK_STATUS_SUCCESS) {
         dhcpClient->timestamp = gmosPalGetTimer () +
             GMOS_MS_TO_TICKS (GMOS_TCPIP_DHCP_RESPONSE_WINDOW * 1000);
         return true;
@@ -1176,7 +1170,7 @@ static inline bool gmosTcpipDhcpClientRenewalInit (
 static inline bool gmosTcpipDhcpClientAddrCheckSend (
     gmosTcpipDhcpClient_t* dhcpClient)
 {
-    gmosTcpipStackStatus_t stackStatus;
+    gmosNetworkStatus_t stackStatus;
     gmosBuffer_t message = GMOS_BUFFER_INIT ();
     uint8_t addrCheckMsg [] = "DHCP ARP Timeout Check.";
 
@@ -1187,7 +1181,7 @@ static inline bool gmosTcpipDhcpClientAddrCheckSend (
     stackStatus = gmosTcpipStackUdpSendTo (dhcpClient->udpSocket,
         (uint8_t*) &dhcpClient->assignedAddr,
         GMOS_TCPIP_DISCARD_SERVER_PORT, &message);
-    if (stackStatus == GMOS_TCPIP_STACK_STATUS_SUCCESS) {
+    if (stackStatus == GMOS_NETWORK_STATUS_SUCCESS) {
         return true;
     } else {
         gmosBufferReset (&message, 0);
@@ -1202,7 +1196,7 @@ static inline bool gmosTcpipDhcpClientAddrDecline (
     gmosTcpipDhcpClient_t* dhcpClient)
 {
     gmosBuffer_t message = GMOS_BUFFER_INIT ();
-    gmosTcpipStackStatus_t stackStatus;
+    gmosNetworkStatus_t stackStatus;
 
     // Format the address decline message.
     if (!gmosTcpipDhcpClientFormatDhcpDecline (dhcpClient, &message)) {
@@ -1212,7 +1206,7 @@ static inline bool gmosTcpipDhcpClientAddrDecline (
     // Attempt to broadcast the address decline.
     stackStatus = gmosTcpipStackUdpSendTo (dhcpClient->udpSocket,
         gmosTcpipBroadcastAddr, GMOS_TCPIP_DHCP_SERVER_PORT, &message);
-    if (stackStatus == GMOS_TCPIP_STACK_STATUS_SUCCESS) {
+    if (stackStatus == GMOS_NETWORK_STATUS_SUCCESS) {
         return true;
     } else {
         gmosBufferReset (&message, 0);
@@ -1226,7 +1220,7 @@ static inline bool gmosTcpipDhcpClientAddrDecline (
 static inline bool gmosTcpipDhcpClientRestart (
     gmosTcpipDhcpClient_t* dhcpClient)
 {
-    gmosTcpipStackStatus_t stackStatus;
+    gmosNetworkStatus_t stackStatus;
 
     // If the UDP socket is already closed, the DHCP state machine can
     // restart immediately.
@@ -1236,7 +1230,7 @@ static inline bool gmosTcpipDhcpClientRestart (
 
     // Attempt to close the UDP socket.
     stackStatus = gmosTcpipStackUdpClose (dhcpClient->udpSocket);
-    if (stackStatus == GMOS_TCPIP_STACK_STATUS_SUCCESS) {
+    if (stackStatus == GMOS_NETWORK_STATUS_SUCCESS) {
         dhcpClient->udpSocket = NULL;
         return true;
     } else {
