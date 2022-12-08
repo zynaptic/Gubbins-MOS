@@ -17,10 +17,10 @@
  */
 
 /*
- * This header provides the common API for issuing IPv4 (A record) DNS
- * client requests for vendor supplied and hardware accelerated TCP/IP
- * stacks. It relies on the IPv4 DHCP client for DNS server address
- * assignment. Only recursive requests are supported.
+ * This header provides the common API for issuing IPv4 (A record) and
+ * optionally IPv6 (AAAA record) DNS client requests for vendor supplied
+ * and hardware accelerated TCP/IP stacks. Only recursive requests are
+ * supported.
  */
 
 #ifndef GMOS_TCPIP_DNS_H
@@ -28,41 +28,44 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "gmos-config.h"
-#include "gmos-tcpip-dhcp.h"
+#include "gmos-scheduler.h"
+#include "gmos-buffers.h"
+#include "gmos-network.h"
+#include "gmos-tcpip-config.h"
+#include "gmos-tcpip-stack.h"
 
 /**
- * Specifies the number of DNS cache table entries.
+ * Specifies the maximum DNS address size based on the IPv6
+ * configuration.
  */
-#ifndef GMOS_CONFIG_TCPIP_DNS_CACHE_SIZE
-#define GMOS_CONFIG_TCPIP_DNS_CACHE_SIZE 2
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+#define GMOS_CONFIG_TCPIP_DNS_MAX_ADDR_SIZE 16
+#else
+#define GMOS_CONFIG_TCPIP_DNS_MAX_ADDR_SIZE 4
 #endif
 
 /**
- * Specifies the DNS cache entry retention period as an integer number
- * of seconds.
+ * Defines the GubbinsMOS TCP/IP stack DNS server information structures
+ * that are used to configure DNS lookups for a specific server.
  */
-#ifndef GMOS_CONFIG_TCPIP_DNS_RETENTION_TIME
-#define GMOS_CONFIG_TCPIP_DNS_RETENTION_TIME 60
+typedef struct gmosTcpipDnsServerInfo_t {
+
+    // Specify a pointer to the next DNS server list entry.
+    struct gmosTcpipDnsServerInfo_t* nextServer;
+
+    // Specify the DNS server address. This may be a four octet IPv4
+    // address or a sixteen octet IPv6 address.
+    uint8_t address [GMOS_CONFIG_TCPIP_DNS_MAX_ADDR_SIZE];
+
+    // Specify the server priority level.
+    uint8_t priority;
+
+    // Deremine if the server is reachable on an IPv6 address.
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    uint8_t addressIsIpv6;
 #endif
 
-/**
- * Specifies the number of DNS retry attempts. The DNS client will issue
- * a first request to the primary DNS server followed by the specified
- * number of retry attempts which alternate between the secondary and
- * primary servers.
- */
-#ifndef GMOS_CONFIG_TCPIP_DNS_RETRY_COUNT
-#define GMOS_CONFIG_TCPIP_DNS_RETRY_COUNT 3
-#endif
-
-/**
- * Specifies the timeout interval between DNS retry attempts as an
- * integer number of seconds.
- */
-#ifndef GMOS_CONFIG_TCPIP_DNS_RETRY_INTERVAL
-#define GMOS_CONFIG_TCPIP_DNS_RETRY_INTERVAL 4
-#endif
+} gmosTcpipDnsServerInfo_t;
 
 /**
  * Defines the GubbinsMOS TCP/IP stack DNS client state that is used
@@ -70,11 +73,19 @@
  */
 typedef struct gmosTcpipDnsClient_t {
 
-    // Specify the DHCP client instance to use for the DNS client.
-    gmosTcpipDhcpClient_t* dhcpClient;
+    // Specify the TCP/IP stack instance to use for the DNS client.
+    gmosDriverTcpip_t* tcpipStack;
 
-    // Specify the UDP socket currently in use by the DNS client.
-    gmosTcpipStackSocket_t* udpSocket;
+    // Specify the start of the DNS server list.
+    gmosTcpipDnsServerInfo_t* dnsServerList;
+
+    // Specify the IPv4 UDP socket currently in use by the DNS client.
+    gmosTcpipStackSocket_t* udpSocketIpv4;
+
+    // Specify the IPv6 UDP socket currently in use by the DNS client.
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    gmosTcpipStackSocket_t* udpSocketIpv6;
+#endif
 
     // Allocate the DNS protocol worker task data structure.
     gmosTaskState_t dnsWorkerTask;
@@ -93,14 +104,49 @@ typedef struct gmosTcpipDnsClient_t {
  * for accessing the TCP/IP interface and DNS server information.
  * @param dnsClient This is a pointer to the DNS client data structure
  *     that should be used for storing the DNS client state.
- * @param dhcpClient This is a pointer to an initialised DHCP client
- *     instance that holds the current TCP/IP stack and DNS server
- *     information.
+ * @param tcpipStack This is an initialised TCP/IP stack data structure
+ *     that represents the TCP/IP interface to be used by the DHCP
+ *     client.
  * @return Returns a boolean value which will be set to 'true' if the
  *     DNS client was successfully initialised and 'false' otherwise.
  */
 bool gmosTcpipDnsClientInit (gmosTcpipDnsClient_t* dnsClient,
-    gmosTcpipDhcpClient_t* dhcpClient);
+    gmosDriverTcpip_t* tcpipStack);
+
+/**
+ * Adds a new DNS server to the list of available servers.
+ * @param dnsClient This is a pointer to the DNS client data structure
+ *     to which the new DNS server information is to be added.
+ * @param dnsServerInfo This is a pointer to the new DNS server
+ *     information data structure that is to be used for adding the
+ *     new server.
+ * @param useIpv6 This is a boolean value which should be set to 'true'
+ *     id the server address is an IPv6 address and 'false' otherwise.
+ * @param serverAddr This is a pointer to the new DNS server address.
+ *     It may be a four octet IPv4 address or a sixteeen octet IPv6
+ *     address and will be copied to local storage.
+ * @param priority This is the server access priority. Servers will be
+ *     accessed in order of decreasing priority.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully adding the new DNS server configuration and 'false'
+ *     otherwise.
+ */
+bool gmosTcpipDnsClientAddServer (gmosTcpipDnsClient_t* dnsClient,
+    gmosTcpipDnsServerInfo_t* dnsServerInfo, bool useIpv6,
+    uint8_t* serverAddr, uint8_t priority);
+
+/**
+ * Removes a DNS server from the list of available servers.
+ * @param dnsClient This is a pointer to the DNS client data structure
+ *     from which the new DNS server information is to be removed.
+ * @param dnsServerInfo This is a pointer to the DNS server information
+ *     data structure that is to be removed.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully removing the DNS server information and 'false' if
+ *     the specified DNS server information was not currently in use.
+ */
+bool gmosTcpipDnsClientRemoveServer (gmosTcpipDnsClient_t* dnsClient,
+    gmosTcpipDnsServerInfo_t* dnsServerInfo);
 
 /**
  * Performs a DNS query for resolving a given DNS name to an IPv4
@@ -111,6 +157,9 @@ bool gmosTcpipDnsClientInit (gmosTcpipDnsClient_t* dnsClient,
  *     address is to be resolved. Note that GubbinsMOS treats DNS names
  *     as being case sensitive, so capitalisation of individual DNS
  *     names should be consistent across calls to this function.
+ * @param useIpv6 This is a boolean flag which should be set to 'true'
+ *     to request an IPv6 address and 'false' to request an IPv4
+ *     address.
  * @param dnsAddress This is a pointer to a four octet array which will
  *     be populated with the resolved IPv4 address on successful
  *     resolution.
@@ -119,8 +168,8 @@ bool gmosTcpipDnsClientInit (gmosTcpipDnsClient_t* dnsClient,
  *     used to update the resolved IPv4 address, 'retry' if the DNS
  *     lookup is in progress or other status values to indicate failure.
  */
-gmosTcpipStackStatus_t gmosTcpipDnsClientQuery (
+gmosNetworkStatus_t gmosTcpipDnsClientQuery (
     gmosTcpipDnsClient_t* dnsClient, const char* dnsName,
-    uint8_t* dnsAddress);
+    bool useIpv6, uint8_t* dnsAddress);
 
 #endif // GMOS_TCPIP_DNS_H

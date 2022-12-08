@@ -17,8 +17,8 @@
  */
 
 /*
- * This file provides a common IPv4 DNS client implementation for use
- * with vendor supplied and hardware accelerated TCP/IP stacks.
+ * This file provides a common DNS client implementation for use with
+ * vendor supplied and hardware accelerated TCP/IP stacks.
  */
 
 #include <stdint.h>
@@ -30,14 +30,24 @@
 #include "gmos-platform.h"
 #include "gmos-buffers.h"
 #include "gmos-scheduler.h"
+#include "gmos-tcpip-config.h"
 #include "gmos-tcpip-stack.h"
-#include "gmos-tcpip-dhcp.h"
 #include "gmos-tcpip-dns.h"
 
 /*
  * Specify the standard DNS port for local use.
  */
 #define GMOS_TCPIP_DNS_COMMON_PORT 53
+
+/*
+ * Specify the DNS record type for IPv4 'A' records.
+ */
+#define GMOS_TCPIP_DNS_RECORD_TYPE_A 1
+
+/*
+ * Specify the DNS record type for IPv6 'AAAA' records.
+ */
+#define GMOS_TCPIP_DNS_RECORD_TYPE_AAAA 28
 
 /*
  * Defines the DNS cache entry state values.
@@ -64,8 +74,8 @@ typedef struct gmosTcpipDnsCacheEntry_t {
     // Specifies the transaction retry timestamp.
     uint32_t retryTimestamp;
 
-    // Specifies the resolved IPv4 address in network byte order.
-    uint8_t resolvedAddr [4];
+    // Specifies the resolved IPv4 or IPv6 address.
+    uint8_t resolvedAddr [GMOS_CONFIG_TCPIP_DNS_MAX_ADDR_SIZE];
 
     // Specify the current DNS table entry state.
     uint8_t dnsEntryState;
@@ -75,6 +85,11 @@ typedef struct gmosTcpipDnsCacheEntry_t {
 
     // Specify the DNS transaction ID used to resolve the address.
     uint16_t transactionId;
+
+    // Indicate that the cache entry contains an IPv6 address.
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    uint8_t dnsEntryIsIpv6;
+#endif
 
 } gmosTcpipDnsCacheEntry_t;
 
@@ -226,6 +241,15 @@ static inline bool gmosTcpipDnsClientFormatQuery (
     uint16_t dnsNameLength;
     uint8_t dnsHeader [12];
     uint8_t dnsFooter [4];
+    uint8_t recordType;
+
+    // Select 'A' record type for IPv4 and 'AAAA' record type for IPv6.
+    recordType = GMOS_TCPIP_DNS_RECORD_TYPE_A;
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    if (dnsCacheEntry->dnsEntryIsIpv6 != 0) {
+        recordType = GMOS_TCPIP_DNS_RECORD_TYPE_AAAA;
+    }
+#endif
 
     // Extract the required DNS cache entry parameters.
     dnsSequence = dnsCacheEntry->transactionId;
@@ -260,11 +284,11 @@ static inline bool gmosTcpipDnsClientFormatQuery (
         goto fail;
     }
 
-    // Format the DNS footer.
+    // Format the DNS footer, specifying record type and Internet class.
     dnsFooter [0] = 0x00;
-    dnsFooter [1] = 0x01;   // Specify 'A' record type for query.
+    dnsFooter [1] = recordType;
     dnsFooter [2] = 0x00;
-    dnsFooter [3] = 0x01;   // Specify IPv4 as network class.
+    dnsFooter [3] = 0x01;
 
     // Append the DNS footer.
     if (!gmosBufferAppend (dnsMessage, dnsFooter, sizeof (dnsFooter))) {
@@ -434,7 +458,7 @@ static inline uint8_t gmosTcpipDnsClientCacheMatchBuffer (
  */
 static inline gmosBuffer_t* gmosTcpipDnsClientCacheLookup (
     gmosTcpipDnsClient_t* dnsClient, const char* dnsName,
-    gmosTcpipDnsCacheEntry_t* dnsCacheEntry)
+    bool useIpv6, gmosTcpipDnsCacheEntry_t* dnsCacheEntry)
 {
     gmosBuffer_t* dnsCacheBuffer;
     bool cacheHit;
@@ -446,16 +470,27 @@ static inline gmosBuffer_t* gmosTcpipDnsClientCacheLookup (
         dnsCacheBuffer = &(dnsClient->dnsCache [i]);
         if (gmosTcpipDnsClientCacheMatchString (
             dnsCacheBuffer, dnsName) > 0) {
+            gmosBufferRead (dnsCacheBuffer, 0, (uint8_t*) dnsCacheEntry,
+                sizeof (gmosTcpipDnsCacheEntry_t));
+
+            // Differentiate between entries with the same name in the
+            // cache for both IPv4 and IPv6 lookups.
             cacheHit = true;
-            break;
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+            if ((useIpv6 && (dnsCacheEntry->dnsEntryIsIpv6 == 0)) ||
+                (!useIpv6 && (dnsCacheEntry->dnsEntryIsIpv6 != 0))) {
+                cacheHit = false;
+            }
+#endif
+            if (cacheHit) {
+                break;
+            }
         }
     }
 
     // On a cache hit for a valid DNS entry, update the DNS cache entry
     // timestamp to indicate that it has been touched.
     if (cacheHit) {
-        gmosBufferRead (dnsCacheBuffer, 0, (uint8_t*) dnsCacheEntry,
-            sizeof (gmosTcpipDnsCacheEntry_t));
         if (dnsCacheEntry->dnsEntryState ==
             GMOS_TCPIP_DNS_CACHE_ENTRY_STATE_VALID) {
             dnsCacheEntry->expiryTimestamp = gmosPalGetTimer () +
@@ -475,7 +510,7 @@ static inline gmosBuffer_t* gmosTcpipDnsClientCacheLookup (
  */
 static inline bool gmosTcpipDnsClientCacheAlloc (
     gmosTcpipDnsClient_t* dnsClient, const char* dnsName,
-    bool* dnsNameError)
+    bool useIpv6, bool* dnsNameError)
 {
     gmosTcpipDnsCacheEntry_t dnsCacheEntry;
     gmosBuffer_t* dnsCacheBuffer;
@@ -524,6 +559,11 @@ static inline bool gmosTcpipDnsClientCacheAlloc (
     dnsCacheEntry.retryCount = 0;
     dnsCacheEntry.transactionId = dnsClient->dnsXid;
 
+    // Set the IPv6 request flag if required.
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    dnsCacheEntry.dnsEntryIsIpv6 = useIpv6 ? 1 : 0;
+#endif
+
     // Store the initial cache entry state at the start of the DNS
     // cache buffer.
     gmosBufferReset (dnsCacheBuffer, 0);
@@ -549,40 +589,82 @@ fail :
 }
 
 /*
+ * Selects the DNS server to use for the current retry attempt on a
+ * specific cache entry.
+ */
+static gmosTcpipDnsServerInfo_t* gmosTcpipDnsServerSelect (
+    gmosTcpipDnsClient_t* dnsClient,
+    gmosTcpipDnsCacheEntry_t* dnsCacheEntry)
+{
+    uint8_t i;
+    gmosTcpipDnsServerInfo_t* serverInfo;
+
+    // Return a null reference if no servers are configured or the
+    // retry count has expired.
+    if ((dnsClient->dnsServerList == NULL) ||
+        (dnsCacheEntry->retryCount > GMOS_CONFIG_TCPIP_DNS_RETRY_COUNT)) {
+        return NULL;
+    }
+
+    // The retry count is limited, so a simple linear search through
+    // the list is adequate.
+    serverInfo = dnsClient->dnsServerList;
+    for (i = 0; i < dnsCacheEntry->retryCount; i++) {
+        serverInfo = serverInfo->nextServer;
+        if (serverInfo == NULL) {
+            serverInfo = dnsClient->dnsServerList;
+        }
+    }
+    return serverInfo;
+}
+
+/*
  * Checks for an active UDP socket or opens one if required.
  */
 static inline bool gmosTcpipDnsClientOpenUdp (
-    gmosTcpipDnsClient_t* dnsClient)
+    gmosTcpipDnsClient_t* dnsClient, gmosTcpipDnsServerInfo_t* dnsServer)
 {
-    if (dnsClient->udpSocket == NULL) {
-        dnsClient->udpSocket = gmosTcpipStackUdpOpen (
-            dnsClient->dhcpClient->tcpipStack, false,
-            GMOS_TCPIP_DNS_COMMON_PORT, &(dnsClient->dnsWorkerTask),
-            NULL, NULL);
+    // Select IPv6 connection if the DNS server has an IPv6 address.
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    if (dnsServer->addressIsIpv6 != 0) {
+        if (dnsClient->udpSocketIpv6 == NULL) {
+            dnsClient->udpSocketIpv6 = gmosTcpipStackUdpOpen (
+                dnsClient->tcpipStack, true, GMOS_TCPIP_DNS_COMMON_PORT,
+                &(dnsClient->dnsWorkerTask), NULL, NULL);
+        }
+        return (dnsClient->udpSocketIpv6 != NULL) ? true : false;
     }
-    return (dnsClient->udpSocket != NULL) ? true : false;
+#endif
+
+    // Open the IPv4 socket by default.
+    if (dnsClient->udpSocketIpv4 == NULL) {
+        dnsClient->udpSocketIpv4 = gmosTcpipStackUdpOpen (
+            dnsClient->tcpipStack, false, GMOS_TCPIP_DNS_COMMON_PORT,
+            &(dnsClient->dnsWorkerTask), NULL, NULL);
+    }
+    return (dnsClient->udpSocketIpv4 != NULL) ? true : false;
 }
 
 /*
  * Sends a new DNS request to the appropriate DNS server.
  */
 static inline bool gmosTcpipDnsClientSendRequest (
-    gmosTcpipDnsClient_t* dnsClient, gmosBuffer_t* dnsCacheBuffer,
-    gmosTcpipDnsCacheEntry_t* dnsCacheEntry)
+    gmosTcpipDnsClient_t* dnsClient, gmosTcpipDnsServerInfo_t* dnsServer,
+    gmosBuffer_t* dnsCacheBuffer, gmosTcpipDnsCacheEntry_t* dnsCacheEntry)
 {
     gmosBuffer_t dnsMessage = GMOS_BUFFER_INIT ();
-    uint32_t dnsServerAddr;
-    gmosTcpipStackStatus_t stackStatus;
+    gmosNetworkStatus_t stackStatus;
     uint32_t retryIntervalTicks = GMOS_MS_TO_TICKS (
         1000 * GMOS_CONFIG_TCPIP_DNS_RETRY_INTERVAL);
+    gmosTcpipStackSocket_t* udpSocket;
 
-    // Select the DNS server to use for the request. Requests alternate
-    // between the primary and secondary DNS servers.
-    if ((dnsCacheEntry->retryCount & 1) == 0) {
-        dnsServerAddr = dnsClient->dhcpClient->dns1ServerAddr;
-    } else {
-        dnsServerAddr = dnsClient->dhcpClient->dns2ServerAddr;
+    // Select the IPv4 or IPv6 socket to use for the request.
+    udpSocket = dnsClient->udpSocketIpv4;
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    if (dnsServer->addressIsIpv6 != 0) {
+        udpSocket = dnsClient->udpSocketIpv6;
     }
+#endif
 
     // Attempt to format the DNS request message.
     if (!gmosTcpipDnsClientFormatQuery (
@@ -591,10 +673,10 @@ static inline bool gmosTcpipDnsClientSendRequest (
     }
 
     // Send the DNS request message to the selected server.
-    stackStatus = gmosTcpipStackUdpSendTo (dnsClient->udpSocket,
-        (uint8_t*) &dnsServerAddr, GMOS_TCPIP_DNS_COMMON_PORT,
+    stackStatus = gmosTcpipStackUdpSendTo (udpSocket,
+        dnsServer->address, GMOS_TCPIP_DNS_COMMON_PORT,
         &dnsMessage);
-    if (stackStatus != GMOS_TCPIP_STACK_STATUS_SUCCESS) {
+    if (stackStatus != GMOS_NETWORK_STATUS_SUCCESS) {
         goto fail;
     } else {
         dnsCacheEntry->retryTimestamp =
@@ -653,6 +735,7 @@ static inline gmosTaskStatus_t gmosTcpipDnsClientCacheProcess (
     bool* udpKeepOpen)
 {
     gmosTcpipDnsCacheEntry_t dnsCacheEntry;
+    gmosTcpipDnsServerInfo_t* dnsServer;
     gmosTaskStatus_t taskStatus = GMOS_TASK_SUSPEND;
     uint8_t nextState;
 
@@ -669,7 +752,11 @@ static inline gmosTaskStatus_t gmosTcpipDnsClientCacheProcess (
 
         // Check for an active UDP socket or open one if required.
         case GMOS_TCPIP_DNS_CACHE_ENTRY_STATE_OPEN :
-            if (gmosTcpipDnsClientOpenUdp (dnsClient)) {
+            dnsServer = gmosTcpipDnsServerSelect (
+                dnsClient, &dnsCacheEntry);
+            if (dnsServer == NULL) {
+                nextState = GMOS_TCPIP_DNS_CACHE_ENTRY_STATE_NOT_VALID;
+            } else if (gmosTcpipDnsClientOpenUdp (dnsClient, dnsServer)) {
                 GMOS_LOG (LOG_VERBOSE, "DNS : Opened UDP port.");
                 *udpKeepOpen = true;
                 nextState = GMOS_TCPIP_DNS_CACHE_ENTRY_STATE_REQUEST;
@@ -680,8 +767,12 @@ static inline gmosTaskStatus_t gmosTcpipDnsClientCacheProcess (
         // Attempt to send a DNS request message and then set the
         // retry request timeout.
         case GMOS_TCPIP_DNS_CACHE_ENTRY_STATE_REQUEST :
-            if (gmosTcpipDnsClientSendRequest (
-                dnsClient, dnsCacheBuffer, &dnsCacheEntry)) {
+            dnsServer = gmosTcpipDnsServerSelect (
+                dnsClient, &dnsCacheEntry);
+            if (dnsServer == NULL) {
+                nextState = GMOS_TCPIP_DNS_CACHE_ENTRY_STATE_NOT_VALID;
+            } else if (gmosTcpipDnsClientSendRequest (
+                dnsClient, dnsServer, dnsCacheBuffer, &dnsCacheEntry)) {
                 GMOS_LOG (LOG_VERBOSE, "DNS : Sent DNS request.");
                 nextState = GMOS_TCPIP_DNS_CACHE_ENTRY_STATE_WAIT;
             }
@@ -770,7 +861,7 @@ static inline uint16_t gmosTcpipDnsClientResponseSkipDnsName (
  */
 static inline uint16_t gmosTcpipDnsClientResponseCheckHeader (
     gmosBuffer_t* payloadBuffer, gmosBuffer_t* dnsCacheBuffer,
-    uint8_t* nextState)
+    gmosTcpipDnsCacheEntry_t* dnsCacheEntry, uint8_t* nextState)
 {
     uint8_t dnsHeader [12];
     uint8_t queryData [4];
@@ -780,6 +871,15 @@ static inline uint16_t gmosTcpipDnsClientResponseCheckHeader (
     uint16_t payloadSize;
     uint16_t payloadOffset;
     uint8_t matchSize;
+    uint8_t recordType;
+
+    // Select 'A' record type for IPv4 and 'AAAA' record type for IPv6.
+    recordType = GMOS_TCPIP_DNS_RECORD_TYPE_A;
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    if (dnsCacheEntry->dnsEntryIsIpv6 != 0) {
+        recordType = GMOS_TCPIP_DNS_RECORD_TYPE_AAAA;
+    }
+#endif
 
     // Extract the common header fields.
     if (!gmosBufferRead (payloadBuffer, 0,
@@ -833,14 +933,12 @@ static inline uint16_t gmosTcpipDnsClientResponseCheckHeader (
     }
     payloadOffset += matchSize;
 
-    // Match the expected type and class fields. These should be 0x0001
-    // to specify the 'A' record type and 0x0001 to specify IPv4 as the
-    // network class.
+    // Match the expected record type and Internet class fields.
     if (!gmosBufferRead (payloadBuffer, payloadOffset,
         queryData, sizeof (queryData))) {
         return 0;
     }
-    if ((queryData [0] != 0x00) || (queryData [1] != 0x01) ||
+    if ((queryData [0] != 0x00) || (queryData [1] != recordType) ||
         (queryData [2] != 0x00) || (queryData [3] != 0x01)) {
         return 0;
     }
@@ -866,11 +964,22 @@ static inline void gmosTcpipDnsClientResponseScanRecords (
 {
     uint16_t payloadOffset;
     uint8_t resourceRecord [10];
-    uint8_t resolvedAddr [4];
+    uint8_t resolvedAddr [GMOS_CONFIG_TCPIP_DNS_MAX_ADDR_SIZE];
     uint16_t recordDataSize;
     uint16_t aTypeRecordCount;
     uint32_t randValue;
-    bool updateAddr;
+    uint8_t recordType;
+    size_t resolvedAddrSize;
+
+    // Select 'A' record type for IPv4 and 'AAAA' record type for IPv6.
+    recordType = GMOS_TCPIP_DNS_RECORD_TYPE_A;
+    resolvedAddrSize = 4;
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    if (dnsCacheEntry->dnsEntryIsIpv6 != 0) {
+        recordType = GMOS_TCPIP_DNS_RECORD_TYPE_AAAA;
+        resolvedAddrSize = 16;
+    }
+#endif
 
     // Scan each answer record in turn.
     payloadOffset = 0;
@@ -893,34 +1002,45 @@ static inline void gmosTcpipDnsClientResponseScanRecords (
         payloadOffset += sizeof (resourceRecord);
 
         // The DNS records form a 'tree' of canonical name references
-        // with 'A' records at the leaf nodes. Therefore it is
-        // sufficient to just process the Internet class type 'A'
-        // records. If there are multiple such records, the one to use
-        // will be selected at random.
-        if ((resourceRecord [0] == 0) && (resourceRecord [1] == 1) &&
+        // with 'A' or 'AAAA' records at the leaf nodes. Therefore it is
+        // sufficient to just process the Internet class type 'A' or
+        // 'AAAA' records. If there are multiple such records, the one
+        // to use will be selected at random.
+        if ((resourceRecord [0] == 0) &&
+            (resourceRecord [1] == recordType) &&
             (resourceRecord [2] == 0) && (resourceRecord [3] == 1)) {
             if (!gmosBufferRead (payload, payloadOffset,
-                resolvedAddr, sizeof (resolvedAddr))) {
+                resolvedAddr, resolvedAddrSize)) {
                 return;
             }
-            GMOS_LOG_FMT (LOG_VERBOSE,
-                "DNS : Found valid 'A' type record : %d.%d.%d.%d",
-                resolvedAddr [0], resolvedAddr [1],
-                resolvedAddr [2], resolvedAddr [3]);
-            aTypeRecordCount += 1;
+            if (recordType == GMOS_TCPIP_DNS_RECORD_TYPE_A) {
+                GMOS_LOG_FMT (LOG_VERBOSE,
+                    "DNS : Found valid 'A' record : %d.%d.%d.%d",
+                    resolvedAddr [0], resolvedAddr [1],
+                    resolvedAddr [2], resolvedAddr [3]);
+            } else if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6) {
+                GMOS_LOG_FMT (LOG_VERBOSE,
+                    "DNS : Found valid 'AAAA' record : "
+                    "%02x%02x:%02x%02x:%02x%02x:%02x%02x:"
+                    "%02x%02x:%02x%02x:%02x%02x:%02x%02x",
+                    resolvedAddr [0], resolvedAddr [1],
+                    resolvedAddr [2], resolvedAddr [3],
+                    resolvedAddr [4], resolvedAddr [5],
+                    resolvedAddr [6], resolvedAddr [7],
+                    resolvedAddr [8], resolvedAddr [9],
+                    resolvedAddr [10], resolvedAddr [11],
+                    resolvedAddr [12], resolvedAddr [13],
+                    resolvedAddr [14], resolvedAddr [15]);
+            }
 
             // Randomly replace the existing cache address.
-            updateAddr = true;
-            if (aTypeRecordCount > 1) {
-                gmosPalGetRandomBytes (
-                    (uint8_t*) &randValue, sizeof (randValue));
-                randValue = aTypeRecordCount * (randValue & 0xFFFF);
-                if (randValue >= 0x10000) {
-                    updateAddr = false;
-                }
-            }
-            if (updateAddr) {
-                memcpy (dnsCacheEntry->resolvedAddr, resolvedAddr, 4);
+            aTypeRecordCount += 1;
+            gmosPalGetRandomBytes (
+                (uint8_t*) &randValue, sizeof (randValue));
+            randValue = aTypeRecordCount * (randValue & 0xFFFF);
+            if (randValue < 0x10000) {
+                memcpy (dnsCacheEntry->resolvedAddr,
+                    resolvedAddr, resolvedAddrSize);
                 *nextState = GMOS_TCPIP_DNS_CACHE_ENTRY_STATE_VALID;
             }
         }
@@ -936,14 +1056,15 @@ static inline void gmosTcpipDnsClientResponseScanRecords (
 /*
  * Process the next DNS response message if ready.
  */
-static inline gmosTaskStatus_t gmosTcpipDnsClientResponseProcess (
-    gmosTcpipDnsClient_t* dnsClient)
+static gmosTaskStatus_t gmosTcpipDnsClientResponseProcess (
+    gmosTcpipDnsClient_t* dnsClient, bool responseIsIpv6)
 {
     gmosTcpipDnsCacheEntry_t dnsCacheEntry;
     gmosBuffer_t* dnsCacheBuffer = NULL;
-    gmosTcpipStackStatus_t stackStatus;
+    gmosTcpipStackSocket_t* udpSocket;
+    gmosNetworkStatus_t stackStatus;
     uint8_t nextState;
-    uint32_t remoteAddr;
+    uint8_t remoteAddr [GMOS_CONFIG_TCPIP_DNS_MAX_ADDR_SIZE];
     uint16_t remotePort;
     uint16_t dnsSequence;
     gmosBuffer_t payload = GMOS_BUFFER_INIT ();
@@ -951,22 +1072,25 @@ static inline gmosTaskStatus_t gmosTcpipDnsClientResponseProcess (
     uint8_t i;
     bool cacheHit;
 
+    // Select the UDP socket to use.
+    udpSocket = dnsClient->udpSocketIpv4;
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    if (responseIsIpv6) {
+        udpSocket = dnsClient->udpSocketIpv6;
+    }
+#endif
+
     // Attempt to read the next UDP message from the socket.
-    stackStatus = gmosTcpipStackUdpReceiveFrom (dnsClient->udpSocket,
-        (uint8_t*) &remoteAddr, &remotePort, &payload);
-    if (stackStatus != GMOS_TCPIP_STACK_STATUS_SUCCESS) {
+    stackStatus = gmosTcpipStackUdpReceiveFrom (udpSocket,
+        remoteAddr, &remotePort, &payload);
+    if (stackStatus != GMOS_NETWORK_STATUS_SUCCESS) {
         return GMOS_TASK_SUSPEND;
     }
 
-    // Discard messages that are not from the expected DNS servers.
-    if ((remotePort != GMOS_TCPIP_DNS_COMMON_PORT) ||
-        ((remoteAddr != dnsClient->dhcpClient->dns1ServerAddr) &&
-        (remoteAddr != dnsClient->dhcpClient->dns2ServerAddr))) {
-        goto exit;
-    }
-
     // Match the response message to a DNS cache entry using the DNS
-    // transaction ID. This uses native byte ordering.
+    // transaction ID. This uses native byte ordering. No check is made
+    // on the UDP source address since if an attacker is already
+    // generating fake responses this is trivially easy to spoof.
     if (!gmosBufferRead (&payload, 0, (uint8_t*) &dnsSequence, 2)) {
         goto exit;
     }
@@ -989,15 +1113,27 @@ static inline gmosTaskStatus_t gmosTcpipDnsClientResponseProcess (
 
     // Check the common header and query section from the payload.
     anCount = gmosTcpipDnsClientResponseCheckHeader (
-        &payload, dnsCacheBuffer, &nextState);
+        &payload, dnsCacheBuffer, &dnsCacheEntry, &nextState);
     if (anCount == 0) {
         goto exit;
     }
-    GMOS_LOG_FMT (LOG_VERBOSE,
-        "DNS : Received valid response from %d.%d.%d.%d:%d",
-        ((uint8_t*) &remoteAddr) [0], ((uint8_t*) &remoteAddr) [1],
-        ((uint8_t*) &remoteAddr) [2], ((uint8_t*) &remoteAddr) [3],
-        remotePort);
+    if (!responseIsIpv6) {
+        GMOS_LOG_FMT (LOG_VERBOSE,
+            "DNS : Received valid response from %d.%d.%d.%d:%d",
+            remoteAddr [0], remoteAddr [1], remoteAddr [2],
+            remoteAddr [3], remotePort);
+    } else if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6) {
+        GMOS_LOG_FMT (LOG_VERBOSE,
+            "DNS : Received valid response from "
+            "[%02x%02x:%02x%02x:%02x%02x:%02x%02x:"
+            "%02x%02x:%02x%02x:%02x%02x:%02x%02x]:%d",
+            remoteAddr [0], remoteAddr [1], remoteAddr [2],
+            remoteAddr [3], remoteAddr [4], remoteAddr [5],
+            remoteAddr [6], remoteAddr [7], remoteAddr [8],
+            remoteAddr [9], remoteAddr [10], remoteAddr [11],
+            remoteAddr [12], remoteAddr [13], remoteAddr [14],
+            remoteAddr [15], remotePort);
+    }
 
     // Scan and select an 'A' record from the DNS response.
     gmosTcpipDnsClientResponseScanRecords (
@@ -1029,11 +1165,13 @@ static gmosTaskStatus_t gmosTcpipDnsClientWorkerTaskFn (void* taskData)
     uint8_t i;
     bool udpKeepOpen = false;
 
-    // Check that the DHCP settings are valid before any further
-    // processing. If no longer valid, the DNS cache is cleared.
+    // Ensure that the network is available and that at least one DNS
+    // server has a valid configuration before any further processing.
+    // If there are no configured servers, the DNS cache is cleared.
     // Suspend the worker task until the next valid query has been
-    // initiated, which depends on valid DHCP settings being restored.
-    if (!gmosTcpipDhcpClientReady (dnsClient->dhcpClient)) {
+    // initiated, which depends on valid server settings being restored.
+    if ((!gmosDriverTcpipPhyLinkIsUp (dnsClient->tcpipStack)) ||
+        (dnsClient->dnsServerList == NULL)) {
         for (i = 0; i < GMOS_CONFIG_TCPIP_DNS_CACHE_SIZE; i++) {
             dnsCacheBuffer = &(dnsClient->dnsCache [i]);
             gmosBufferReset (dnsCacheBuffer, 0);
@@ -1041,12 +1179,20 @@ static gmosTaskStatus_t gmosTcpipDnsClientWorkerTaskFn (void* taskData)
         return GMOS_TASK_SUSPEND;
     }
 
-    // Process the next DNS response message on an open socket.
-    if (dnsClient->udpSocket != NULL) {
-        taskStatus = gmosTcpipDnsClientResponseProcess (dnsClient);
-    } else {
-        taskStatus = GMOS_TASK_SUSPEND;
+    // Process the next DNS response message on an open IPv4 socket.
+    taskStatus = GMOS_TASK_SUSPEND;
+    if (dnsClient->udpSocketIpv4 != NULL) {
+        nextStatus = gmosTcpipDnsClientResponseProcess (dnsClient, false);
+        gmosSchedulerPrioritise (taskStatus, nextStatus);
     }
+
+    // Process the next DNS response message on an open IPv6 socket.
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    if (dnsClient->udpSocketIpv6 != NULL) {
+        nextStatus = gmosTcpipDnsClientResponseProcess (dnsClient, true);
+        gmosSchedulerPrioritise (taskStatus, nextStatus);
+    }
+#endif
 
     // Process each DNS cache entry state machine in turn.
     for (i = 0; i < GMOS_CONFIG_TCPIP_DNS_CACHE_SIZE; i++) {
@@ -1056,14 +1202,25 @@ static gmosTaskStatus_t gmosTcpipDnsClientWorkerTaskFn (void* taskData)
         taskStatus = gmosSchedulerPrioritise (taskStatus, nextStatus);
     }
 
-    // Attempt to close the UDP socket if it is no longer required.
-    if ((dnsClient->udpSocket != NULL) && (!udpKeepOpen)) {
-        gmosTcpipStackStatus_t stackStatus;
-        stackStatus = gmosTcpipStackUdpClose (dnsClient->udpSocket);
-        if (stackStatus != GMOS_TCPIP_STACK_STATUS_RETRY) {
-            dnsClient->udpSocket = NULL;
+    // Attempt to close the IPv4 UDP socket if it is no longer required.
+    if ((dnsClient->udpSocketIpv4 != NULL) && (!udpKeepOpen)) {
+        gmosNetworkStatus_t stackStatus;
+        stackStatus = gmosTcpipStackUdpClose (dnsClient->udpSocketIpv4);
+        if (stackStatus != GMOS_NETWORK_STATUS_RETRY) {
+            dnsClient->udpSocketIpv4 = NULL;
         }
     }
+
+    // Attempt to close the IPv6 UDP socket if it is no longer required.
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    if ((dnsClient->udpSocketIpv6 != NULL) && (!udpKeepOpen)) {
+        gmosNetworkStatus_t stackStatus;
+        stackStatus = gmosTcpipStackUdpClose (dnsClient->udpSocketIpv6);
+        if (stackStatus != GMOS_NETWORK_STATUS_RETRY) {
+            dnsClient->udpSocketIpv6 = NULL;
+        }
+    }
+#endif
     return taskStatus;
 }
 
@@ -1072,15 +1229,19 @@ static gmosTaskStatus_t gmosTcpipDnsClientWorkerTaskFn (void* taskData)
  * for accessing the TCP/IP interface and DNS server information.
  */
 bool gmosTcpipDnsClientInit (gmosTcpipDnsClient_t* dnsClient,
-    gmosTcpipDhcpClient_t* dhcpClient)
+    gmosDriverTcpip_t* tcpipStack)
 {
     gmosTaskState_t* dnsWorkerTask = &dnsClient->dnsWorkerTask;
     uint16_t randomValue;
     uint8_t i;
 
     // Initialise the DNS client data structure.
-    dnsClient->dhcpClient = dhcpClient;
-    dnsClient->udpSocket = NULL;
+    dnsClient->tcpipStack = tcpipStack;
+    dnsClient->dnsServerList = NULL;
+    dnsClient->udpSocketIpv4 = NULL;
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    dnsClient->udpSocketIpv6 = NULL;
+#endif
 
     // Select a random transaction ID on startup.
     gmosPalGetRandomBytes ((uint8_t*) &randomValue, sizeof (randomValue));
@@ -1103,45 +1264,138 @@ bool gmosTcpipDnsClientInit (gmosTcpipDnsClient_t* dnsClient,
 }
 
 /*
+ * Adds a new DNS server to the list of available servers.
+ */
+bool gmosTcpipDnsClientAddServer (gmosTcpipDnsClient_t* dnsClient,
+    gmosTcpipDnsServerInfo_t* dnsServerInfo, bool useIpv6,
+    uint8_t* serverAddr, uint8_t priority)
+{
+    size_t serverAddrSize;
+    gmosTcpipDnsServerInfo_t** serverInfoPtr;
+
+    // Unlink the existing server data structure if required.
+    gmosTcpipDnsClientRemoveServer (dnsClient, dnsServerInfo);
+
+    // Specify sixteen octet IPv6 address if required.
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    if (useIpv6) {
+        dnsServerInfo->addressIsIpv6 = 1;
+        serverAddrSize = 16;
+    } else {
+        dnsServerInfo->addressIsIpv6 = 0;
+        serverAddrSize = 4;
+    }
+#else
+    if (useIpv6) {
+        return false;
+    } else {
+        serverAddrSize = 4;
+    }
+#endif
+
+    // Search the DNS server list for the appropriate insertion point.
+    serverInfoPtr = &(dnsClient->dnsServerList);
+    while (*serverInfoPtr != NULL) {
+        if (priority >= (*serverInfoPtr)->priority) {
+            break;
+        } else {
+            serverInfoPtr = &((*serverInfoPtr)->nextServer);
+        }
+    }
+
+    // Insert the new DNS server information into the list.
+    memcpy (dnsServerInfo->address, serverAddr, serverAddrSize);
+    dnsServerInfo->priority = priority;
+    dnsServerInfo->nextServer = *serverInfoPtr;
+    *serverInfoPtr = dnsServerInfo;
+    return true;
+}
+
+/*
+ * Removes a DNS server from the list of available servers.
+ */
+bool gmosTcpipDnsClientRemoveServer (gmosTcpipDnsClient_t* dnsClient,
+    gmosTcpipDnsServerInfo_t* dnsServerInfo)
+{
+    bool removedOk = false;
+    gmosTcpipDnsServerInfo_t** serverInfoPtr;
+
+    // Perform matching on the server information data pointer.
+    serverInfoPtr = &(dnsClient->dnsServerList);
+    while (*serverInfoPtr != NULL) {
+        if (*serverInfoPtr == dnsServerInfo) {
+            *serverInfoPtr = (*serverInfoPtr)->nextServer;
+            removedOk = true;
+            break;
+        } else {
+            serverInfoPtr = &((*serverInfoPtr)->nextServer);
+        }
+    }
+    return removedOk;
+}
+
+/*
  * Performs a DNS query for resolving a given DNS name to an IPv4
  * address.
  */
-gmosTcpipStackStatus_t gmosTcpipDnsClientQuery (
+gmosNetworkStatus_t gmosTcpipDnsClientQuery (
     gmosTcpipDnsClient_t* dnsClient, const char* dnsName,
-    uint8_t* dnsAddress)
+    bool useIpv6, uint8_t* dnsAddress)
 {
     gmosBuffer_t* dnsCacheBuffer;
     gmosTcpipDnsCacheEntry_t dnsCacheEntry;
     bool dnsNameError;
-    gmosTcpipStackStatus_t dnsStatus;
+    gmosNetworkStatus_t dnsStatus;
+    bool dnsEntryIsIpv6 = false;
+    size_t dnsAddressSize = 4;
 
-    // Ensure that the current DHCP settings are valid.
-    if (!gmosTcpipDhcpClientReady (dnsClient->dhcpClient)) {
-        return GMOS_TCPIP_STACK_STATUS_NETWORK_DOWN;
+    // Check for IPv6 support.
+    if (useIpv6 && !GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6) {
+        return GMOS_NETWORK_STATUS_UNSUPPORTED;
+    }
+
+    // Ensure that the network is available and that at least one DNS
+    // server has been configured.
+    if ((!gmosDriverTcpipPhyLinkIsUp (dnsClient->tcpipStack)) ||
+        (dnsClient->dnsServerList == NULL)) {
+        return GMOS_NETWORK_STATUS_NETWORK_DOWN;
     }
 
     // Perform local cache lookup.
     dnsCacheBuffer = gmosTcpipDnsClientCacheLookup (
-        dnsClient, dnsName, &dnsCacheEntry);
+        dnsClient, dnsName, useIpv6, &dnsCacheEntry);
 
     // Process an existing DNS cache entry.
     if (dnsCacheBuffer != NULL) {
         GMOS_LOG_FMT (LOG_VERBOSE,
-            "DNS : Cache entry hit state : %d.",
-            dnsCacheEntry.dnsEntryState);
-        switch (dnsCacheEntry.dnsEntryState) {
+            "DNS : Cache entry 0x%04X hit state : %d.",
+            dnsCacheEntry.transactionId, dnsCacheEntry.dnsEntryState);
+
+        // Extract IPv6 flag setting if required.
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+        if (dnsCacheEntry.dnsEntryIsIpv6 != 0) {
+            dnsEntryIsIpv6 = true;
+            dnsAddressSize = 16;
+        }
+#endif
+
+        // Select the apprioriate status response.
+        if (useIpv6 != dnsEntryIsIpv6) {
+            dnsStatus = GMOS_NETWORK_STATUS_NOT_VALID;
+        } else switch (dnsCacheEntry.dnsEntryState) {
             case GMOS_TCPIP_DNS_CACHE_ENTRY_STATE_VALID :
-                memcpy (dnsAddress, &(dnsCacheEntry.resolvedAddr), 4);
-                dnsStatus = GMOS_TCPIP_STACK_STATUS_SUCCESS;
+                memcpy (dnsAddress,
+                    &(dnsCacheEntry.resolvedAddr), dnsAddressSize);
+                dnsStatus = GMOS_NETWORK_STATUS_SUCCESS;
                 break;
             case GMOS_TCPIP_DNS_CACHE_ENTRY_STATE_TIMEOUT :
-                dnsStatus = GMOS_TCPIP_STACK_STATUS_TIMEOUT;
+                dnsStatus = GMOS_NETWORK_STATUS_TIMEOUT;
                 break;
             case GMOS_TCPIP_DNS_CACHE_ENTRY_STATE_NOT_VALID :
-                dnsStatus = GMOS_TCPIP_STACK_STATUS_NOT_VALID;
+                dnsStatus = GMOS_NETWORK_STATUS_NOT_VALID;
                 break;
             default :
-                dnsStatus = GMOS_TCPIP_STACK_STATUS_RETRY;
+                dnsStatus = GMOS_NETWORK_STATUS_RETRY;
                 break;
         }
     }
@@ -1149,13 +1403,13 @@ gmosTcpipStackStatus_t gmosTcpipDnsClientQuery (
     // Attempt to allocate a new DNS cache entry and initiate the
     // DNS request process.
     else if (gmosTcpipDnsClientCacheAlloc (
-        dnsClient, dnsName, &dnsNameError)) {
+        dnsClient, dnsName, useIpv6, &dnsNameError)) {
         gmosSchedulerTaskResume (&(dnsClient->dnsWorkerTask));
-        dnsStatus = GMOS_TCPIP_STACK_STATUS_RETRY;
+        dnsStatus = GMOS_NETWORK_STATUS_RETRY;
     } else if (dnsNameError) {
-        dnsStatus = GMOS_TCPIP_STACK_STATUS_NOT_VALID;
+        dnsStatus = GMOS_NETWORK_STATUS_NOT_VALID;
     } else {
-        dnsStatus = GMOS_TCPIP_STACK_STATUS_RETRY;
+        dnsStatus = GMOS_NETWORK_STATUS_RETRY;
     }
     return dnsStatus;
 }
