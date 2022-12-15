@@ -35,10 +35,10 @@
 /*
  * Issues a command for the WIZnet socket controller.
  */
-bool gmosNalTcpipSocketIssueCommand (gmosTcpipStackSocket_t* socket,
+bool gmosNalTcpipSocketIssueCommand (gmosNalTcpipSocket_t* socket,
     wiznetSpiAdaptorSocketCommands_t command)
 {
-    gmosNalTcpipState_t* nalData = socket->tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t socketCommand;
     uint8_t socketId = socket->socketId;
 
@@ -61,9 +61,9 @@ bool gmosNalTcpipSocketIssueCommand (gmosTcpipStackSocket_t* socket,
  * Sets the remote IP address and port for an outgoing TCP connection
  * or UDP datagram.
  */
-bool gmosNalTcpipSocketSetRemoteAddr (gmosTcpipStackSocket_t* socket)
+bool gmosNalTcpipSocketSetRemoteAddr (gmosNalTcpipSocket_t* socket)
 {
-    gmosNalTcpipState_t* nalData = socket->tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
     uint8_t socketId = socket->socketId;
     uint16_t remoteAddrOffset;
     gmosBuffer_t* payloadData = &(socket->payloadData);
@@ -101,7 +101,7 @@ bool gmosNalTcpipSocketSetRemoteAddr (gmosTcpipStackSocket_t* socket)
  * machine will only proceed if the buffer status fields are consistent.
  */
 bool gmosNalTcpipSocketRxBufferCheck (
-    gmosTcpipStackSocket_t* socket, wiznetSpiAdaptorCmd_t* response,
+    gmosNalTcpipSocket_t* socket, wiznetSpiAdaptorCmd_t* response,
     uint16_t rxThreshold, bool* sequenceError)
 {
     uint8_t socketId = socket->socketId;
@@ -152,9 +152,9 @@ bool gmosNalTcpipSocketRxBufferCheck (
  * Writes the new read data pointer value after reading an inbound TCP
  * data block or UDP packet.
  */
-bool gmosNalTcpipSocketRxPointerWrite (gmosTcpipStackSocket_t* socket)
+bool gmosNalTcpipSocketRxPointerWrite (gmosNalTcpipSocket_t* socket)
 {
-    gmosNalTcpipState_t* nalData = socket->tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
     uint8_t socketId = socket->socketId;
     uint16_t endOfDataPtr = socket->data.active.limitPtr;
     wiznetSpiAdaptorCmd_t rxPtrCommand;
@@ -181,7 +181,7 @@ bool gmosNalTcpipSocketRxPointerWrite (gmosTcpipStackSocket_t* socket)
  * Checks the result of a data buffer read operation.
  */
 bool gmosNalTcpipSocketRxDataBlockCheck (
-    gmosTcpipStackSocket_t* socket, wiznetSpiAdaptorCmd_t* response,
+    gmosNalTcpipSocket_t* socket, wiznetSpiAdaptorCmd_t* response,
     bool* sequenceError)
 {
     uint8_t socketId = socket->socketId;
@@ -210,9 +210,9 @@ bool gmosNalTcpipSocketRxDataBlockCheck (
  * Writes the contents of the local buffer to the WIZnet socket memory,
  * starting from the current socket memory address pointer.
  */
-bool gmosNalTcpipSocketTxDataWrite (gmosTcpipStackSocket_t* socket)
+bool gmosNalTcpipSocketTxDataWrite (gmosNalTcpipSocket_t* socket)
 {
-    gmosNalTcpipState_t* nalData = socket->tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
     uint8_t socketId = socket->socketId;
     wiznetSpiAdaptorCmd_t txDataCommand;
     gmosBuffer_t* txDataBuffer = &txDataCommand.data.buffer;
@@ -251,9 +251,9 @@ bool gmosNalTcpipSocketTxDataWrite (gmosTcpipStackSocket_t* socket)
  * Updates the new write data pointer value after transferring a new
  * block of data.
  */
-bool gmosNalTcpipSocketTxPointerWrite (gmosTcpipStackSocket_t* socket)
+bool gmosNalTcpipSocketTxPointerWrite (gmosNalTcpipSocket_t* socket)
 {
-    gmosNalTcpipState_t* nalData = socket->tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
     uint8_t socketId = socket->socketId;
     uint16_t endOfDataPtr = socket->data.active.dataPtr;
     wiznetSpiAdaptorCmd_t txPtrCommand;

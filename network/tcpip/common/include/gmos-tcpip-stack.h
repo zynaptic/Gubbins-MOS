@@ -30,9 +30,37 @@
 #include <stdbool.h>
 #include "gmos-config.h"
 #include "gmos-buffers.h"
+#include "gmos-streams.h"
 #include "gmos-scheduler.h"
 #include "gmos-network.h"
-#include "gmos-driver-tcpip.h"
+
+/**
+ * Defines the GubbinsMOS TCP/IP implementation state and networking
+ * driver data structure that is used for managing the low level TCP/IP
+ * networking protocols. The full type definition is provided by the
+ * associated TCP/IP driver header.
+ */
+typedef struct gmosDriverTcpip_t gmosDriverTcpip_t;
+
+/**
+ * Defines the GubbinsMOS IPv4 DHCP client state. The full type
+ * definition is provided in the associated TCP/IP DHCP client header.
+ */
+typedef struct gmosTcpipDhcpClient_t gmosTcpipDhcpClient_t;
+
+/**
+ * Defines the GubbinsMOS TCP/IP stack state data structure that is used
+ * for storing common TCP/IP stack data.
+ */
+typedef struct gmosTcpipStack_t {
+
+    // Link to the associated TCP/IP driver instance.
+    gmosDriverTcpip_t* tcpipDriver;
+
+    // Link to the associated IPv4 DHCP client instance.
+    gmosTcpipDhcpClient_t* dhcpClient;
+
+} gmosTcpipStack_t;
 
 /**
  * This enumeration specifies the various TCP/IP notifications that may
@@ -75,13 +103,6 @@ typedef enum {
 gmosTcpipStackNotify_t;
 
 /**
- * Defines the stack specific TCP/IP socket data structure. The full
- * type definition must be provided by the associated TCP/IP network
- * abstraction layer.
- */
-typedef struct gmosTcpipStackSocket_t gmosTcpipStackSocket_t;
-
-/**
  * Specifies the function prototype used for asynchronous TCP/IP stack
  * notification callbacks.
  * @param notifyData This is the opaque notification data item which
@@ -93,9 +114,59 @@ typedef void (*gmosTcpipStackNotifyCallback_t) (
     void* notifyData, gmosTcpipStackNotify_t notification);
 
 /**
+ * Defines the common TCP/IP socket data structure used by the TCP/IP
+ * stack API.
+ */
+typedef struct gmosTcpipStackSocket_t {
+
+    // Link to the associated TCP/IP driver instance.
+    gmosDriverTcpip_t* tcpipDriver;
+
+    // Specifies the stack notification handler used for this socket.
+    gmosTcpipStackNotifyCallback_t notifyHandler;
+
+    // Specifies the stack notification data item used for this socket.
+    void* notifyData;
+
+    // Allocate the socket transmit data stream.
+    gmosStream_t txStream;
+
+    // Allocate the socket receive data stream.
+    gmosStream_t rxStream;
+
+    // Specify the generic socket operating state.
+    uint8_t socketState;
+
+} gmosTcpipStackSocket_t;
+
+/**
+ * Initialises the TCP/IP stack on startup.
+ * @param tcpipStack This is the TCP/IP stack instance that is to be
+ *     initialised.
+ * @param tcpipDriver This is the TCP/IP driver instance that is to be
+ *     initialised and used by the common TCP/IP stack.
+ * @param dhcpClient This is the IPv4 DHCP client instance that is to be
+ *     initialised and used by the TCP/IP stack. A null reference may be
+ *     passed if a static IPv4 configuration is to be used.
+ * @param ethMacAddr This is a pointer to the 48-bit Ethernet MAC
+ *     address which is to be assigned to the network interface, stored
+ *     as an array of six octets in network byte order. A null reference
+ *     may be passed for low level interfaces that include their own
+ *     hardcoded Ethernet MAC addresses.
+ * @param dhcpHostName This should be a pointer to a unique host name
+ *     string that allows the device to be identified in the DHCP server
+ *     tables. It must be valid for the lifetime of the device.
+ * @return Returns a boolean value which will be set to 'true' if the
+ *     TCP/IP stack was successfully initialised and 'false' otherwise.
+ */
+bool gmosTcpipStackInit (gmosTcpipStack_t* tcpipStack,
+    gmosDriverTcpip_t* tcpipDriver, gmosTcpipDhcpClient_t* dhcpClient,
+    const uint8_t* ethMacAddr, const char* dhcpHostName);
+
+/**
  * Attempts to open a new UDP socket for subsequent use.
- * @param tcpipStack This is the TCP/IP stack driver instance for which
- *     the UDP socket is being opened.
+ * @param tcpipStack This is the TCP/IP stack instance for which the
+ *     UDP socket is being opened.
  * @param useIpv6 If this flag is set and the TCP/IP stack supports
  *     IPv6, the UDP socket will be opened as an IPv6 socket. Otherwise
  *     an IPv4 socket will be opened.
@@ -113,7 +184,7 @@ typedef void (*gmosTcpipStackNotifyCallback_t) (
  *     reference if no UDP socket instance is currently available.
  */
 gmosTcpipStackSocket_t* gmosTcpipStackUdpOpen (
-    gmosDriverTcpip_t* tcpipStack, bool useIpv6,
+    gmosTcpipStack_t* tcpipStack, bool useIpv6,
     uint16_t localPort, gmosTaskState_t* appTask,
     gmosTcpipStackNotifyCallback_t notifyHandler, void* notifyData);
 
@@ -179,8 +250,8 @@ gmosNetworkStatus_t gmosTcpipStackUdpClose (
 
 /**
  * Attempts to open a new TCP socket for subsequent use.
- * @param tcpipStack This is the TCP/IP stack driver instance for which
- *     the TCP socket is being opened.
+ * @param tcpipStack This is the TCP/IP stack instance for which the
+ *     TCP socket is being opened.
  * @param useIpv6 If this flag is set and the TCP/IP stack supports
  *     IPv6, the TCP socket will be opened as an IPv6 socket. Otherwise
  *     an IPv4 socket will be opened.
@@ -198,7 +269,7 @@ gmosNetworkStatus_t gmosTcpipStackUdpClose (
  *     reference if no TCP socket instance is currently available.
  */
 gmosTcpipStackSocket_t* gmosTcpipStackTcpOpen (
-    gmosDriverTcpip_t* tcpipStack, bool useIpv6,
+    gmosTcpipStack_t* tcpipStack, bool useIpv6,
     uint16_t localPort, gmosTaskState_t* appTask,
     gmosTcpipStackNotifyCallback_t notifyHandler, void* notifyData);
 

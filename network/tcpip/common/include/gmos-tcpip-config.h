@@ -29,6 +29,22 @@
 #include "gmos-config.h"
 
 /**
+ * This configuration option specifies whether or not IPv6 support is
+ * enabled for the TCP/IP stack.
+ */
+#ifndef GMOS_CONFIG_TCPIP_IPV6_ENABLE
+#define GMOS_CONFIG_TCPIP_IPV6_ENABLE false
+#endif
+
+/**
+ * Set the maximum number of active sockets supported by the TCP/IP
+ * stack configuration.
+ */
+#ifndef GMOS_CONFIG_TCPIP_MAX_SOCKETS
+#define GMOS_CONFIG_TCPIP_MAX_SOCKETS 4
+#endif
+
+/**
  * Specifies the maximum number of DNS cache table entries.
  */
 #ifndef GMOS_CONFIG_TCPIP_DNS_CACHE_SIZE
@@ -67,7 +83,7 @@
  * Specifies whether the DNS client supports IPv6 requests.
  */
 #ifndef GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6
-#define GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6 false
+#define GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6 GMOS_CONFIG_TCPIP_IPV6_ENABLE
 #endif
 
 /**

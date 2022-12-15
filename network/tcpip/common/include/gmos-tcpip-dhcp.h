@@ -28,7 +28,6 @@
 #include <stdbool.h>
 #include "gmos-scheduler.h"
 #include "gmos-driver-tcpip.h"
-#include "gmos-tcpip-stack.h"
 
 /**
  * Defines the GubbinsMOS TCP/IP stack DHCP client state that is used
@@ -36,14 +35,14 @@
  */
 typedef struct gmosTcpipDhcpClient_t {
 
-    // Specify the TCP/IP stack instance to use for the DHCP client.
-    gmosDriverTcpip_t* tcpipStack;
+    // Specify the TCP/IP driver instance to use for the DHCP client.
+    gmosDriverTcpip_t* tcpipDriver;
 
     // Specify the DHCP host name to be used.
     const char* dhcpHostName;
 
     // Specify the UDP socket currently in use by the DHCP client.
-    gmosTcpipStackSocket_t* udpSocket;
+    gmosNalTcpipSocket_t* udpSocket;
 
     // Allocate the DHCP protocol worker task data structure.
     gmosTaskState_t dhcpWorkerTask;
@@ -88,9 +87,9 @@ typedef struct gmosTcpipDhcpClient_t {
  * interface.
  * @param dhcpClient This is a pointer to the DHCP client data
  *     structure that should be used for storing the DHCP client state.
- * @param tcpipStack This is an initialised TCP/IP stack data structure
- *     that represents the TCP/IP interface to be used by the DHCP
- *     client.
+ * @param tcpipDriver This is an initialised TCP/IP driver data
+ *     structure that represents the TCP/IP interface to be used by the
+ *     DHCP client.
  * @param dhcpHostName This should be a pointer to a unique host name
  *     string that allows the device to be identified in the DHCP server
  *     tables. It must be valid for the lifetime of the device.
@@ -98,7 +97,7 @@ typedef struct gmosTcpipDhcpClient_t {
  *     DHCP client was successfully initialised and 'false' otherwise.
  */
 bool gmosTcpipDhcpClientInit (gmosTcpipDhcpClient_t* dhcpClient,
-    gmosDriverTcpip_t* tcpipStack, const char* dhcpHostName);
+    gmosDriverTcpip_t* tcpipDriver, const char* dhcpHostName);
 
 /**
  * Determines if the DHCP client has successfully obtained a valid IP

@@ -63,9 +63,9 @@ static const uint8_t socketBufSizes [] = { 16, 0, 0, 0, 0, 0, 0, 0 };
  * Read the attached device version number.
  */
 static inline bool wiznetCoreCommonVerRead (
-    gmosDriverTcpip_t* tcpipStack)
+    gmosDriverTcpip_t* tcpipDriver)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t verCommand;
 
     // Set up the command to read from the 8-bit version register at
@@ -85,9 +85,9 @@ static inline bool wiznetCoreCommonVerRead (
  * Check the attached device version number.
  */
 static inline bool wiznetCoreCommonVerCheck (
-    gmosDriverTcpip_t* tcpipStack, bool* statusOk)
+    gmosDriverTcpip_t* tcpipDriver, bool* statusOk)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t verResponse;
 
     // Attempt to read back the next SPI transaction response.
@@ -113,9 +113,9 @@ static inline bool wiznetCoreCommonVerCheck (
  * new local network parameters.
  */
 static bool wiznetCoreCommonCfgSet (
-    gmosDriverTcpip_t* tcpipStack)
+    gmosDriverTcpip_t* tcpipDriver)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t cfgCommand;
     gmosBuffer_t* cfgBuffer = &cfgCommand.data.buffer;
 
@@ -157,9 +157,9 @@ fail:
  * Read back the common configuration registers on startup.
  */
 static inline bool wiznetCoreCommonCfgRead (
-    gmosDriverTcpip_t* tcpipStack)
+    gmosDriverTcpip_t* tcpipDriver)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t cfgCommand;
     gmosBuffer_t* cfgBuffer = &cfgCommand.data.buffer;
 
@@ -194,9 +194,9 @@ fail:
  * Check the results of the configuration setup process.
  */
 static inline bool wiznetCoreCommonCfgCheck (
-    gmosDriverTcpip_t* tcpipStack, bool* statusOk)
+    gmosDriverTcpip_t* tcpipDriver, bool* statusOk)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t cfgResponse;
     gmosBuffer_t* cfgBuffer = &cfgResponse.data.buffer;
     uint8_t cfgData [18];
@@ -229,9 +229,9 @@ static inline bool wiznetCoreCommonCfgCheck (
  * receive buffer sizes for each socket in turn.
  */
 static inline bool wiznetCoreSocketCfgSet (
-    gmosDriverTcpip_t* tcpipStack)
+    gmosDriverTcpip_t* tcpipDriver)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t cfgCommand;
     uint8_t socketId = nalData->wiznetSocketSelect;
     uint8_t socketBufSize = socketBufSizes [socketId];
@@ -258,9 +258,9 @@ static inline bool wiznetCoreSocketCfgSet (
  * free space settings.
  */
 static inline bool wiznetCoreSocketCfgRead (
-    gmosDriverTcpip_t* tcpipStack)
+    gmosDriverTcpip_t* tcpipDriver)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t cfgCommand;
     gmosBuffer_t* cfgBuffer = &cfgCommand.data.buffer;
     uint8_t socketId = nalData->wiznetSocketSelect;
@@ -296,9 +296,9 @@ fail:
  * Check the initial socket configuration state.
  */
 static inline bool wiznetCoreSocketCfgCheck (
-    gmosDriverTcpip_t* tcpipStack, bool* statusOk)
+    gmosDriverTcpip_t* tcpipDriver, bool* statusOk)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t cfgResponse;
     gmosBuffer_t* cfgBuffer = &cfgResponse.data.buffer;
     uint8_t socketId = nalData->wiznetSocketSelect;
@@ -334,9 +334,9 @@ static inline bool wiznetCoreSocketCfgCheck (
  * Sets the common register block interrupt enable options.
  */
 static inline bool wiznetCoreCommonCfgIntEnable (
-    gmosDriverTcpip_t* tcpipStack)
+    gmosDriverTcpip_t* tcpipDriver)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t cfgCommand;
     uint16_t cfgIntTimerReg;
     uint8_t commonIntMask;
@@ -379,9 +379,9 @@ static inline bool wiznetCoreCommonCfgIntEnable (
  * Read back the common interrupt configuration settings.
  */
 static inline bool wiznetCoreCommonCfgIntRead (
-    gmosDriverTcpip_t* tcpipStack)
+    gmosDriverTcpip_t* tcpipDriver)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t cfgCommand;
 
     // Set up the command to read from the interrupt register block at
@@ -401,10 +401,10 @@ static inline bool wiznetCoreCommonCfgIntRead (
  * Check the initial common interrupt state.
  */
 static inline bool wiznetCoreCommonCfgIntCheck (
-    gmosDriverTcpip_t* tcpipStack, bool* statusOk)
+    gmosDriverTcpip_t* tcpipDriver, bool* statusOk)
 {
-    const gmosNalTcpipConfig_t* nalConfig = tcpipStack->nalConfig;
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    const gmosNalTcpipConfig_t* nalConfig = tcpipDriver->nalConfig;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t cfgResponse;
     uint16_t cfgIntTimerReg;
     uint8_t commonIntMask;
@@ -455,9 +455,9 @@ static inline bool wiznetCoreCommonCfgIntCheck (
  * Read the Ethernet PHY status register.
  */
 static bool wiznetCoreCommonPhyRead (
-    gmosDriverTcpip_t* tcpipStack)
+    gmosDriverTcpip_t* tcpipDriver)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t phyCommand;
 
     // Set up the command to read from the 8-bit Ethernet PHY status
@@ -477,9 +477,9 @@ static bool wiznetCoreCommonPhyRead (
  * Detect changes in the PHY connectivity state.
  */
 static bool wiznetCoreCommonPhyCheck (
-    gmosDriverTcpip_t* tcpipStack, uint8_t phyStatus)
+    gmosDriverTcpip_t* tcpipDriver, uint8_t phyStatus)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     gmosTcpipStackSocket_t* socketData;
     bool newPhyIsUp;
     bool oldPhyIsUp;
@@ -516,7 +516,7 @@ static bool wiznetCoreCommonPhyCheck (
 
     // Issue socket notifications for change of PHY link status.
     for (i = 0; i < GMOS_CONFIG_TCPIP_MAX_SOCKETS; i++) {
-        socketData = &(nalData->socketData [i]);
+        socketData = &((nalData->socketData [i]).common);
         if (socketData->notifyHandler != NULL) {
             socketData->notifyHandler (socketData->notifyData,
                 phyNotification);
@@ -529,9 +529,9 @@ static bool wiznetCoreCommonPhyCheck (
  * Check whether the Ethernet PHY link is connected on startup.
  */
 static inline bool wiznetCoreStartupPhyCheck (
-    gmosDriverTcpip_t* tcpipStack, bool* statusOk)
+    gmosDriverTcpip_t* tcpipDriver, bool* statusOk)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t phyResponse;
 
     // Attempt to read back the next SPI transaction response.
@@ -543,7 +543,7 @@ static inline bool wiznetCoreStartupPhyCheck (
 
     // Check the current PHY status.
     if ((phyResponse.address == 0x002E) && (phyResponse.size == 1) &&
-        (wiznetCoreCommonPhyCheck (tcpipStack, phyResponse.data.bytes [0]))) {
+        (wiznetCoreCommonPhyCheck (tcpipDriver, phyResponse.data.bytes [0]))) {
         nalData->phyPollTimestamp = (uint16_t) gmosPalGetTimer () +
             GMOS_MS_TO_TICKS (WIZNET_PHY_LINK_POLLING_INTERVAL);
         *statusOk = true;
@@ -555,9 +555,9 @@ static inline bool wiznetCoreStartupPhyCheck (
  * Read back the common interrupt status registers.
  */
 static inline bool wiznetCoreCommonIntRead (
-    gmosDriverTcpip_t* tcpipStack)
+    gmosDriverTcpip_t* tcpipDriver)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t intReadCommand;
 
     // Set up the command to read from the common interrupt status
@@ -577,9 +577,9 @@ static inline bool wiznetCoreCommonIntRead (
  * Read back the socket specific interrupt status registers.
  */
 static inline bool wiznetCoreSocketIntRead (
-    gmosDriverTcpip_t* tcpipStack, uint8_t socketId)
+    gmosDriverTcpip_t* tcpipDriver, uint8_t socketId)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t intReadCommand;
 
     // Set up the command to read from the interrupt and status
@@ -599,9 +599,9 @@ static inline bool wiznetCoreSocketIntRead (
  * Process SPI response messages for the common register block.
  */
 static inline void wiznetCoreProcessSpiResponses (
-    gmosDriverTcpip_t* tcpipStack, wiznetSpiAdaptorCmd_t* spiResponse)
+    gmosDriverTcpip_t* tcpipDriver, wiznetSpiAdaptorCmd_t* spiResponse)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     uint8_t socketSelectMask = (1 << GMOS_CONFIG_TCPIP_MAX_SOCKETS) - 1;
 
     // Detect common interrupt notifications. These are 4-byte reads
@@ -619,7 +619,7 @@ static inline void wiznetCoreProcessSpiResponses (
     if ((spiResponse->address == 0x002E) &&
         (spiResponse->size == 1)) {
         wiznetCoreCommonPhyCheck (
-            tcpipStack, spiResponse->data.bytes [0]);
+            tcpipDriver, spiResponse->data.bytes [0]);
     }
 }
 
@@ -627,9 +627,9 @@ static inline void wiznetCoreProcessSpiResponses (
  * Dispatch SPI reponse messages to the appropriate message handlers.
  */
 static inline gmosTaskStatus_t wiznetCoreDispatchSpiResponses (
-    gmosDriverTcpip_t* tcpipStack)
+    gmosDriverTcpip_t* tcpipDriver)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t spiResponse;
     gmosTaskStatus_t taskStatus = GMOS_TASK_SUSPEND;
     uint8_t socketId;
@@ -641,7 +641,7 @@ static inline gmosTaskStatus_t wiznetCoreDispatchSpiResponses (
         // Process SPI responses for the common register block. This
         // may result in change of core state machine state.
         if ((spiResponse.control & 0xF8) == 0) {
-            wiznetCoreProcessSpiResponses (tcpipStack, &spiResponse);
+            wiznetCoreProcessSpiResponses (tcpipDriver, &spiResponse);
         }
 
         // Forward remaining responses to the appropriate socket
@@ -671,9 +671,9 @@ static inline gmosTaskStatus_t wiznetCoreDispatchSpiResponses (
  * is ready for use.
  */
 static inline gmosTaskStatus_t wiznetCoreRunning (
-    gmosDriverTcpip_t* tcpipStack, uint8_t* nextState)
+    gmosDriverTcpip_t* tcpipDriver, uint8_t* nextState)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     gmosTaskStatus_t intTaskStatus;
     gmosTaskStatus_t tickTaskStatus;
     gmosTaskStatus_t taskStatus;
@@ -683,7 +683,7 @@ static inline gmosTaskStatus_t wiznetCoreRunning (
     uint8_t i;
 
     // Process any outstanding SPI responses.
-    taskStatus = wiznetCoreDispatchSpiResponses (tcpipStack);
+    taskStatus = wiznetCoreDispatchSpiResponses (tcpipDriver);
 
     // Issue requests for socket interrupt status registers if required.
     socketSelect = nalData->wiznetSocketSelect;
@@ -696,7 +696,7 @@ static inline gmosTaskStatus_t wiznetCoreRunning (
             // Attempt to send the socket specific interrupt read
             // request. Defer the request if the command stream is full.
             if ((socketSelectMask & socketSelect) != 0) {
-                if (wiznetCoreSocketIntRead (tcpipStack, i)) {
+                if (wiznetCoreSocketIntRead (tcpipDriver, i)) {
                     socketSelect &= ~socketSelectMask;
                 }
                 break;
@@ -718,7 +718,7 @@ static inline gmosTaskStatus_t wiznetCoreRunning (
     // interrupt polling is active.
     else if (nalData->wiznetCoreState ==
         WIZNET_CORE_STATE_RUNNING_INT_ACTIVE) {
-        if (wiznetCoreCommonIntRead (tcpipStack)) {
+        if (wiznetCoreCommonIntRead (tcpipDriver)) {
             *nextState = WIZNET_CORE_STATE_RUNNING_INT_IDLE;
         } else {
             intTaskStatus = GMOS_TASK_RUN_IMMEDIATE;
@@ -731,7 +731,7 @@ static inline gmosTaskStatus_t wiznetCoreRunning (
     phyPollingTicks = (int16_t) nalData->phyPollTimestamp -
         (int16_t) gmosPalGetTimer ();
     if (phyPollingTicks <= 0) {
-        if (wiznetCoreCommonPhyRead (tcpipStack)) {
+        if (wiznetCoreCommonPhyRead (tcpipDriver)) {
             phyPollingTicks =
                 GMOS_MS_TO_TICKS (WIZNET_PHY_LINK_POLLING_INTERVAL);
             nalData->phyPollTimestamp = (uint16_t) gmosPalGetTimer () +
@@ -757,8 +757,8 @@ static inline gmosTaskStatus_t wiznetCoreRunning (
  */
 static gmosTaskStatus_t wiznetCoreWorkerTaskFn (void* taskData)
 {
-    gmosDriverTcpip_t* tcpipStack = (gmosDriverTcpip_t*) taskData;
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosDriverTcpip_t* tcpipDriver = (gmosDriverTcpip_t*) taskData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     gmosTaskStatus_t taskStatus = GMOS_TASK_RUN_IMMEDIATE;
     uint8_t nextState = nalData->wiznetCoreState;
     bool statusOk;
@@ -768,14 +768,14 @@ static gmosTaskStatus_t wiznetCoreWorkerTaskFn (void* taskData)
 
         // Initiate the version register readback.
         case WIZNET_CORE_STATE_COMMON_VER_READ :
-            if (wiznetCoreCommonVerRead (tcpipStack)) {
+            if (wiznetCoreCommonVerRead (tcpipDriver)) {
                 nextState = WIZNET_CORE_STATE_COMMON_VER_CHECK;
             }
             break;
 
         // Check the results of the version register readback.
         case WIZNET_CORE_STATE_COMMON_VER_CHECK :
-            if (wiznetCoreCommonVerCheck (tcpipStack, &statusOk)) {
+            if (wiznetCoreCommonVerCheck (tcpipDriver, &statusOk)) {
                 if (statusOk) {
                     nextState = WIZNET_CORE_STATE_COMMON_CFG_SET;
                 } else {
@@ -788,21 +788,21 @@ static gmosTaskStatus_t wiznetCoreWorkerTaskFn (void* taskData)
 
         // Set the common configuration registers.
         case WIZNET_CORE_STATE_COMMON_CFG_SET :
-            if (wiznetCoreCommonCfgSet (tcpipStack)) {
+            if (wiznetCoreCommonCfgSet (tcpipDriver)) {
                 nextState = WIZNET_CORE_STATE_COMMON_CFG_READ;
             }
             break;
 
         // Read back the common configuration registers.
         case WIZNET_CORE_STATE_COMMON_CFG_READ :
-            if (wiznetCoreCommonCfgRead (tcpipStack)) {
+            if (wiznetCoreCommonCfgRead (tcpipDriver)) {
                 nextState = WIZNET_CORE_STATE_COMMON_CFG_CHECK;
             }
             break;
 
         // Check the results of the configuration register setup.
         case WIZNET_CORE_STATE_COMMON_CFG_CHECK :
-            if (wiznetCoreCommonCfgCheck (tcpipStack, &statusOk)) {
+            if (wiznetCoreCommonCfgCheck (tcpipDriver, &statusOk)) {
                 if (statusOk) {
                     nalData->wiznetSocketSelect = 0;
                     nextState = WIZNET_CORE_STATE_SOCKET_CFG_SET;
@@ -816,21 +816,21 @@ static gmosTaskStatus_t wiznetCoreWorkerTaskFn (void* taskData)
 
         // Set the socket specific configuration registers.
         case WIZNET_CORE_STATE_SOCKET_CFG_SET :
-            if (wiznetCoreSocketCfgSet (tcpipStack)) {
+            if (wiznetCoreSocketCfgSet (tcpipDriver)) {
                 nextState = WIZNET_CORE_STATE_SOCKET_CFG_READ;
             }
             break;
 
         // Read back the socket specific configuration registers.
         case WIZNET_CORE_STATE_SOCKET_CFG_READ :
-            if (wiznetCoreSocketCfgRead (tcpipStack)) {
+            if (wiznetCoreSocketCfgRead (tcpipDriver)) {
                 nextState = WIZNET_CORE_STATE_SOCKET_CFG_CHECK;
             }
             break;
 
         // Check the socket specific buffer configuration.
         case WIZNET_CORE_STATE_SOCKET_CFG_CHECK :
-            if (wiznetCoreSocketCfgCheck (tcpipStack, &statusOk)) {
+            if (wiznetCoreSocketCfgCheck (tcpipDriver, &statusOk)) {
                 if (!statusOk) {
                     nextState = WIZNET_CORE_STATE_ERROR;
                 } else if (nalData->wiznetSocketSelect < 7) {
@@ -846,21 +846,21 @@ static gmosTaskStatus_t wiznetCoreWorkerTaskFn (void* taskData)
 
         // Enable the required common interrupts.
         case WIZNET_CORE_STATE_COMMON_CFG_INT_ENABLE :
-            if (wiznetCoreCommonCfgIntEnable (tcpipStack)) {
+            if (wiznetCoreCommonCfgIntEnable (tcpipDriver)) {
                 nextState = WIZNET_CORE_STATE_COMMON_CFG_INT_READ;
             }
             break;
 
         // Read back the common interrupt settings.
         case WIZNET_CORE_STATE_COMMON_CFG_INT_READ :
-            if (wiznetCoreCommonCfgIntRead (tcpipStack)) {
+            if (wiznetCoreCommonCfgIntRead (tcpipDriver)) {
                 nextState = WIZNET_CORE_STATE_COMMON_CFG_INT_CHECK;
             }
             break;
 
         // Check the results of the interrupt enable setup.
         case WIZNET_CORE_STATE_COMMON_CFG_INT_CHECK :
-            if (wiznetCoreCommonCfgIntCheck (tcpipStack, &statusOk)) {
+            if (wiznetCoreCommonCfgIntCheck (tcpipDriver, &statusOk)) {
                 if (statusOk) {
                     nextState = WIZNET_CORE_STATE_STARTUP_PHY_READ;
                 } else {
@@ -873,7 +873,7 @@ static gmosTaskStatus_t wiznetCoreWorkerTaskFn (void* taskData)
 
         // Request the startup status for the Ethernet PHY link.
         case WIZNET_CORE_STATE_STARTUP_PHY_READ :
-            if (wiznetCoreCommonPhyRead (tcpipStack)) {
+            if (wiznetCoreCommonPhyRead (tcpipDriver)) {
                 nextState = WIZNET_CORE_STATE_STARTUP_PHY_CHECK;
             }
             break;
@@ -881,7 +881,7 @@ static gmosTaskStatus_t wiznetCoreWorkerTaskFn (void* taskData)
         // Check whether the Ethernet PHY link is up. This repeats at
         // 250ms intervals until a connection is established.
         case WIZNET_CORE_STATE_STARTUP_PHY_CHECK :
-            if (wiznetCoreStartupPhyCheck (tcpipStack, &statusOk)) {
+            if (wiznetCoreStartupPhyCheck (tcpipDriver, &statusOk)) {
                 if (statusOk) {
                     nalData->wiznetSocketSelect = 0;
                     nextState = WIZNET_CORE_STATE_RUNNING_INT_ACTIVE;
@@ -898,7 +898,7 @@ static gmosTaskStatus_t wiznetCoreWorkerTaskFn (void* taskData)
         // and the main socket processing loop.
         case WIZNET_CORE_STATE_RUNNING_INT_IDLE :
         case WIZNET_CORE_STATE_RUNNING_INT_ACTIVE :
-            taskStatus = wiznetCoreRunning (tcpipStack, &nextState);
+            taskStatus = wiznetCoreRunning (tcpipDriver, &nextState);
             break;
 
         // Generate an assertion condition in failure mode.
@@ -916,9 +916,9 @@ static gmosTaskStatus_t wiznetCoreWorkerTaskFn (void* taskData)
  * using the supplied network settings.
  */
 bool gmosDriverTcpipInit (
-    gmosDriverTcpip_t* tcpipStack, const uint8_t* ethMacAddr)
+    gmosDriverTcpip_t* tcpipDriver, const uint8_t* ethMacAddr)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     gmosTaskState_t* coreWorkerTask = &nalData->coreWorkerTask;
     gmosStream_t* spiResponseStream = &nalData->spiResponseStream;
     uint8_t i;
@@ -937,7 +937,7 @@ bool gmosDriverTcpipInit (
     }
 
     // Initialise the WIZnet SPI interface adaptor.
-    if (!gmosNalTcpipWiznetSpiInit (tcpipStack)) {
+    if (!gmosNalTcpipWiznetSpiInit (tcpipDriver)) {
         return false;
     }
 
@@ -953,13 +953,13 @@ bool gmosDriverTcpipInit (
     // Initialise the socket specific state.
     for (i = 0; i < GMOS_CONFIG_TCPIP_MAX_SOCKETS; i++) {
         (nalData->socketData [i]).socketId = i;
-        gmosNalTcpipSocketInit (tcpipStack, &nalData->socketData [i]);
+        gmosNalTcpipSocketInit (tcpipDriver, &nalData->socketData [i]);
     }
 
     // Initialise the core worker task and schedule it for immediate
     // execution.
     coreWorkerTask->taskTickFn = wiznetCoreWorkerTaskFn;
-    coreWorkerTask->taskData = tcpipStack;
+    coreWorkerTask->taskData = tcpipDriver;
     coreWorkerTask->taskName =
         GMOS_TASK_NAME_WRAPPER ("WIZnet Core Worker Task");
     gmosSchedulerTaskStart (coreWorkerTask);
@@ -972,10 +972,10 @@ bool gmosDriverTcpipInit (
  * that are to be used by the TCP/IP network abstraction layer.
  */
 bool gmosDriverTcpipSetNetworkInfoIpv4 (
-    gmosDriverTcpip_t* tcpipStack, const uint8_t* interfaceAddr,
+    gmosDriverTcpip_t* tcpipDriver, const uint8_t* interfaceAddr,
     const uint8_t* gatewayAddr, const uint8_t* subnetMask)
 {
-    gmosNalTcpipState_t* nalData = tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     uint8_t oldGatewayAddr [4];
     uint8_t oldSubnetMask [4];
     uint8_t oldInterfaceAddr [4];
@@ -996,7 +996,7 @@ bool gmosDriverTcpipSetNetworkInfoIpv4 (
     memcpy (nalData->interfaceAddr, interfaceAddr, 4);
 
     // Issue the network information configuration command.
-    if (wiznetCoreCommonCfgSet (tcpipStack)) {
+    if (wiznetCoreCommonCfgSet (tcpipDriver)) {
         return true;
     } else {
         memcpy (nalData->gatewayAddr, oldGatewayAddr, 4);
@@ -1012,7 +1012,7 @@ bool gmosDriverTcpipSetNetworkInfoIpv4 (
  * is not supported by the W5500 device.
  */
 bool gmosDriverTcpipSetNetworkInfoIpv6 (
-    gmosDriverTcpip_t* tcpipStack, const uint8_t* interfaceAddr,
+    gmosDriverTcpip_t* tcpipDriver, const uint8_t* interfaceAddr,
     const uint8_t* gatewayAddr, const uint8_t subnetMask)
 {
     GMOS_ASSERT_FAIL ("IPv6 not supported by WIZnet W5500.");
@@ -1024,7 +1024,7 @@ bool gmosDriverTcpipSetNetworkInfoIpv6 (
  * given socket.
  */
 uint16_t gmosNalTcpipSocketGetBufferSize (
-    gmosTcpipStackSocket_t* socket)
+    gmosNalTcpipSocket_t* socket)
 {
     if ((socket == NULL) ||
         (socket->socketId >= GMOS_CONFIG_TCPIP_MAX_SOCKETS)) {
@@ -1038,9 +1038,9 @@ uint16_t gmosNalTcpipSocketGetBufferSize (
  * Determines if the underlying physical layer link is ready to
  * transport TCP/IP traffic.
  */
-bool gmosDriverTcpipPhyLinkIsUp (gmosDriverTcpip_t* tcpipStack)
+bool gmosDriverTcpipPhyLinkIsUp (gmosDriverTcpip_t* tcpipDriver)
 {
-    uint8_t wiznetCoreFlags = tcpipStack->nalData->wiznetCoreFlags;
+    uint8_t wiznetCoreFlags = tcpipDriver->nalData->wiznetCoreFlags;
 
     if ((wiznetCoreFlags & WIZNET_SPI_ADAPTOR_CORE_FLAG_PHY_UP) != 0) {
         return true;
@@ -1052,7 +1052,7 @@ bool gmosDriverTcpipPhyLinkIsUp (gmosDriverTcpip_t* tcpipStack)
 /*
  * Gets the 48-bit Ethernet MAC address for the TCP/IP driver.
  */
-uint8_t* gmosDriverTcpipGetMacAddr (gmosDriverTcpip_t* tcpipStack)
+uint8_t* gmosDriverTcpipGetMacAddr (gmosDriverTcpip_t* tcpipDriver)
 {
-    return tcpipStack->nalData->ethMacAddr;
+    return tcpipDriver->nalData->ethMacAddr;
 }

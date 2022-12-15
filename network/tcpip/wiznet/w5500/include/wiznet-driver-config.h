@@ -24,7 +24,7 @@
 #ifndef WIZNET_DRIVER_CONFIG_H
 #define WIZNET_DRIVER_CONFIG_H
 
-#include "gmos-config.h"
+#include "gmos-tcpip-config.h"
 
 /**
  * Set the number of active sockets supported by the W5500 device. The
@@ -35,6 +35,8 @@
  */
 #ifndef GMOS_CONFIG_TCPIP_MAX_SOCKETS
 #define GMOS_CONFIG_TCPIP_MAX_SOCKETS 4
+#elif (GMOS_CONFIG_TCPIP_MAX_SOCKETS > 8)
+#error "The W5500 TCP/IP stack only supports up to 8 sockets"
 #endif
 
 /**

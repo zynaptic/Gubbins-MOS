@@ -41,7 +41,7 @@
  * From the TCP ready state, check for socket close requests.
  */
 static inline gmosTaskStatus_t gmosNalTcpipSocketProcessTcpReady (
-    gmosTcpipStackSocket_t* socket, uint8_t* nextState)
+    gmosNalTcpipSocket_t* socket, uint8_t* nextState)
 {
     gmosTaskStatus_t taskStatus = GMOS_TASK_RUN_IMMEDIATE;
     uint8_t intFlags = socket->interruptFlags;
@@ -63,11 +63,13 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketProcessTcpReady (
  * receive operation or a queued data transmit operation.
  */
 static inline gmosTaskStatus_t gmosNalTcpipSocketProcessTcpActive (
-    gmosTcpipStackSocket_t* socket, uint8_t* nextState)
+    gmosNalTcpipSocket_t* socket, uint8_t* nextState)
 {
     gmosTaskStatus_t taskStatus = GMOS_TASK_RUN_IMMEDIATE;
-    gmosNalTcpipState_t* nalData = socket->tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t bufStatusCommand;
+    gmosStream_t* rxStream = &(socket->common.rxStream);
+    gmosStream_t* txStream = &(socket->common.txStream);
     uint8_t socketId = socket->socketId;
     uint8_t intFlags = socket->interruptFlags;
 
@@ -80,7 +82,7 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketProcessTcpActive (
     // socket interrupt flags. If an inbound transfer can be queued,
     // the WIZnet receive buffer information will be requested from
     // address 0x0026.
-    else if ((gmosStreamGetWriteCapacity (&socket->rxStream) > 0) &&
+    else if ((gmosStreamGetWriteCapacity (rxStream) > 0) &&
         ((intFlags & WIZNET_SPI_ADAPTOR_SOCKET_INT_RECV) != 0)) {
         bufStatusCommand.address = 0x0026;
         bufStatusCommand.control =
@@ -101,7 +103,7 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketProcessTcpActive (
     // the WIZnet transmit buffer information will be requested from
     // address 0x0020.
     else if ((socket->socketState == WIZNET_SOCKET_TCP_STATE_ACTIVE) ||
-        (gmosStreamGetReadCapacity (&socket->txStream) > 0)) {
+        (gmosStreamGetReadCapacity (txStream) > 0)) {
         bufStatusCommand.address = 0x0020;
         bufStatusCommand.control =
             WIZNET_SPI_ADAPTOR_CTRL_SOCKET_REGS (socketId) |
@@ -128,7 +130,7 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketProcessTcpActive (
  * request.
  */
 static inline gmosTaskStatus_t gmosNalTcpipSocketTcpConnectInterruptCheck (
-    gmosTcpipStackSocket_t* socket, uint8_t* nextState)
+    gmosNalTcpipSocket_t* socket, uint8_t* nextState)
 {
     uint8_t intFlags = socket->interruptFlags;
     bool interruptHandled = false;
@@ -167,9 +169,9 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketTcpConnectInterruptCheck (
  * buffer.
  */
 static inline bool gmosNalTcpipSocketTcpRxDataBufRead (
-    gmosTcpipStackSocket_t* socket)
+    gmosNalTcpipSocket_t* socket)
 {
-    gmosNalTcpipState_t* nalData = socket->tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t readDataCommand;
     gmosBuffer_t* readDataBuffer = &(readDataCommand.data.buffer);
     uint8_t socketId = socket->socketId;
@@ -214,9 +216,10 @@ static inline bool gmosNalTcpipSocketTcpRxDataBufRead (
  * machine will only proceed if the buffer status fields are consistent.
  */
 static inline void gmosNalTcpipSocketTcpTxBufferCheck (
-    gmosTcpipStackSocket_t* socket, wiznetSpiAdaptorCmd_t* response,
+    gmosNalTcpipSocket_t* socket, wiznetSpiAdaptorCmd_t* response,
     uint8_t* nextState)
 {
+    gmosStream_t* txStream = &(socket->common.txStream);
     uint8_t socketId = socket->socketId;
     uint8_t expectedControl =
         WIZNET_SPI_ADAPTOR_CTRL_SOCKET_REGS (socketId) |
@@ -253,7 +256,7 @@ static inline void gmosNalTcpipSocketTcpTxBufferCheck (
     // Check for the condition where there is no queued data, and then
     // either flush residual data from the WIZnet socket buffer or
     // suspend further processing.
-    else if (gmosStreamGetReadCapacity (&socket->txStream) == 0) {
+    else if (gmosStreamGetReadCapacity (txStream) == 0) {
         if (bufWritePtr == bufReadPtr) {
             *nextState = WIZNET_SOCKET_TCP_STATE_SLEEPING;
         } else {
@@ -277,8 +280,10 @@ static inline void gmosNalTcpipSocketTcpTxBufferCheck (
  * TCP hardware transmit buffer.
  */
 static inline bool gmosNalTcpipSocketTcpTxDataAppend (
-    gmosTcpipStackSocket_t* socket)
+    gmosNalTcpipSocket_t* socket)
 {
+    gmosStream_t* txStream = &(socket->common.txStream);
+
     // Calculate the remaining free space available in the hardware
     // buffer.
     uint16_t  bufTxFree =
@@ -286,8 +291,7 @@ static inline bool gmosNalTcpipSocketTcpTxDataAppend (
 
     // Transfer the next TCP data buffer to a local buffer for further
     // processing.
-    if (!gmosStreamAcceptBuffer (
-        &(socket->txStream), &(socket->payloadData))) {
+    if (!gmosStreamAcceptBuffer (txStream, &(socket->payloadData))) {
         return false;
     }
 
@@ -295,8 +299,7 @@ static inline bool gmosNalTcpipSocketTcpTxDataAppend (
     // contents to the WIZnet socket buffer. If not, flush residual
     // data from the WIZnet socket buffer.
     else if (gmosBufferGetSize (&(socket->payloadData)) > bufTxFree) {
-        gmosStreamPushBackBuffer (
-            &(socket->txStream), &(socket->payloadData));
+        gmosStreamPushBackBuffer (txStream, &(socket->payloadData));
         return false;
     }
 
@@ -310,7 +313,7 @@ static inline bool gmosNalTcpipSocketTcpTxDataAppend (
  * operation.
  */
 static inline gmosTaskStatus_t gmosNalTcpipSocketTcpTxInterruptCheck (
-    gmosTcpipStackSocket_t* socket, uint8_t* nextState)
+    gmosNalTcpipSocket_t* socket, uint8_t* nextState)
 {
     uint8_t intFlags = socket->interruptFlags;
     bool interruptHandled = false;
@@ -345,11 +348,11 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketTcpTxInterruptCheck (
  * Initiates the TCP connection process as a TCP client, using the
  * specified server address and port.
  */
-gmosNetworkStatus_t gmosTcpipStackTcpConnect (
-    gmosTcpipStackSocket_t* tcpSocket,
+gmosNetworkStatus_t gmosDriverTcpipTcpConnect (
+    gmosNalTcpipSocket_t* tcpSocket,
     uint8_t* serverAddr, uint16_t serverPort)
 {
-    gmosNalTcpipState_t* nalData = tcpSocket->tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpSocket->common.tcpipDriver->nalData;
     uint8_t nextPhase = tcpSocket->socketState & WIZNET_SOCKET_PHASE_MASK;
     uint8_t nextState = tcpSocket->socketState & ~WIZNET_SOCKET_PHASE_MASK;
     gmosBuffer_t* remoteAddrBuf = &(tcpSocket->payloadData);
@@ -395,9 +398,10 @@ gmosNetworkStatus_t gmosTcpipStackTcpConnect (
  * Sends the contents of a GubbinsMOS buffer over an established TCP
  * connection.
  */
-gmosNetworkStatus_t gmosTcpipStackTcpSend (
-    gmosTcpipStackSocket_t* tcpSocket, gmosBuffer_t* payload)
+gmosNetworkStatus_t gmosDriverTcpipTcpSend (
+    gmosNalTcpipSocket_t* tcpSocket, gmosBuffer_t* payload)
 {
+    gmosStream_t* txStream = &(tcpSocket->common.txStream);
     uint8_t socketPhase = tcpSocket->socketState & WIZNET_SOCKET_PHASE_MASK;
     uint8_t socketState = tcpSocket->socketState & ~WIZNET_SOCKET_PHASE_MASK;
     uint16_t payloadLength = gmosBufferGetSize (payload);
@@ -420,7 +424,7 @@ gmosNetworkStatus_t gmosTcpipStackTcpSend (
     }
 
     // Queue the buffer for transmission.
-    if (gmosStreamSendBuffer (&(tcpSocket->txStream), payload)) {
+    if (gmosStreamSendBuffer (txStream, payload)) {
         return GMOS_NETWORK_STATUS_SUCCESS;
     } else {
         return GMOS_NETWORK_STATUS_RETRY;
@@ -431,8 +435,8 @@ gmosNetworkStatus_t gmosTcpipStackTcpSend (
  * Attempts to write an array of octet data to an established TCP
  * connection.
  */
-gmosNetworkStatus_t gmosTcpipStackTcpWrite (
-    gmosTcpipStackSocket_t* tcpSocket, uint8_t* writeData,
+gmosNetworkStatus_t gmosDriverTcpipTcpWrite (
+    gmosNalTcpipSocket_t* tcpSocket, uint8_t* writeData,
     uint16_t requestSize, uint16_t* transferSize)
 {
     uint32_t maxTransferSize;
@@ -460,7 +464,7 @@ gmosNetworkStatus_t gmosTcpipStackTcpWrite (
     gmosBufferAppend (&writeBuffer, writeData, requestSize);
 
     // Attempt to send the buffer using the TCP send API call.
-    stackStatus = gmosTcpipStackTcpSend (tcpSocket, &writeBuffer);
+    stackStatus = gmosDriverTcpipTcpSend (tcpSocket, &writeBuffer);
     if (stackStatus == GMOS_NETWORK_STATUS_SUCCESS) {
         *transferSize = requestSize;
         return GMOS_NETWORK_STATUS_SUCCESS;
@@ -477,9 +481,10 @@ gmosNetworkStatus_t gmosTcpipStackTcpWrite (
 /*
  * Receives a block of data over an established TCP connection.
  */
-gmosNetworkStatus_t gmosTcpipStackTcpReceive (
-    gmosTcpipStackSocket_t* tcpSocket, gmosBuffer_t* payload)
+gmosNetworkStatus_t gmosDriverTcpipTcpReceive (
+    gmosNalTcpipSocket_t* tcpSocket, gmosBuffer_t* payload)
 {
+    gmosStream_t* rxStream = &(tcpSocket->common.rxStream);
     uint8_t socketPhase = tcpSocket->socketState & WIZNET_SOCKET_PHASE_MASK;
     uint8_t socketState = tcpSocket->socketState & ~WIZNET_SOCKET_PHASE_MASK;
 
@@ -495,7 +500,7 @@ gmosNetworkStatus_t gmosTcpipStackTcpReceive (
     }
 
     // Receive the next payload buffer, if available.
-    if (gmosStreamAcceptBuffer (&(tcpSocket->rxStream), payload)) {
+    if (gmosStreamAcceptBuffer (rxStream, payload)) {
         return GMOS_NETWORK_STATUS_SUCCESS;
     } else {
         return GMOS_NETWORK_STATUS_RETRY;
@@ -506,10 +511,11 @@ gmosNetworkStatus_t gmosTcpipStackTcpReceive (
  * Attempts to read an array of octet data from an established TCP
  * connection.
  */
-gmosNetworkStatus_t gmosTcpipStackTcpRead (
-    gmosTcpipStackSocket_t* tcpSocket, uint8_t* readData,
+gmosNetworkStatus_t gmosDriverTcpipTcpRead (
+    gmosNalTcpipSocket_t* tcpSocket, uint8_t* readData,
     uint16_t requestSize, uint16_t* transferSize)
 {
+    gmosStream_t* rxStream = &(tcpSocket->common.rxStream);
     gmosBuffer_t payload = GMOS_BUFFER_INIT ();
     gmosNetworkStatus_t stackStatus;
     uint16_t payloadSize;
@@ -518,7 +524,7 @@ gmosNetworkStatus_t gmosTcpipStackTcpRead (
 
     // Attempt to receive a payload buffer from the recive data
     // stream.
-    stackStatus = gmosTcpipStackTcpReceive (tcpSocket, &payload);
+    stackStatus = gmosDriverTcpipTcpReceive (tcpSocket, &payload);
     if (stackStatus != GMOS_NETWORK_STATUS_SUCCESS) {
         *transferSize = 0;
         return stackStatus;
@@ -544,7 +550,7 @@ gmosNetworkStatus_t gmosTcpipStackTcpRead (
         gmosBufferReset (&payload, 0);
     } else {
         gmosBufferRebase (&payload, payloadSize - requestSize);
-        gmosStreamPushBackBuffer (&(tcpSocket->rxStream), &payload);
+        gmosStreamPushBackBuffer (rxStream, &payload);
     }
     *transferSize = readSize;
     return GMOS_NETWORK_STATUS_SUCCESS;
@@ -554,10 +560,10 @@ gmosNetworkStatus_t gmosTcpipStackTcpRead (
  * Closes the specified TCP socket, terminating any active connection
  * and releasing all allocated resources.
  */
-gmosNetworkStatus_t gmosTcpipStackTcpClose (
-    gmosTcpipStackSocket_t* tcpSocket)
+gmosNetworkStatus_t gmosDriverTcpipTcpClose (
+    gmosNalTcpipSocket_t* tcpSocket)
 {
-    gmosNalTcpipState_t* nalData = tcpSocket->tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = tcpSocket->common.tcpipDriver->nalData;
     uint8_t socketPhase = tcpSocket->socketState & WIZNET_SOCKET_PHASE_MASK;
 
     // Check that the specified socket has been opened for TCP data
@@ -576,7 +582,7 @@ gmosNetworkStatus_t gmosTcpipStackTcpClose (
  * Implements a socket processing tick cycle when in the TCP open phase.
  */
 gmosTaskStatus_t gmosNalTcpipSocketProcessTickTcp (
-    gmosTcpipStackSocket_t* socket)
+    gmosNalTcpipSocket_t* socket)
 {
     uint8_t nextState = socket->socketState & ~WIZNET_SOCKET_PHASE_MASK;
     uint8_t nextPhase = WIZNET_SOCKET_PHASE_TCP;
@@ -589,8 +595,8 @@ gmosTaskStatus_t gmosNalTcpipSocketProcessTickTcp (
 
         // Issue notification callback on opening the socket.
         case WIZNET_SOCKET_TCP_STATE_OPEN :
-            if (socket->notifyHandler != NULL) {
-                socket->notifyHandler (socket->notifyData,
+            if (socket->common.notifyHandler != NULL) {
+                socket->common.notifyHandler (socket->common.notifyData,
                     GMOS_TCPIP_STACK_NOTIFY_TCP_SOCKET_OPENED);
             }
             nextState = WIZNET_SOCKET_TCP_STATE_READY;
@@ -612,8 +618,8 @@ gmosTaskStatus_t gmosNalTcpipSocketProcessTickTcp (
                 WIZNET_SPI_ADAPTOR_SOCKET_COMMAND_DISCONNECT :
                 WIZNET_SPI_ADAPTOR_SOCKET_COMMAND_CLOSE;
             if (gmosNalTcpipSocketIssueCommand (socket, closeCommand)) {
-                if (socket->notifyHandler != NULL) {
-                    socket->notifyHandler (socket->notifyData,
+                if (socket->common.notifyHandler != NULL) {
+                    socket->common.notifyHandler (socket->common.notifyData,
                         GMOS_TCPIP_STACK_NOTIFY_TCP_SOCKET_CLOSED);
                 }
                 nextPhase = WIZNET_SOCKET_PHASE_CLOSED;
@@ -690,7 +696,7 @@ gmosTaskStatus_t gmosNalTcpipSocketProcessTickTcp (
         // queue.
         case WIZNET_SOCKET_TCP_STATE_RX_DATA_BLOCK_QUEUE :
             if (gmosStreamSendBuffer (
-                &(socket->rxStream), &(socket->payloadData))) {
+                &(socket->common.rxStream), &(socket->payloadData))) {
                 nextState = WIZNET_SOCKET_TCP_STATE_ACTIVE;
             }
             break;
@@ -757,9 +763,9 @@ gmosTaskStatus_t gmosNalTcpipSocketProcessTickTcp (
  * phase.
  */
 void gmosNalTcpipSocketProcessResponseTcp (
-    gmosTcpipStackSocket_t* socket, wiznetSpiAdaptorCmd_t* response)
+    gmosNalTcpipSocket_t* socket, wiznetSpiAdaptorCmd_t* response)
 {
-    gmosNalTcpipState_t* nalData = socket->tcpipStack->nalData;
+    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
     bool sequenceError;
     uint8_t nextState = socket->socketState & ~WIZNET_SOCKET_PHASE_MASK;
     uint8_t nextPhase = WIZNET_SOCKET_PHASE_TCP;

@@ -38,22 +38,11 @@
  * Defines the socket state data structure for a single WIZnet W5500
  * socket instance.
  */
-typedef struct gmosTcpipStackSocket_t {
+typedef struct gmosNalTcpipSocket_t {
 
-    // Link to the associated TCP/IP stack instance.
-    gmosDriverTcpip_t* tcpipStack;
-
-    // Specifies the stack notification handler used for this socket.
-    gmosTcpipStackNotifyCallback_t notifyHandler;
-
-    // Specifies the stack notification data item used for this socket.
-    void* notifyData;
-
-    // Allocate the socket transmit data stream.
-    gmosStream_t txStream;
-
-    // Allocate the socket receive data stream.
-    gmosStream_t rxStream;
+    // Include the common socket data structure defined for the TCP/IP
+    // stack API.
+    gmosTcpipStackSocket_t common;
 
     // Allocate buffer storage for payload data.
     gmosBuffer_t payloadData;
@@ -61,7 +50,7 @@ typedef struct gmosTcpipStackSocket_t {
     // Specify the socket ID value.
     uint8_t socketId;
 
-    // Specify the current socket operating state.
+    // Specify the driver specific socket operating state.
     uint8_t socketState;
 
     // Specify the current set of active interrupt flags.
@@ -81,7 +70,7 @@ typedef struct gmosTcpipStackSocket_t {
         } active;
     } data;
 
-} gmosTcpipStackSocket_t;
+} gmosNalTcpipSocket_t;
 
 /**
  * Defines the TCP/IP stack specific I/O state data structure for a
@@ -111,7 +100,7 @@ typedef struct gmosNalTcpipState_t {
     wiznetSpiAdaptorCmd_t spiCommand;
 
     // Allocate memory for the required number of sockets.
-    gmosTcpipStackSocket_t socketData [GMOS_CONFIG_TCPIP_MAX_SOCKETS];
+    gmosNalTcpipSocket_t socketData [GMOS_CONFIG_TCPIP_MAX_SOCKETS];
 
     // Specify the timestamp used for PHY connection state polling.
     uint16_t phyPollTimestamp;

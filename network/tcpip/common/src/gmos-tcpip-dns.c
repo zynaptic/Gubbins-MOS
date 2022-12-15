@@ -33,6 +33,7 @@
 #include "gmos-tcpip-config.h"
 #include "gmos-tcpip-stack.h"
 #include "gmos-tcpip-dns.h"
+#include "gmos-driver-tcpip.h"
 
 /*
  * Specify the standard DNS port for local use.
@@ -1170,7 +1171,7 @@ static gmosTaskStatus_t gmosTcpipDnsClientWorkerTaskFn (void* taskData)
     // If there are no configured servers, the DNS cache is cleared.
     // Suspend the worker task until the next valid query has been
     // initiated, which depends on valid server settings being restored.
-    if ((!gmosDriverTcpipPhyLinkIsUp (dnsClient->tcpipStack)) ||
+    if ((!gmosDriverTcpipPhyLinkIsUp (dnsClient->tcpipStack->tcpipDriver)) ||
         (dnsClient->dnsServerList == NULL)) {
         for (i = 0; i < GMOS_CONFIG_TCPIP_DNS_CACHE_SIZE; i++) {
             dnsCacheBuffer = &(dnsClient->dnsCache [i]);
@@ -1229,7 +1230,7 @@ static gmosTaskStatus_t gmosTcpipDnsClientWorkerTaskFn (void* taskData)
  * for accessing the TCP/IP interface and DNS server information.
  */
 bool gmosTcpipDnsClientInit (gmosTcpipDnsClient_t* dnsClient,
-    gmosDriverTcpip_t* tcpipStack)
+    gmosTcpipStack_t* tcpipStack)
 {
     gmosTaskState_t* dnsWorkerTask = &dnsClient->dnsWorkerTask;
     uint16_t randomValue;
@@ -1356,7 +1357,7 @@ gmosNetworkStatus_t gmosTcpipDnsClientQuery (
 
     // Ensure that the network is available and that at least one DNS
     // server has been configured.
-    if ((!gmosDriverTcpipPhyLinkIsUp (dnsClient->tcpipStack)) ||
+    if ((!gmosDriverTcpipPhyLinkIsUp (dnsClient->tcpipStack->tcpipDriver)) ||
         (dnsClient->dnsServerList == NULL)) {
         return GMOS_NETWORK_STATUS_NETWORK_DOWN;
     }

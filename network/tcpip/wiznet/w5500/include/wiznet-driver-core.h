@@ -148,7 +148,7 @@ typedef enum {
  * @param socket This is the socket instance that is to be initialised.
  */
 void gmosNalTcpipSocketInit (
-    gmosDriverTcpip_t* tcpipStack, gmosTcpipStackSocket_t* socket);
+    gmosDriverTcpip_t* tcpipStack, gmosNalTcpipSocket_t* socket);
 
 /**
  * Implements a socket processing tick cycle. This updates the local
@@ -159,7 +159,7 @@ void gmosNalTcpipSocketInit (
  *     socket processing state machine next needs to be updated.
  */
 gmosTaskStatus_t gmosNalTcpipSocketProcessTick (
-    gmosTcpipStackSocket_t* socket);
+    gmosNalTcpipSocket_t* socket);
 
 /**
  * Implements a socket processing tick cycle when in the UDP open phase.
@@ -170,7 +170,7 @@ gmosTaskStatus_t gmosNalTcpipSocketProcessTick (
  *     socket processing state machine next needs to be updated.
  */
 gmosTaskStatus_t gmosNalTcpipSocketProcessTickUdp (
-    gmosTcpipStackSocket_t* socket);
+    gmosNalTcpipSocket_t* socket);
 
 /**
  * Implements a socket processing tick cycle when in the TCP open phase.
@@ -181,7 +181,7 @@ gmosTaskStatus_t gmosNalTcpipSocketProcessTickUdp (
  *     socket processing state machine next needs to be updated.
  */
 gmosTaskStatus_t gmosNalTcpipSocketProcessTickTcp (
-    gmosTcpipStackSocket_t* socket);
+    gmosNalTcpipSocket_t* socket);
 
 /**
  * Implements a socket processing response callback. All SPI response
@@ -192,7 +192,7 @@ gmosTaskStatus_t gmosNalTcpipSocketProcessTickTcp (
  *     processed.
  */
 void gmosNalTcpipSocketProcessResponse (
-    gmosTcpipStackSocket_t* socket, wiznetSpiAdaptorCmd_t* response);
+    gmosNalTcpipSocket_t* socket, wiznetSpiAdaptorCmd_t* response);
 
 /**
  * Implements a socket processing response callback when in the UDP open
@@ -204,7 +204,7 @@ void gmosNalTcpipSocketProcessResponse (
  *     processed.
  */
 void gmosNalTcpipSocketProcessResponseUdp (
-    gmosTcpipStackSocket_t* socket, wiznetSpiAdaptorCmd_t* response);
+    gmosNalTcpipSocket_t* socket, wiznetSpiAdaptorCmd_t* response);
 
 /**
  * Implements a socket processing response callback when in the TCP open
@@ -216,7 +216,7 @@ void gmosNalTcpipSocketProcessResponseUdp (
  *     processed.
  */
 void gmosNalTcpipSocketProcessResponseTcp (
-    gmosTcpipStackSocket_t* socket, wiznetSpiAdaptorCmd_t* response);
+    gmosNalTcpipSocket_t* socket, wiznetSpiAdaptorCmd_t* response);
 
 /**
  * Gets the W5500 transmit and receive buffer size associated with a
@@ -227,7 +227,7 @@ void gmosNalTcpipSocketProcessResponseTcp (
  *     specified socket.
  */
 uint16_t gmosNalTcpipSocketGetBufferSize (
-    gmosTcpipStackSocket_t* socket);
+    gmosNalTcpipSocket_t* socket);
 
 /**
  * Issues a command for the WIZnet socket controller. This writes the
@@ -240,7 +240,8 @@ uint16_t gmosNalTcpipSocketGetBufferSize (
  *     socket command was issued and 'false' if the request can not be
  *     serviced at this time.
  */
-bool gmosNalTcpipSocketIssueCommand (gmosTcpipStackSocket_t* socket,
+bool gmosNalTcpipSocketIssueCommand (
+    gmosNalTcpipSocket_t* socket,
     wiznetSpiAdaptorSocketCommands_t command);
 
 /**
@@ -254,7 +255,8 @@ bool gmosNalTcpipSocketIssueCommand (gmosTcpipStackSocket_t* socket,
  *     request was issued and 'false' if the request can not be serviced
  *     at this time.
  */
-bool gmosNalTcpipSocketSetRemoteAddr (gmosTcpipStackSocket_t* socket);
+bool gmosNalTcpipSocketSetRemoteAddr (
+    gmosNalTcpipSocket_t* socket);
 
 /**
  * Checks the status of the socket receive buffer. The receive state
@@ -273,7 +275,7 @@ bool gmosNalTcpipSocketSetRemoteAddr (gmosTcpipStackSocket_t* socket);
  *     'false' otherwise.
  */
 bool gmosNalTcpipSocketRxBufferCheck (
-    gmosTcpipStackSocket_t* socket, wiznetSpiAdaptorCmd_t* response,
+    gmosNalTcpipSocket_t* socket, wiznetSpiAdaptorCmd_t* response,
     uint16_t rxThreshold, bool* sequenceError);
 
 /**
@@ -290,7 +292,7 @@ bool gmosNalTcpipSocketRxBufferCheck (
  *     'false' otherwise.
  */
 bool gmosNalTcpipSocketRxDataBlockCheck (
-    gmosTcpipStackSocket_t* socket, wiznetSpiAdaptorCmd_t* response,
+    gmosNalTcpipSocket_t* socket, wiznetSpiAdaptorCmd_t* response,
     bool* sequenceError);
 
 /**
@@ -302,7 +304,8 @@ bool gmosNalTcpipSocketRxDataBlockCheck (
  *     request was issued and 'false' if the request can not be serviced
  *     at this time.
  */
-bool gmosNalTcpipSocketRxPointerWrite (gmosTcpipStackSocket_t* socket);
+bool gmosNalTcpipSocketRxPointerWrite (
+    gmosNalTcpipSocket_t* socket);
 
 /**
  * Writes the contents of the local buffer to the WIZnet socket memory,
@@ -313,7 +316,8 @@ bool gmosNalTcpipSocketRxPointerWrite (gmosTcpipStackSocket_t* socket);
  *     request was issued and 'false' if the request can not be serviced
  *     at this time.
  */
-bool gmosNalTcpipSocketTxDataWrite (gmosTcpipStackSocket_t* socket);
+bool gmosNalTcpipSocketTxDataWrite (
+    gmosNalTcpipSocket_t* socket);
 
 /**
  * Updates the new write data pointer value after transferring a new
@@ -324,6 +328,7 @@ bool gmosNalTcpipSocketTxDataWrite (gmosTcpipStackSocket_t* socket);
  *     request was issued and 'false' if the request can not be serviced
  *     at this time.
  */
-bool gmosNalTcpipSocketTxPointerWrite (gmosTcpipStackSocket_t* socket);
+bool gmosNalTcpipSocketTxPointerWrite (
+    gmosNalTcpipSocket_t* socket);
 
 #endif // WIZNET_DRIVER_CORE_H

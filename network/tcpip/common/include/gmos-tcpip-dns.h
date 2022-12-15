@@ -74,7 +74,7 @@ typedef struct gmosTcpipDnsServerInfo_t {
 typedef struct gmosTcpipDnsClient_t {
 
     // Specify the TCP/IP stack instance to use for the DNS client.
-    gmosDriverTcpip_t* tcpipStack;
+    gmosTcpipStack_t* tcpipStack;
 
     // Specify the start of the DNS server list.
     gmosTcpipDnsServerInfo_t* dnsServerList;
@@ -105,13 +105,13 @@ typedef struct gmosTcpipDnsClient_t {
  * @param dnsClient This is a pointer to the DNS client data structure
  *     that should be used for storing the DNS client state.
  * @param tcpipStack This is an initialised TCP/IP stack data structure
- *     that represents the TCP/IP interface to be used by the DHCP
+ *     that represents the TCP/IP interface to be used by the DNS
  *     client.
  * @return Returns a boolean value which will be set to 'true' if the
  *     DNS client was successfully initialised and 'false' otherwise.
  */
 bool gmosTcpipDnsClientInit (gmosTcpipDnsClient_t* dnsClient,
-    gmosDriverTcpip_t* tcpipStack);
+    gmosTcpipStack_t* tcpipStack);
 
 /**
  * Adds a new DNS server to the list of available servers.

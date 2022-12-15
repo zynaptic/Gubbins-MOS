@@ -18,7 +18,10 @@
 
 /*
  * This file provides a common IPv4 DHCP client implementation for use
- * with vendor supplied and hardware accelerated TCP/IP stacks.
+ * with vendor supplied and hardware accelerated TCP/IP implementations.
+ * Note that all DHCP transactions directly access the TCP/IP driver
+ * layer, since they need to complete before the TCP/IP stack is fully
+ * set up.
  */
 
 #include <stdint.h>
@@ -32,7 +35,6 @@
 #include "gmos-network.h"
 #include "gmos-driver-tcpip.h"
 #include "gmos-tcpip-config.h"
-#include "gmos-tcpip-stack.h"
 #include "gmos-tcpip-dhcp.h"
 
 /*
@@ -324,7 +326,7 @@ static bool gmosTcpipDhcpClientParseRxMessage (
     gmosTcpipDhcpClient_t* dhcpClient, gmosBuffer_t* rxBuffer,
     gmosTcpipDhcpRxMessage_t* rxMessage)
 {
-    gmosDriverTcpip_t* tcpipStack = dhcpClient->tcpipStack;
+    gmosDriverTcpip_t* tcpipDriver = dhcpClient->tcpipDriver;
     uint16_t rxLength = gmosBufferGetSize (rxBuffer);
     uint8_t* ethMacAddr;
     uint8_t rxData [6];
@@ -368,7 +370,7 @@ static bool gmosTcpipDhcpClientParseRxMessage (
     }
 
     // Check for matching 'chaddr' field.
-    ethMacAddr = gmosDriverTcpipGetMacAddr (tcpipStack);
+    ethMacAddr = gmosDriverTcpipGetMacAddr (tcpipDriver);
     gmosBufferRead (rxBuffer, 28, rxData, 6);
     if (memcmp (rxData, ethMacAddr, 6) != 0) {
         return false;
@@ -455,7 +457,7 @@ static bool gmosTcpipDhcpClientFormatHeader (
     gmosTcpipDhcpClient_t* dhcpClient, gmosBuffer_t* message,
     uint8_t messageType, bool broadcastReply, uint32_t ciaddr)
 {
-    gmosDriverTcpip_t* tcpipStack = dhcpClient->tcpipStack;
+    gmosDriverTcpip_t* tcpipDriver = dhcpClient->tcpipDriver;
     uint32_t headerData [4];
     uint8_t zeroesData [64];
     uint8_t* ethMacAddr;
@@ -463,7 +465,7 @@ static bool gmosTcpipDhcpClientFormatHeader (
 
     // Use a zero valued array for setting unused fields.
     memset (zeroesData, 0, 64);
-    ethMacAddr = gmosDriverTcpipGetMacAddr (tcpipStack);
+    ethMacAddr = gmosDriverTcpipGetMacAddr (tcpipDriver);
 
     // Set up the common header fields.
     headerData [0] = GMOS_TCPIP_STACK_HTONL (0x01010600);
@@ -868,7 +870,7 @@ static inline bool gmosTcpipDhcpClientDiscoveryStart (
     }
 
     // Attempt to broadcast the discovery message.
-    stackStatus = gmosTcpipStackUdpSendTo (dhcpClient->udpSocket,
+    stackStatus = gmosDriverTcpipUdpSendTo (dhcpClient->udpSocket,
         gmosTcpipBroadcastAddr, GMOS_TCPIP_DHCP_SERVER_PORT, &message);
 
     // Set the discovery window timeout on success.
@@ -905,7 +907,7 @@ static inline gmosTaskStatus_t gmosTcpipDhcpClientSelectingWait (
     // Process DHCP offer messages that were received during the
     // discovery window.
     while (true) {
-        stackStatus = gmosTcpipStackUdpReceiveFrom (
+        stackStatus = gmosDriverTcpipUdpReceiveFrom (
             dhcpClient->udpSocket, remoteAddr, &remotePort, &payload);
 
         // No further response messages to process.
@@ -948,7 +950,7 @@ static inline bool gmosTcpipDhcpClientSelectingDone (
     }
 
     // Attempt to broadcast the request message.
-    stackStatus = gmosTcpipStackUdpSendTo (dhcpClient->udpSocket,
+    stackStatus = gmosDriverTcpipUdpSendTo (dhcpClient->udpSocket,
         gmosTcpipBroadcastAddr, GMOS_TCPIP_DHCP_SERVER_PORT, &message);
 
     // Set the requesting window timeout on success.
@@ -988,7 +990,7 @@ static gmosTaskStatus_t gmosTcpipDhcpClientResponseWait (
     // Process DHCP response messages that were received during the
     // requesting window.
     while (true) {
-        stackStatus = gmosTcpipStackUdpReceiveFrom (
+        stackStatus = gmosDriverTcpipUdpReceiveFrom (
             dhcpClient->udpSocket, remoteAddr, &remotePort, &payload);
 
         // No further response messages to process.
@@ -1053,7 +1055,7 @@ static bool gmosTcpipDhcpClientResponseDone (
     dhcpClient->timestamp = currentTime + retryDelay;
 
     // Attempt to close the UDP socket.
-    stackStatus = gmosTcpipStackUdpClose (dhcpClient->udpSocket);
+    stackStatus = gmosDriverTcpipUdpClose (dhcpClient->udpSocket);
     if (stackStatus == GMOS_NETWORK_STATUS_SUCCESS) {
         dhcpClient->udpSocket = NULL;
         return true;
@@ -1144,7 +1146,7 @@ static inline bool gmosTcpipDhcpClientRenewalInit (
     }
 
     // Attempt to transmit the request message.
-    stackStatus = gmosTcpipStackUdpSendTo (dhcpClient->udpSocket,
+    stackStatus = gmosDriverTcpipUdpSendTo (dhcpClient->udpSocket,
         serverAddr, GMOS_TCPIP_DHCP_SERVER_PORT, &message);
 
     // Set the requesting window timeout on success.
@@ -1178,7 +1180,7 @@ static inline bool gmosTcpipDhcpClientAddrCheckSend (
     gmosBufferAppend (&message, addrCheckMsg, sizeof (addrCheckMsg) - 1);
 
     // Attempt to send the test message.
-    stackStatus = gmosTcpipStackUdpSendTo (dhcpClient->udpSocket,
+    stackStatus = gmosDriverTcpipUdpSendTo (dhcpClient->udpSocket,
         (uint8_t*) &dhcpClient->assignedAddr,
         GMOS_TCPIP_DISCARD_SERVER_PORT, &message);
     if (stackStatus == GMOS_NETWORK_STATUS_SUCCESS) {
@@ -1204,7 +1206,7 @@ static inline bool gmosTcpipDhcpClientAddrDecline (
     }
 
     // Attempt to broadcast the address decline.
-    stackStatus = gmosTcpipStackUdpSendTo (dhcpClient->udpSocket,
+    stackStatus = gmosDriverTcpipUdpSendTo (dhcpClient->udpSocket,
         gmosTcpipBroadcastAddr, GMOS_TCPIP_DHCP_SERVER_PORT, &message);
     if (stackStatus == GMOS_NETWORK_STATUS_SUCCESS) {
         return true;
@@ -1229,7 +1231,7 @@ static inline bool gmosTcpipDhcpClientRestart (
     }
 
     // Attempt to close the UDP socket.
-    stackStatus = gmosTcpipStackUdpClose (dhcpClient->udpSocket);
+    stackStatus = gmosDriverTcpipUdpClose (dhcpClient->udpSocket);
     if (stackStatus == GMOS_NETWORK_STATUS_SUCCESS) {
         dhcpClient->udpSocket = NULL;
         return true;
@@ -1295,7 +1297,7 @@ static void gmosTcpipDhcpClientStackNotifyHandler (
 static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
 {
     gmosTcpipDhcpClient_t* dhcpClient = (gmosTcpipDhcpClient_t*) taskData;
-    gmosDriverTcpip_t* tcpipStack = dhcpClient->tcpipStack;
+    gmosDriverTcpip_t* tcpipDriver = dhcpClient->tcpipDriver;
     gmosTaskStatus_t taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (10));
     uint8_t nextState = dhcpClient->dhcpState;
     uint8_t messageType;
@@ -1306,7 +1308,7 @@ static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
 
         // In the unconnected state, wait for the PHY link to come up.
         case GMOS_TCPIP_DHCP_CLIENT_STATE_UNCONNECTED :
-            if (gmosDriverTcpipPhyLinkIsUp (tcpipStack)) {
+            if (gmosDriverTcpipPhyLinkIsUp (tcpipDriver)) {
                 nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_SET_DEFAULT_ADDR;
             }
             break;
@@ -1314,7 +1316,7 @@ static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
         // Assign a default local IP address. Since this is not known,
         // an all-zero address will be used, as per RFC2131 section 4.1.
         case GMOS_TCPIP_DHCP_CLIENT_STATE_SET_DEFAULT_ADDR :
-            if (gmosDriverTcpipSetNetworkInfoIpv4 (tcpipStack,
+            if (gmosDriverTcpipSetNetworkInfoIpv4 (tcpipDriver,
                 gmosTcpipAllZeroAddr, gmosTcpipAllZeroAddr, 0)) {
                 nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_DISCOVERY_OPEN;
             }
@@ -1322,8 +1324,8 @@ static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
 
         // Open a local DHCP socket for the discovery process.
         case GMOS_TCPIP_DHCP_CLIENT_STATE_DISCOVERY_OPEN :
-            dhcpClient->udpSocket = gmosTcpipStackUdpOpen (
-                tcpipStack, false, GMOS_TCPIP_DHCP_CLIENT_PORT,
+            dhcpClient->udpSocket = gmosDriverTcpipUdpOpen (
+                tcpipDriver, false, GMOS_TCPIP_DHCP_CLIENT_PORT,
                 &dhcpClient->dhcpWorkerTask,
                 gmosTcpipDhcpClientStackNotifyHandler, dhcpClient);
             if (dhcpClient->udpSocket != NULL) {
@@ -1407,7 +1409,7 @@ static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
 
         // Set the local network configuration using the DHCP settings.
         case GMOS_TCPIP_DHCP_CLIENT_STATE_SET_ASSIGNED_ADDR :
-            if (gmosDriverTcpipSetNetworkInfoIpv4 (tcpipStack,
+            if (gmosDriverTcpipSetNetworkInfoIpv4 (tcpipDriver,
                 (const uint8_t*) &(dhcpClient->assignedAddr),
                 (const uint8_t*) &(dhcpClient->gatewayAddr),
                 (const uint8_t*) &(dhcpClient->subnetMask))) {
@@ -1430,8 +1432,8 @@ static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
 
         // Open a local DHCP socket for the renewal process.
         case GMOS_TCPIP_DHCP_CLIENT_STATE_RENEWAL_OPEN :
-            dhcpClient->udpSocket = gmosTcpipStackUdpOpen (
-                tcpipStack, false, GMOS_TCPIP_DHCP_CLIENT_PORT,
+            dhcpClient->udpSocket = gmosDriverTcpipUdpOpen (
+                tcpipDriver, false, GMOS_TCPIP_DHCP_CLIENT_PORT,
                 &dhcpClient->dhcpWorkerTask,
                 gmosTcpipDhcpClientStackNotifyHandler, dhcpClient);
             if (dhcpClient->udpSocket != NULL) {
@@ -1497,21 +1499,21 @@ static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
  * interface.
  */
 bool gmosTcpipDhcpClientInit (gmosTcpipDhcpClient_t* dhcpClient,
-    gmosDriverTcpip_t* tcpipStack, const char* dhcpHostName)
+    gmosDriverTcpip_t* tcpipDriver, const char* dhcpHostName)
 {
     gmosTaskState_t* dhcpWorkerTask = &dhcpClient->dhcpWorkerTask;
     uint8_t* ethMacAddr;
     uint32_t randomValue;
 
     // Initialise the DHCP client state.
-    dhcpClient->tcpipStack = tcpipStack;
+    dhcpClient->tcpipDriver = tcpipDriver;
     dhcpClient->dhcpHostName = dhcpHostName;
     dhcpClient->dhcpState = GMOS_TCPIP_DHCP_CLIENT_STATE_UNCONNECTED;
 
     // Select a random XID on startup. The local MAC address is used to
     // seed the random number generator if no source of entropy is
     // available.
-    ethMacAddr = gmosDriverTcpipGetMacAddr (tcpipStack);
+    ethMacAddr = gmosDriverTcpipGetMacAddr (tcpipDriver);
     randomValue = ((uint32_t) ethMacAddr [5]) |
         (((uint32_t) ethMacAddr [4]) << 8) |
         (((uint32_t) ethMacAddr [3]) << 16) |
@@ -1537,7 +1539,7 @@ bool gmosTcpipDhcpClientInit (gmosTcpipDhcpClient_t* dhcpClient,
  */
 bool gmosTcpipDhcpClientReady (gmosTcpipDhcpClient_t* dhcpClient)
 {
-    gmosDriverTcpip_t* tcpipStack = dhcpClient->tcpipStack;
+    gmosDriverTcpip_t* tcpipDriver = dhcpClient->tcpipDriver;
     gmosTaskState_t* dhcpWorkerTask = &dhcpClient->dhcpWorkerTask;
     bool dhcpReady = true;
 
@@ -1548,7 +1550,7 @@ bool gmosTcpipDhcpClientReady (gmosTcpipDhcpClient_t* dhcpClient)
     }
 
     // Loss of local network connectivity invalidates the DHCP settings.
-    else if (!gmosDriverTcpipPhyLinkIsUp (tcpipStack)) {
+    else if (!gmosDriverTcpipPhyLinkIsUp (tcpipDriver)) {
         dhcpClient->dhcpState = GMOS_TCPIP_DHCP_CLIENT_STATE_RESTARTING;
         gmosSchedulerTaskResume (dhcpWorkerTask);
         dhcpReady = false;
