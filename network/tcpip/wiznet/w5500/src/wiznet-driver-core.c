@@ -118,6 +118,9 @@ static bool wiznetCoreCommonCfgSet (
     gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t cfgCommand;
     gmosBuffer_t* cfgBuffer = &cfgCommand.data.buffer;
+    uint8_t* gatewayAddr = (uint8_t*) &(nalData->gatewayAddr);
+    uint8_t* subnetMask = (uint8_t*) &(nalData->subnetMask);
+    uint8_t* interfaceAddr = (uint8_t*) &(nalData->interfaceAddr);
 
     // Set up the configuration command to write to the common register
     // block starting at address 1.
@@ -132,10 +135,10 @@ static bool wiznetCoreCommonCfgSet (
     gmosBufferInit (cfgBuffer);
 
     // Set the gateway address registers.
-    if ((!gmosBufferAppend (cfgBuffer, nalData->gatewayAddr, 4)) ||
-        (!gmosBufferAppend (cfgBuffer, nalData->subnetMask, 4)) ||
+    if ((!gmosBufferAppend (cfgBuffer, gatewayAddr, 4)) ||
+        (!gmosBufferAppend (cfgBuffer, subnetMask, 4)) ||
         (!gmosBufferAppend (cfgBuffer, nalData->ethMacAddr, 6)) ||
-        (!gmosBufferAppend (cfgBuffer, nalData->interfaceAddr, 4))) {
+        (!gmosBufferAppend (cfgBuffer, interfaceAddr, 4))) {
         goto fail;
     }
 
@@ -199,6 +202,9 @@ static inline bool wiznetCoreCommonCfgCheck (
     gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t cfgResponse;
     gmosBuffer_t* cfgBuffer = &cfgResponse.data.buffer;
+    uint8_t* gatewayAddr = (uint8_t*) &(nalData->gatewayAddr);
+    uint8_t* subnetMask = (uint8_t*) &(nalData->subnetMask);
+    uint8_t* interfaceAddr = (uint8_t*) &(nalData->interfaceAddr);
     uint8_t cfgData [18];
 
     // Attempt to read back the next SPI transaction response.
@@ -212,10 +218,10 @@ static inline bool wiznetCoreCommonCfgCheck (
     // contents against the expected values.
     if ((cfgResponse.size == 0) &&
         (gmosBufferRead (cfgBuffer, 0, cfgData, sizeof (cfgData))) &&
-        (memcmp (cfgData + 0, nalData->gatewayAddr, 4) == 0) &&
-        (memcmp (cfgData + 4, nalData->subnetMask, 4) == 0) &&
+        (memcmp (cfgData + 0, gatewayAddr, 4) == 0) &&
+        (memcmp (cfgData + 4, subnetMask, 4) == 0) &&
         (memcmp (cfgData + 8, nalData->ethMacAddr, 6) == 0) &&
-        (memcmp (cfgData + 14, nalData->interfaceAddr, 4) == 0)) {
+        (memcmp (cfgData + 14, interfaceAddr, 4) == 0)) {
         *statusOk = true;
     }
     gmosBufferReset (cfgBuffer, 0);
@@ -929,12 +935,10 @@ bool gmosDriverTcpipInit (
     }
 
     // Store the default network parameters, which correspond to the
-    // initial settings used by DHCP.
-    for (i = 0; i < 4; i++) {
-        nalData->gatewayAddr [i] = 0xFF;
-        nalData->subnetMask [i] = 0xFF;
-        nalData->interfaceAddr [i] = 0x00;
-    }
+    // reset values used by the W5500 device.
+    nalData->gatewayAddr = 0x00000000;
+    nalData->subnetMask = 0x00000000;
+    nalData->interfaceAddr = 0x00000000;
 
     // Initialise the WIZnet SPI interface adaptor.
     if (!gmosNalTcpipWiznetSpiInit (tcpipDriver)) {
@@ -968,17 +972,60 @@ bool gmosDriverTcpipInit (
 }
 
 /*
+ * Resets the TCP/IP driver, forcing all sockets to close and clearing
+ * all previously configured network settings.
+ */
+bool gmosDriverTcpipReset (gmosDriverTcpip_t* tcpipDriver)
+{
+    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
+    gmosNalTcpipSocket_t* socket;
+    uint8_t socketPhase;
+    uint8_t i;
+    bool resetComplete = true;
+
+    // Process each TCP/IP socket slot in turn.
+    for (i = 0; i < GMOS_CONFIG_TCPIP_MAX_SOCKETS; i++) {
+        socket = &(nalData->socketData [i]);
+        socketPhase = socket->socketState & WIZNET_SOCKET_PHASE_MASK;
+
+        // Set the socket close request flag for TCP and UDP sockets.
+        if ((socketPhase == WIZNET_SOCKET_PHASE_UDP) ||
+            (socketPhase == WIZNET_SOCKET_PHASE_TCP)) {
+            socket->interruptFlags |=
+                WIZNET_SPI_ADAPTOR_SOCKET_FLAG_CLOSE_REQ;
+            resetComplete = false;
+        }
+    }
+
+    // Clear the local network configuration to the W5500 default
+    // values once all sockets are closed.
+    if (resetComplete) {
+        nalData->gatewayAddr = 0x00000000;
+        nalData->subnetMask = 0x00000000;
+        nalData->interfaceAddr = 0x00000000;
+        resetComplete = wiznetCoreCommonCfgSet (tcpipDriver);
+    } else {
+        gmosSchedulerTaskResume (&(nalData->coreWorkerTask));
+    }
+    if (resetComplete) {
+        GMOS_LOG (LOG_VERBOSE,
+            "WIZnet TCP/IP : Reset network and closed all sockets.");
+    }
+    return resetComplete;
+}
+
+/*
  * Update the IPv4 network address and associated network parameters
  * that are to be used by the TCP/IP network abstraction layer.
  */
 bool gmosDriverTcpipSetNetworkInfoIpv4 (
-    gmosDriverTcpip_t* tcpipDriver, const uint8_t* interfaceAddr,
-    const uint8_t* gatewayAddr, const uint8_t* subnetMask)
+    gmosDriverTcpip_t* tcpipDriver, uint32_t interfaceAddr,
+    uint32_t gatewayAddr, uint32_t subnetMask)
 {
     gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
-    uint8_t oldGatewayAddr [4];
-    uint8_t oldSubnetMask [4];
-    uint8_t oldInterfaceAddr [4];
+    uint32_t oldGatewayAddr;
+    uint32_t oldSubnetMask;
+    uint32_t oldInterfaceAddr;
 
     // The network settings can not be configured until initial setup
     // is complete.
@@ -988,20 +1035,20 @@ bool gmosDriverTcpipSetNetworkInfoIpv4 (
     }
 
     // Store the new network parameters in network byte order.
-    memcpy (oldGatewayAddr, nalData->gatewayAddr, 4);
-    memcpy (oldSubnetMask, nalData->subnetMask, 4);
-    memcpy (oldInterfaceAddr, nalData->interfaceAddr, 4);
-    memcpy (nalData->gatewayAddr, gatewayAddr, 4);
-    memcpy (nalData->subnetMask, subnetMask, 4);
-    memcpy (nalData->interfaceAddr, interfaceAddr, 4);
+    oldGatewayAddr = nalData->gatewayAddr;
+    oldSubnetMask = nalData->subnetMask;
+    oldInterfaceAddr = nalData->interfaceAddr;
+    nalData->gatewayAddr = gatewayAddr;
+    nalData->subnetMask = subnetMask;
+    nalData->interfaceAddr = interfaceAddr;
 
     // Issue the network information configuration command.
     if (wiznetCoreCommonCfgSet (tcpipDriver)) {
         return true;
     } else {
-        memcpy (nalData->gatewayAddr, oldGatewayAddr, 4);
-        memcpy (nalData->subnetMask, oldSubnetMask, 4);
-        memcpy (nalData->interfaceAddr, oldInterfaceAddr, 4);
+        nalData->gatewayAddr = oldGatewayAddr;
+        nalData->subnetMask = oldSubnetMask;
+        nalData->interfaceAddr = oldInterfaceAddr;
         return false;
     }
 }

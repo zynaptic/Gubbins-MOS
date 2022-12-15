@@ -384,8 +384,7 @@ gmosNetworkStatus_t gmosTcpipStackTcpClose (
 /**
  * Provides support for 32-bit byte reversal.
  * @param value This is the 32-bit value that is to be byte reversed.
- * @return result This is the integer value after performing byte
- *    reversal.
+ * @return Returns the integer value after performing byte reversal.
  */
 static inline uint32_t gmosTcpipStackByteReverseU32 (uint32_t value)
 {
@@ -396,12 +395,24 @@ static inline uint32_t gmosTcpipStackByteReverseU32 (uint32_t value)
 /**
  * Provides support for 16-bit byte reversal.
  * @param value This is the 16-bit value that is to be byte reversed.
- * @return result This is the integer value after performing byte
- *    reversal.
+ * @return Returns the integer value after performing byte reversal.
  */
 static inline uint16_t gmosTcpipStackByteReverseU16 (uint16_t value)
 {
     return ((value >> 8) & 0x00FF) | ((value << 8) & 0xFF00);
+}
+
+/**
+ * Provides support for concatenation of four octets in network byte
+ * order into a native 32-bit integer.
+ * @param value This is a pointer to the byte array which is to be
+ *     packed into the native integer value.
+ * @return Returns the integer value after performing byte packing.
+ */
+static inline uint32_t gmosTcpipStackBytePackU32 (const uint8_t* value)
+{
+    return ((uint32_t) value [3]) | (((uint32_t) value [2]) << 8) |
+        (((uint32_t) value [1]) << 16) | (((uint32_t) value [0]) << 24);
 }
 
 /**
@@ -459,5 +470,14 @@ static inline uint16_t gmosTcpipStackByteReverseU16 (uint16_t value)
 #define GMOS_TCPIP_STACK_NTOHS(_netShort_) \
     (gmosTcpipStackByteReverseU16 (_netShort_))
 #endif
+
+/**
+ * Provides a macro for converting a four octet array into a 32-bit
+ * integer representation in network byte order.
+ * @param _netBytes_ This is a pointer to the four octet array.
+ * @return Returns a 32-bit integer value in network byte order.
+ */
+#define GMOS_TCPIP_STACK_BTONL(_netBytes_) \
+    (GMOS_TCPIP_STACK_HTONL (gmosTcpipStackBytePackU32 (_netBytes_)))
 
 #endif // GMOS_TCPIP_STACK_H

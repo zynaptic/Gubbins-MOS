@@ -76,6 +76,7 @@
  */
 typedef enum {
     GMOS_TCPIP_DHCP_CLIENT_STATE_UNCONNECTED,
+    GMOS_TCPIP_DHCP_CLIENT_STATE_RESETTING,
     GMOS_TCPIP_DHCP_CLIENT_STATE_RESTARTING,
     GMOS_TCPIP_DHCP_CLIENT_STATE_SET_DEFAULT_ADDR,
     GMOS_TCPIP_DHCP_CLIENT_STATE_DISCOVERY_OPEN,
@@ -167,11 +168,6 @@ typedef struct gmosTcpipDhcpRxMessage_t {
  * Specify the common IPv4 broadcast address.
  */
 static uint8_t gmosTcpipBroadcastAddr [] = { 255, 255, 255, 255 };
-
-/*
- * Specify the common IPv4 all zeroes address.
- */
-static uint8_t gmosTcpipAllZeroAddr [] = { 0, 0, 0, 0 };
 
 /*
  * Parses a received DHCP message options segment.
@@ -1232,7 +1228,8 @@ static inline bool gmosTcpipDhcpClientRestart (
 
     // Attempt to close the UDP socket.
     stackStatus = gmosDriverTcpipUdpClose (dhcpClient->udpSocket);
-    if (stackStatus == GMOS_NETWORK_STATUS_SUCCESS) {
+    if ((stackStatus == GMOS_NETWORK_STATUS_SUCCESS) ||
+        (stackStatus == GMOS_NETWORK_STATUS_NOT_OPEN)) {
         dhcpClient->udpSocket = NULL;
         return true;
     } else {
@@ -1316,8 +1313,8 @@ static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
         // Assign a default local IP address. Since this is not known,
         // an all-zero address will be used, as per RFC2131 section 4.1.
         case GMOS_TCPIP_DHCP_CLIENT_STATE_SET_DEFAULT_ADDR :
-            if (gmosDriverTcpipSetNetworkInfoIpv4 (tcpipDriver,
-                gmosTcpipAllZeroAddr, gmosTcpipAllZeroAddr, 0)) {
+            if (gmosDriverTcpipSetNetworkInfoIpv4 (
+                tcpipDriver, 0x00000000, 0x00000000, 0x00000000)) {
                 nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_DISCOVERY_OPEN;
             }
             break;
@@ -1409,10 +1406,9 @@ static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
 
         // Set the local network configuration using the DHCP settings.
         case GMOS_TCPIP_DHCP_CLIENT_STATE_SET_ASSIGNED_ADDR :
-            if (gmosDriverTcpipSetNetworkInfoIpv4 (tcpipDriver,
-                (const uint8_t*) &(dhcpClient->assignedAddr),
-                (const uint8_t*) &(dhcpClient->gatewayAddr),
-                (const uint8_t*) &(dhcpClient->subnetMask))) {
+            if (gmosDriverTcpipSetNetworkInfoIpv4 (
+                tcpipDriver, dhcpClient->assignedAddr,
+                dhcpClient->gatewayAddr, dhcpClient->subnetMask)) {
                 nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_BOUND;
             }
             break;
@@ -1424,7 +1420,7 @@ static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
                 dhcpClient, &leaseExpired);
             if (leaseExpired) {
                 GMOS_LOG (LOG_DEBUG, "DHCP : Lease expired on timeout.");
-                nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RESTARTING;
+                nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RESETTING;
             } else if (taskStatus == GMOS_TASK_RUN_IMMEDIATE) {
                 nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RENEWAL_OPEN;
             }
@@ -1450,7 +1446,7 @@ static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
             if (gmosTcpipDhcpClientRenewalInit (dhcpClient, &leaseExpired)) {
                 if (leaseExpired) {
                     GMOS_LOG (LOG_DEBUG, "DHCP : Lease expired on renewal.");
-                    nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RESTARTING;
+                    nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RESETTING;
                 } else {
                     nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RENEWAL_WAIT;
                 }
@@ -1466,7 +1462,7 @@ static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
                 nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RENEWAL_DONE;
             } else if (messageType == GMOS_TCPIP_DHCP_MESSAGE_TYPE_NAK) {
                 GMOS_LOG (LOG_DEBUG, "DHCP : Lease renewal rejected.");
-                nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RESTARTING;
+                nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RESETTING;
             } else if (taskStatus == GMOS_TASK_RUN_IMMEDIATE) {
                 GMOS_LOG (LOG_DEBUG, "DHCP : Lease renewal timed out.");
                 nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RENEWAL_DONE;
@@ -1477,6 +1473,15 @@ static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
         case GMOS_TCPIP_DHCP_CLIENT_STATE_RENEWAL_DONE :
             if (gmosTcpipDhcpClientResponseDone (dhcpClient)) {
                 nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_BOUND;
+            }
+            break;
+
+        // Reset the TCP/IP driver on failure to renew a lease. This
+        // will close all active sockets and clear the local IPv4
+        // network settings.
+        case GMOS_TCPIP_DHCP_CLIENT_STATE_RESETTING :
+            if (gmosDriverTcpipReset (dhcpClient->tcpipDriver)) {
+                nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RESTARTING;
             }
             break;
 

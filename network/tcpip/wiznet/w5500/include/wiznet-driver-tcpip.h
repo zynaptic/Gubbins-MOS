@@ -102,6 +102,15 @@ typedef struct gmosNalTcpipState_t {
     // Allocate memory for the required number of sockets.
     gmosNalTcpipSocket_t socketData [GMOS_CONFIG_TCPIP_MAX_SOCKETS];
 
+    // Store the current gateway address in network byte order.
+    uint32_t gatewayAddr;
+
+    // Store the current subnet mask in network byte order.
+    uint32_t subnetMask;
+
+    // Store the local interface address in network byte order.
+    uint32_t interfaceAddr;
+
     // Specify the timestamp used for PHY connection state polling.
     uint16_t phyPollTimestamp;
 
@@ -122,15 +131,6 @@ typedef struct gmosNalTcpipState_t {
 
     // Store the Ethernet MAC address in network byte order.
     uint8_t ethMacAddr [6];
-
-    // Store the current gateway address in network byte order.
-    uint8_t gatewayAddr [4];
-
-    // Store the current subnet mask in network byte order.
-    uint8_t subnetMask [4];
-
-    // Store the local interface address in network byte order.
-    uint8_t interfaceAddr [4];
 
 } gmosNalTcpipState_t;
 

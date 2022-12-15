@@ -112,23 +112,37 @@ bool gmosDriverTcpipInit (
     gmosDriverTcpip_t* tcpipDriver, const uint8_t* ethMacAddr);
 
 /**
+ * Resets the TCP/IP driver, forcing all sockets to close and clearing
+ * all previously configured network settings. This is typically called
+ * whenever the lease expires on a DHCP address allocation, after which
+ * the local IP address is no longer valid.
+ * @param tcpipDriver This is the TCP/IP driver instance that is to be
+ *     reset.
+ * @return Returns a boolean value which will be set to 'true' if the
+ *     TCP/IP driver was successfully reset and 'false' if the reset
+ *     process has not yet completed.
+ */
+bool gmosDriverTcpipReset (gmosDriverTcpip_t* tcpipDriver);
+
+/**
  * Update the IPv4 network address and associated network parameters
  * that are to be used by the TCP/IP network abstraction layer.
  * @param tcpipDriver This is the TCP/IP driver data structure that
  *     represents the TCP/IP driver being configured.
- * @param interfaceAddr This is a pointer to the four octet IPv4 address
- *     of the local interface, stored in network byte order.
- * @param gatewayAddr This is a pointer to the four octet address of the
- *     IPv4 gateway on the local subnet, stored in network byte order.
- * @param subnetMask This is the IPv4 subnet mask to be used, expressed
- *     in network byte order bit mask form.
+ * @param interfaceAddr This is the four octet IPv4 address of the local
+ *     interface, encoded as a 32-bit integer in network byte order.
+ * @param gatewayAddr This is the four octet address of the IPv4 gateway
+ *     on the local subnet, encoded as a 32-bit integer in network byte
+ *     order.
+ * @param subnetMask This is the IPv4 subnet mask to be used, encoded
+ *     in bit mask form as a 32-bit integer in network byte order.
  * @return Returns a boolean value which will be set to 'true' if the
  *     network information was successfully updated and 'false'
  *     otherwise.
  */
 bool gmosDriverTcpipSetNetworkInfoIpv4 (
-    gmosDriverTcpip_t* tcpipDriver, const uint8_t* interfaceAddr,
-    const uint8_t* gatewayAddr, const uint8_t* subnetMask);
+    gmosDriverTcpip_t* tcpipDriver, uint32_t interfaceAddr,
+    uint32_t gatewayAddr, uint32_t subnetMask);
 
 /**
  * Update the IPv6 network address and associated network parameters
