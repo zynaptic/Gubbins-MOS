@@ -36,6 +36,7 @@
 #include "gmos-driver-tcpip.h"
 #include "gmos-tcpip-config.h"
 #include "gmos-tcpip-dhcp.h"
+#include "gmos-tcpip-dns.h"
 
 /*
  * Specify the standard DHCP ports for local use.
@@ -72,11 +73,19 @@
 #define GMOS_TCPIP_DHCP_MIN_RESTART_INTERVAL 150
 
 /*
+ * Specify the prriority levels for the primary and secondary DNS
+ * servers.
+ */
+#define GMOS_TCPIP_DHCP_DNS1_PRIORITY 32
+#define GMOS_TCPIP_DHCP_DNS2_PRIORITY 16
+
+/*
  * Specify the state space to be used for the DHCP client.
  */
 typedef enum {
     GMOS_TCPIP_DHCP_CLIENT_STATE_UNCONNECTED,
-    GMOS_TCPIP_DHCP_CLIENT_STATE_RESETTING,
+    GMOS_TCPIP_DHCP_CLIENT_STATE_RESET_DNS,
+    GMOS_TCPIP_DHCP_CLIENT_STATE_RESET_DRIVER,
     GMOS_TCPIP_DHCP_CLIENT_STATE_RESTARTING,
     GMOS_TCPIP_DHCP_CLIENT_STATE_SET_DEFAULT_ADDR,
     GMOS_TCPIP_DHCP_CLIENT_STATE_DISCOVERY_OPEN,
@@ -322,7 +331,7 @@ static bool gmosTcpipDhcpClientParseRxMessage (
     gmosTcpipDhcpClient_t* dhcpClient, gmosBuffer_t* rxBuffer,
     gmosTcpipDhcpRxMessage_t* rxMessage)
 {
-    gmosDriverTcpip_t* tcpipDriver = dhcpClient->tcpipDriver;
+    gmosDriverTcpip_t* tcpipDriver = dhcpClient->tcpipStack->tcpipDriver;
     uint16_t rxLength = gmosBufferGetSize (rxBuffer);
     uint8_t* ethMacAddr;
     uint8_t rxData [6];
@@ -453,7 +462,7 @@ static bool gmosTcpipDhcpClientFormatHeader (
     gmosTcpipDhcpClient_t* dhcpClient, gmosBuffer_t* message,
     uint8_t messageType, bool broadcastReply, uint32_t ciaddr)
 {
-    gmosDriverTcpip_t* tcpipDriver = dhcpClient->tcpipDriver;
+    gmosDriverTcpip_t* tcpipDriver = dhcpClient->tcpipStack->tcpipDriver;
     uint32_t headerData [4];
     uint8_t zeroesData [64];
     uint8_t* ethMacAddr;
@@ -664,6 +673,61 @@ static inline bool gmosTcpipDhcpClientFormatDhcpDecline (
 }
 
 /*
+ * Automatically update the DNS server settings if required.
+ */
+static void gmosTcpipDhcpClientSetDnsServers (
+    gmosTcpipDhcpClient_t* dhcpClient, gmosTcpipDhcpRxMessage_t* rxMessage)
+{
+    gmosTcpipDnsClient_t* dnsClient = dhcpClient->tcpipStack->dnsClient;
+    uint32_t dnsServerAddr;
+    gmosTcpipDnsServerInfo_t* dns1Server = &(dhcpClient->dns1ServerInfo);
+    gmosTcpipDnsServerInfo_t* dns2Server = &(dhcpClient->dns2ServerInfo);
+
+    // Skip DNS server updates if the DNS client is not enabled.
+    if (dnsClient == NULL) {
+        return;
+    }
+
+    // Select the primary DNS server.
+    if ((rxMessage->optValidFlags &
+        GMOS_TCPIP_DHCP_MESSAGE_OPTION_FLAG_DNS1_SERVER) != 0) {
+        dnsServerAddr = rxMessage->dns1ServerAddr;
+    } else {
+        dnsServerAddr = GMOS_CONFIG_TCPIP_DNS_IPV4_PRIMARY;
+    }
+    gmosTcpipDnsClientAddServer (dnsClient, dns1Server, false,
+        (uint8_t*) &dnsServerAddr, GMOS_TCPIP_DHCP_DNS1_PRIORITY);
+
+    // Select the secondary DNS server.
+    if ((rxMessage->optValidFlags &
+        GMOS_TCPIP_DHCP_MESSAGE_OPTION_FLAG_DNS2_SERVER) != 0) {
+        dnsServerAddr = rxMessage->dns2ServerAddr;
+    } else {
+        dnsServerAddr = GMOS_CONFIG_TCPIP_DNS_IPV4_SECONDARY;
+    }
+    gmosTcpipDnsClientAddServer (dnsClient, dns2Server, false,
+        (uint8_t*) &dnsServerAddr, GMOS_TCPIP_DHCP_DNS2_PRIORITY);
+}
+
+/*
+ * Automatically reset the DNS server settings if required.
+ */
+static inline void gmosTcpipDhcpClientResetDnsServers (
+    gmosTcpipDhcpClient_t* dhcpClient)
+{
+    gmosTcpipDnsClient_t* dnsClient = dhcpClient->tcpipStack->dnsClient;
+    gmosTcpipDnsServerInfo_t* dns1Server = &(dhcpClient->dns1ServerInfo);
+    gmosTcpipDnsServerInfo_t* dns2Server = &(dhcpClient->dns2ServerInfo);
+
+    // Remove the primary and secondary DNS servers from the active
+    // server list.
+    if (dnsClient != NULL) {
+        gmosTcpipDnsClientRemoveServer (dnsClient, dns1Server);
+        gmosTcpipDnsClientRemoveServer (dnsClient, dns2Server);
+    }
+}
+
+/*
  * Parses the DHCP offer message from the specified message buffer,
  * updating the DHCP client settings as required.
  */
@@ -712,21 +776,8 @@ static inline void gmosTcpipDhcpClientParseDhcpOffer (
     dhcpClient->subnetMask = rxMessage.subnetMask;
     dhcpClient->gatewayAddr = rxMessage.gatewayAddr;
 
-    // Select the primary DNS server.
-    if ((rxMessage.optValidFlags &
-        GMOS_TCPIP_DHCP_MESSAGE_OPTION_FLAG_DNS1_SERVER) != 0) {
-        dhcpClient->dns1ServerAddr = rxMessage.dns1ServerAddr;
-    } else {
-        dhcpClient->dns1ServerAddr = GMOS_CONFIG_TCPIP_DNS_IPV4_PRIMARY;
-    }
-
-    // Select the secondary DNS server.
-    if ((rxMessage.optValidFlags &
-        GMOS_TCPIP_DHCP_MESSAGE_OPTION_FLAG_DNS2_SERVER) != 0) {
-        dhcpClient->dns2ServerAddr = rxMessage.dns2ServerAddr;
-    } else {
-        dhcpClient->dns2ServerAddr = GMOS_CONFIG_TCPIP_DNS_IPV4_SECONDARY;
-    }
+    // Update the DNS server information if required.
+    gmosTcpipDhcpClientSetDnsServers (dhcpClient, &rxMessage);
 
     // Log server information for debugging. Note that addresses are
     // decoded directly from network byte ordered integers.
@@ -811,17 +862,8 @@ static inline bool gmosTcpipDhcpClientParseDhcpResponse (
     dhcpClient->leaseTime = leaseTime;
     dhcpClient->leaseEnd = leaseTime + gmosPalGetTimer ();
 
-    // Override the the primary DNS server if required.
-    if ((rxMessage.optValidFlags &
-        GMOS_TCPIP_DHCP_MESSAGE_OPTION_FLAG_DNS1_SERVER) != 0) {
-        dhcpClient->dns1ServerAddr = rxMessage.dns1ServerAddr;
-    }
-
-    // Override the secondary DNS server if required.
-    if ((rxMessage.optValidFlags &
-        GMOS_TCPIP_DHCP_MESSAGE_OPTION_FLAG_DNS2_SERVER) != 0) {
-        dhcpClient->dns2ServerAddr = rxMessage.dns2ServerAddr;
-    }
+    // Update the DNS server information if required.
+    gmosTcpipDhcpClientSetDnsServers (dhcpClient, &rxMessage);
     return true;
 }
 
@@ -1294,7 +1336,7 @@ static void gmosTcpipDhcpClientStackNotifyHandler (
 static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
 {
     gmosTcpipDhcpClient_t* dhcpClient = (gmosTcpipDhcpClient_t*) taskData;
-    gmosDriverTcpip_t* tcpipDriver = dhcpClient->tcpipDriver;
+    gmosDriverTcpip_t* tcpipDriver = dhcpClient->tcpipStack->tcpipDriver;
     gmosTaskStatus_t taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (10));
     uint8_t nextState = dhcpClient->dhcpState;
     uint8_t messageType;
@@ -1420,7 +1462,7 @@ static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
                 dhcpClient, &leaseExpired);
             if (leaseExpired) {
                 GMOS_LOG (LOG_DEBUG, "DHCP : Lease expired on timeout.");
-                nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RESETTING;
+                nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RESET_DNS;
             } else if (taskStatus == GMOS_TASK_RUN_IMMEDIATE) {
                 nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RENEWAL_OPEN;
             }
@@ -1446,7 +1488,7 @@ static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
             if (gmosTcpipDhcpClientRenewalInit (dhcpClient, &leaseExpired)) {
                 if (leaseExpired) {
                     GMOS_LOG (LOG_DEBUG, "DHCP : Lease expired on renewal.");
-                    nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RESETTING;
+                    nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RESET_DNS;
                 } else {
                     nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RENEWAL_WAIT;
                 }
@@ -1462,7 +1504,7 @@ static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
                 nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RENEWAL_DONE;
             } else if (messageType == GMOS_TCPIP_DHCP_MESSAGE_TYPE_NAK) {
                 GMOS_LOG (LOG_DEBUG, "DHCP : Lease renewal rejected.");
-                nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RESETTING;
+                nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RESET_DNS;
             } else if (taskStatus == GMOS_TASK_RUN_IMMEDIATE) {
                 GMOS_LOG (LOG_DEBUG, "DHCP : Lease renewal timed out.");
                 nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RENEWAL_DONE;
@@ -1476,11 +1518,17 @@ static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
             }
             break;
 
+        // Reset the DNS server settings on failure to renew a lease.
+        case GMOS_TCPIP_DHCP_CLIENT_STATE_RESET_DNS :
+            gmosTcpipDhcpClientResetDnsServers (dhcpClient);
+            nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RESET_DRIVER;
+            break;
+
         // Reset the TCP/IP driver on failure to renew a lease. This
         // will close all active sockets and clear the local IPv4
         // network settings.
-        case GMOS_TCPIP_DHCP_CLIENT_STATE_RESETTING :
-            if (gmosDriverTcpipReset (dhcpClient->tcpipDriver)) {
+        case GMOS_TCPIP_DHCP_CLIENT_STATE_RESET_DRIVER :
+            if (gmosDriverTcpipReset (tcpipDriver)) {
                 nextState = GMOS_TCPIP_DHCP_CLIENT_STATE_RESTARTING;
             }
             break;
@@ -1504,21 +1552,21 @@ static gmosTaskStatus_t gmosTcpipDhcpClientWorkerTaskFn (void* taskData)
  * interface.
  */
 bool gmosTcpipDhcpClientInit (gmosTcpipDhcpClient_t* dhcpClient,
-    gmosDriverTcpip_t* tcpipDriver, const char* dhcpHostName)
+    gmosTcpipStack_t* tcpipStack, const char* dhcpHostName)
 {
     gmosTaskState_t* dhcpWorkerTask = &dhcpClient->dhcpWorkerTask;
     uint8_t* ethMacAddr;
     uint32_t randomValue;
 
     // Initialise the DHCP client state.
-    dhcpClient->tcpipDriver = tcpipDriver;
+    dhcpClient->tcpipStack = tcpipStack;
     dhcpClient->dhcpHostName = dhcpHostName;
     dhcpClient->dhcpState = GMOS_TCPIP_DHCP_CLIENT_STATE_UNCONNECTED;
 
     // Select a random XID on startup. The local MAC address is used to
     // seed the random number generator if no source of entropy is
     // available.
-    ethMacAddr = gmosDriverTcpipGetMacAddr (tcpipDriver);
+    ethMacAddr = gmosDriverTcpipGetMacAddr (tcpipStack->tcpipDriver);
     randomValue = ((uint32_t) ethMacAddr [5]) |
         (((uint32_t) ethMacAddr [4]) << 8) |
         (((uint32_t) ethMacAddr [3]) << 16) |
@@ -1544,7 +1592,7 @@ bool gmosTcpipDhcpClientInit (gmosTcpipDhcpClient_t* dhcpClient,
  */
 bool gmosTcpipDhcpClientReady (gmosTcpipDhcpClient_t* dhcpClient)
 {
-    gmosDriverTcpip_t* tcpipDriver = dhcpClient->tcpipDriver;
+    gmosDriverTcpip_t* tcpipDriver = dhcpClient->tcpipStack->tcpipDriver;
     gmosTaskState_t* dhcpWorkerTask = &dhcpClient->dhcpWorkerTask;
     bool dhcpReady = true;
 

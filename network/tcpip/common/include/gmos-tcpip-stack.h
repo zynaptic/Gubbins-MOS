@@ -49,6 +49,12 @@ typedef struct gmosDriverTcpip_t gmosDriverTcpip_t;
 typedef struct gmosTcpipDhcpClient_t gmosTcpipDhcpClient_t;
 
 /**
+ * Defines the GubbinsMOS DNS client state. The full type definition is
+ * provided in the associated TCP/IP DNS client header.
+ */
+typedef struct gmosTcpipDnsClient_t gmosTcpipDnsClient_t;
+
+/**
  * Defines the GubbinsMOS TCP/IP stack state data structure that is used
  * for storing common TCP/IP stack data.
  */
@@ -59,6 +65,9 @@ typedef struct gmosTcpipStack_t {
 
     // Link to the associated IPv4 DHCP client instance.
     gmosTcpipDhcpClient_t* dhcpClient;
+
+    // Link to the associated DNS client instance.
+    gmosTcpipDnsClient_t* dnsClient;
 
 } gmosTcpipStack_t;
 
@@ -148,6 +157,9 @@ typedef struct gmosTcpipStackSocket_t {
  * @param dhcpClient This is the IPv4 DHCP client instance that is to be
  *     initialised and used by the TCP/IP stack. A null reference may be
  *     passed if a static IPv4 configuration is to be used.
+ * @param dnsClient This is the DNS client instance that is to be
+ *     initialised and used by the TCP/IP stack. A null reference may be
+ *     passed if no DNS client support is required.
  * @param ethMacAddr This is a pointer to the 48-bit Ethernet MAC
  *     address which is to be assigned to the network interface, stored
  *     as an array of six octets in network byte order. A null reference
@@ -161,7 +173,8 @@ typedef struct gmosTcpipStackSocket_t {
  */
 bool gmosTcpipStackInit (gmosTcpipStack_t* tcpipStack,
     gmosDriverTcpip_t* tcpipDriver, gmosTcpipDhcpClient_t* dhcpClient,
-    const uint8_t* ethMacAddr, const char* dhcpHostName);
+    gmosTcpipDnsClient_t* dnsClient, const uint8_t* ethMacAddr,
+    const char* dhcpHostName);
 
 /**
  * Attempts to open a new UDP socket for subsequent use.

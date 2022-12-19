@@ -40,8 +40,14 @@
  */
 bool gmosTcpipStackInit (gmosTcpipStack_t* tcpipStack,
     gmosDriverTcpip_t* tcpipDriver, gmosTcpipDhcpClient_t* dhcpClient,
-    const uint8_t* ethMacAddr, const char* dhcpHostName)
+    gmosTcpipDnsClient_t* dnsClient, const uint8_t* ethMacAddr,
+    const char* dhcpHostName)
 {
+    // Set the TCP/IP stack component pointers.
+    tcpipStack->tcpipDriver = tcpipDriver;
+    tcpipStack->dhcpClient = dhcpClient;
+    tcpipStack->dnsClient = dnsClient;
+
     // Initialise the TCP/IP driver component.
     if (!gmosDriverTcpipInit (tcpipDriver, ethMacAddr)) {
         return false;
@@ -50,14 +56,17 @@ bool gmosTcpipStackInit (gmosTcpipStack_t* tcpipStack,
     // Initialise the DHCP client component.
     if (dhcpClient != NULL) {
         if (!gmosTcpipDhcpClientInit (
-            dhcpClient, tcpipDriver, dhcpHostName)) {
+            dhcpClient, tcpipStack, dhcpHostName)) {
             return false;
         }
     }
 
-    // Initialise the TCP/IP stack state.
-    tcpipStack->tcpipDriver = tcpipDriver;
-    tcpipStack->dhcpClient = dhcpClient;
+    // Initialise the DNS client component.
+    if (dnsClient != NULL) {
+        if (!gmosTcpipDnsClientInit (dnsClient, tcpipStack)) {
+            return false;
+        }
+    }
     return true;
 }
 

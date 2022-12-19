@@ -28,6 +28,8 @@
 #include <stdbool.h>
 #include "gmos-scheduler.h"
 #include "gmos-driver-tcpip.h"
+#include "gmos-tcpip-stack.h"
+#include "gmos-tcpip-dns.h"
 
 /**
  * Defines the GubbinsMOS TCP/IP stack DHCP client state that is used
@@ -35,8 +37,8 @@
  */
 typedef struct gmosTcpipDhcpClient_t {
 
-    // Specify the TCP/IP driver instance to use for the DHCP client.
-    gmosDriverTcpip_t* tcpipDriver;
+    // Specify the TCP/IP stack instance to use for the DHCP client.
+    gmosTcpipStack_t* tcpipStack;
 
     // Specify the DHCP host name to be used.
     const char* dhcpHostName;
@@ -62,12 +64,6 @@ typedef struct gmosTcpipDhcpClient_t {
     // Specify the current DHCP server address in network byte order.
     uint32_t dhcpServerAddr;
 
-    // Specify the primary DNS server address in network byte order.
-    uint32_t dns1ServerAddr;
-
-    // Specify the secondary DNS server address in network byte order.
-    uint32_t dns2ServerAddr;
-
     // Specify the current assigned address in network byte order.
     uint32_t assignedAddr;
 
@@ -76,6 +72,12 @@ typedef struct gmosTcpipDhcpClient_t {
 
     // Specify the current subnet mask in network byte order.
     uint32_t subnetMask;
+
+    // Allocate space for the primary IPv4 DNS server address record.
+    gmosTcpipDnsServerInfo_t dns1ServerInfo;
+
+    // Allocate space for the secondary IPv4 DNS server address record.
+    gmosTcpipDnsServerInfo_t dns2ServerInfo;
 
     // Specify the current DHCP operating state.
     uint8_t dhcpState;
@@ -87,9 +89,8 @@ typedef struct gmosTcpipDhcpClient_t {
  * interface.
  * @param dhcpClient This is a pointer to the DHCP client data
  *     structure that should be used for storing the DHCP client state.
- * @param tcpipDriver This is an initialised TCP/IP driver data
- *     structure that represents the TCP/IP interface to be used by the
- *     DHCP client.
+ * @param tcpipStack This is the TCP/IP stack instance that represents
+ *     the TCP/IP interface to be used by the DHCP client.
  * @param dhcpHostName This should be a pointer to a unique host name
  *     string that allows the device to be identified in the DHCP server
  *     tables. It must be valid for the lifetime of the device.
@@ -97,7 +98,7 @@ typedef struct gmosTcpipDhcpClient_t {
  *     DHCP client was successfully initialised and 'false' otherwise.
  */
 bool gmosTcpipDhcpClientInit (gmosTcpipDhcpClient_t* dhcpClient,
-    gmosDriverTcpip_t* tcpipDriver, const char* dhcpHostName);
+    gmosTcpipStack_t* tcpipStack, const char* dhcpHostName);
 
 /**
  * Determines if the DHCP client has successfully obtained a valid IP
