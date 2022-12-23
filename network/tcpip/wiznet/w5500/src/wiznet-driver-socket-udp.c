@@ -37,6 +37,18 @@
 #include "wiznet-spi-adaptor.h"
 
 /*
+ * Issue a TCP socket status notification callback.
+ */
+static inline void gmosNalTcpipSocketSendNotification (
+    gmosNalTcpipSocket_t* socket, gmosTcpipStackNotify_t notification)
+{
+    if (socket->common.notifyHandler != NULL) {
+        socket->common.notifyHandler (
+            socket->common.notifyData, notification);
+    }
+}
+
+/*
  * From the UDP ready state, initiate either an interrupt driven packet
  * receive operation or a queued packet transmit operation.
  */
@@ -262,10 +274,8 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketUdpTxInterruptCheck (
     // next UDP transmit request. Notify ARP failure condition to next
     // higher layer.
     if ((intFlags & WIZNET_SPI_ADAPTOR_SOCKET_INT_TIMEOUT) != 0) {
-        if (socket->common.notifyHandler != NULL) {
-            socket->common.notifyHandler (socket->common.notifyData,
-                GMOS_TCPIP_STACK_NOTIFY_UDP_ARP_TIMEOUT);
-        }
+        gmosNalTcpipSocketSendNotification (socket,
+            GMOS_TCPIP_STACK_NOTIFY_UDP_ARP_TIMEOUT);
         *nextState = WIZNET_SOCKET_UDP_STATE_READY;
         interruptHandled = true;
     }
@@ -274,10 +284,8 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketUdpTxInterruptCheck (
     // transmit or receive packets. Notify UDP datagram sent to next
     // higher layer.
     else if ((intFlags & WIZNET_SPI_ADAPTOR_SOCKET_INT_SENDOK) != 0) {
-        if (socket->common.notifyHandler != NULL) {
-            socket->common.notifyHandler (socket->common.notifyData,
-                GMOS_TCPIP_STACK_NOTIFY_UDP_MESSAGE_SENT);
-        }
+        gmosNalTcpipSocketSendNotification (socket,
+            GMOS_TCPIP_STACK_NOTIFY_UDP_MESSAGE_SENT);
         *nextState = WIZNET_SOCKET_UDP_STATE_READY;
         interruptHandled = true;
     }
@@ -406,10 +414,8 @@ gmosTaskStatus_t gmosNalTcpipSocketProcessTickUdp (
 
         // Issue notification callback on opening the socket.
         case WIZNET_SOCKET_UDP_STATE_OPEN :
-            if (socket->common.notifyHandler != NULL) {
-                socket->common.notifyHandler (socket->common.notifyData,
-                    GMOS_TCPIP_STACK_NOTIFY_UDP_SOCKET_OPENED);
-            }
+            gmosNalTcpipSocketSendNotification (socket,
+                GMOS_TCPIP_STACK_NOTIFY_UDP_SOCKET_OPENED);
             nextState = WIZNET_SOCKET_UDP_STATE_READY;
             break;
 
@@ -423,10 +429,8 @@ gmosTaskStatus_t gmosNalTcpipSocketProcessTickUdp (
         case WIZNET_SOCKET_UDP_STATE_CLOSE :
             if (gmosNalTcpipSocketIssueCommand (socket,
                 WIZNET_SPI_ADAPTOR_SOCKET_COMMAND_CLOSE)) {
-                if (socket->common.notifyHandler != NULL) {
-                    socket->common.notifyHandler (socket->common.notifyData,
-                        GMOS_TCPIP_STACK_NOTIFY_UDP_SOCKET_CLOSED);
-                }
+                gmosNalTcpipSocketSendNotification (socket,
+                    GMOS_TCPIP_STACK_NOTIFY_UDP_SOCKET_CLOSED);
                 nextPhase = WIZNET_SOCKET_PHASE_CLOSED;
                 nextState = WIZNET_SOCKET_STATE_CLOSING_STATUS_READ;
             }

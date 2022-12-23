@@ -133,7 +133,7 @@ gmosTcpipStackSocket_t* gmosTcpipStackTcpOpen (
     gmosNalTcpipSocket_t* nalSocket;
 
     // Open the implementation specific socket.
-    nalSocket = gmosDriverTcpipUdpOpen (tcpipStack->tcpipDriver,
+    nalSocket = gmosDriverTcpipTcpOpen (tcpipStack->tcpipDriver,
         useIpv6, localPort, appTask, notifyHandler, notifyData);
     return (gmosTcpipStackSocket_t*) nalSocket;
 }
@@ -178,12 +178,47 @@ gmosNetworkStatus_t gmosTcpipStackTcpSend (
  * connection.
  */
 gmosNetworkStatus_t gmosTcpipStackTcpWrite (
-    gmosTcpipStackSocket_t* tcpSocket, uint8_t* writeData,
+    gmosTcpipStackSocket_t* tcpSocket, const uint8_t* writeData,
     uint16_t requestSize, uint16_t* transferSize)
 {
     gmosNalTcpipSocket_t* nalSocket = (gmosNalTcpipSocket_t*) tcpSocket;
-    return gmosDriverTcpipTcpWrite (
-        nalSocket, writeData, requestSize, transferSize);
+    uint32_t maxTransferSize;
+    gmosBuffer_t writeBuffer = GMOS_BUFFER_INIT ();
+    gmosNetworkStatus_t stackStatus;
+
+    // Determine the maximum possible transfer size. This is set at half
+    // the number of free buffers in the memory pool.
+    maxTransferSize = gmosMempoolSegmentsAvailable ();
+    maxTransferSize *= GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE / 2;
+
+    // Indicate that no data can be transferred at this time.
+    if (maxTransferSize == 0) {
+        *transferSize = 0;
+        return GMOS_NETWORK_STATUS_RETRY;
+    }
+
+    // Determine the actual transfer size to use.
+    if (maxTransferSize < requestSize) {
+        requestSize = maxTransferSize;
+    }
+
+    // Copy the requested data to the local buffer. This should always
+    // succeed due to the previous transfer size checks.
+    gmosBufferAppend (&writeBuffer, writeData, requestSize);
+
+    // Attempt to send the buffer using the TCP send API call.
+    stackStatus = gmosDriverTcpipTcpSend (nalSocket, &writeBuffer);
+    if (stackStatus == GMOS_NETWORK_STATUS_SUCCESS) {
+        *transferSize = requestSize;
+        return GMOS_NETWORK_STATUS_SUCCESS;
+    }
+
+    // Release the allocated write buffer memory on failure.
+    else {
+        gmosBufferReset (&writeBuffer, 0);
+        *transferSize = 0;
+        return stackStatus;
+    }
 }
 
 /*
@@ -205,8 +240,45 @@ gmosNetworkStatus_t gmosTcpipStackTcpRead (
     uint16_t requestSize, uint16_t* transferSize)
 {
     gmosNalTcpipSocket_t* nalSocket = (gmosNalTcpipSocket_t*) tcpSocket;
-    return gmosDriverTcpipTcpRead (
-        nalSocket, readData, requestSize, transferSize);
+    gmosStream_t* rxStream = &(tcpSocket->rxStream);
+    gmosBuffer_t payload = GMOS_BUFFER_INIT ();
+    gmosNetworkStatus_t stackStatus;
+    uint16_t payloadSize;
+    uint16_t readSize;
+    bool releaseBuffer;
+
+    // Attempt to receive a payload buffer from the recive data
+    // stream.
+    stackStatus = gmosDriverTcpipTcpReceive (nalSocket, &payload);
+    if (stackStatus != GMOS_NETWORK_STATUS_SUCCESS) {
+        *transferSize = 0;
+        return stackStatus;
+    }
+
+    // Set the read data size and determine whether the payload buffer
+    // can be released on completion.
+    payloadSize = gmosBufferGetSize (&payload);
+    if (payloadSize > requestSize) {
+        readSize = requestSize;
+        releaseBuffer = false;
+    } else {
+        readSize = payloadSize;
+        releaseBuffer = true;
+    }
+
+    // Read the data from the buffer into the read data array.
+    gmosBufferRead (&payload, 0, readData, readSize);
+
+    // Release the buffer memory or push it back onto the receive
+    // buffer stream for subsequent access.
+    if (releaseBuffer) {
+        gmosBufferReset (&payload, 0);
+    } else {
+        gmosBufferRebase (&payload, payloadSize - requestSize);
+        gmosStreamPushBackBuffer (rxStream, &payload);
+    }
+    *transferSize = readSize;
+    return GMOS_NETWORK_STATUS_SUCCESS;
 }
 
 /*

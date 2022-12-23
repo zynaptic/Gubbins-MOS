@@ -100,6 +100,9 @@ typedef enum {
     // Indicates that the TCP socket opening process has completed.
     GMOS_TCPIP_STACK_NOTIFY_TCP_SOCKET_OPENED,
 
+    // Indicates that the TCP socket connection process has completed.
+    GMOS_TCPIP_STACK_NOTIFY_TCP_SOCKET_CONNECTED,
+
     // Indicates that the TCP socket has been closed and it may no
     // longer be used.
     GMOS_TCPIP_STACK_NOTIFY_TCP_SOCKET_CLOSED,
@@ -186,13 +189,17 @@ bool gmosTcpipStackInit (gmosTcpipStack_t* tcpipStack,
  * @param localPort This is the local port to be used when sending and
  *     receiving UDP datagrams.
  * @param appTask This is the application layer task which will be used
- *     to process received data and stack status updates.
+ *     to process received data. A null reference may be passed if the
+ *     application task does not need to be automatically resumed when
+ *     new data is received.
  * @param notifyHandler This is a notification callback handler that
  *     will be used to notify the socket client of any TCP/IP stack
  *     events associated with the socket. A null reference may be used
  *     to indicate that no notification callbacks are required.
  * @param notifyData This is a pointer to an opaque data item that will
- *     be included in all stack notification callbacks.
+ *     be included in all stack notification callbacks. A null reference
+ *     may be used to indicate that no stack notification data is to be
+ *     used.
  * @return Returns a pointer to the UDP socket data structure or a null
  *     reference if no UDP socket instance is currently available.
  */
@@ -271,13 +278,17 @@ gmosNetworkStatus_t gmosTcpipStackUdpClose (
  * @param localPort This is the local port to be used when establishing
  *     a TCP connection.
  * @param appTask This is the application layer task which will be used
- *     to process received data and stack status updates.
+ *     to process received data. A null reference may be passed if the
+ *     application task does not need to be automatically resumed when
+ *     new data is received.
  * @param notifyHandler This is a notification callback handler that
  *     will be used to notify the socket client of any TCP/IP stack
  *     events associated with the socket. A null reference may be used
  *     to indicate that no notification callbacks are required.
  * @param notifyData This is a pointer to an opaque data item that will
- *     be included in all stack notification callbacks.
+ *     be included in all stack notification callbacks. A null reference
+ *     may be used to indicate that no stack notification data is to be
+ *     used.
  * @return Returns a pointer to the TCP socket data structure or a null
  *     reference if no TCP socket instance is currently available.
  */
@@ -347,7 +358,7 @@ gmosNetworkStatus_t gmosTcpipStackTcpSend (
  *     the reason for failure.
  */
 gmosNetworkStatus_t gmosTcpipStackTcpWrite (
-    gmosTcpipStackSocket_t* tcpSocket, uint8_t* writeData,
+    gmosTcpipStackSocket_t* tcpSocket, const uint8_t* writeData,
     uint16_t requestSize, uint16_t* transferSize);
 
 /**

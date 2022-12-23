@@ -38,6 +38,18 @@
 #include "wiznet-spi-adaptor.h"
 
 /*
+ * Issue a TCP socket status notification callback.
+ */
+static inline void gmosNalTcpipSocketSendNotification (
+    gmosNalTcpipSocket_t* socket, gmosTcpipStackNotify_t notification)
+{
+    if (socket->common.notifyHandler != NULL) {
+        socket->common.notifyHandler (
+            socket->common.notifyData, notification);
+    }
+}
+
+/*
  * From the TCP ready state, check for socket close requests.
  */
 static inline gmosTaskStatus_t gmosNalTcpipSocketProcessTcpReady (
@@ -73,8 +85,10 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketProcessTcpActive (
     uint8_t socketId = socket->socketId;
     uint8_t intFlags = socket->interruptFlags;
 
-    // Check for the socket close request flag.
-    if ((intFlags & WIZNET_SPI_ADAPTOR_SOCKET_FLAG_CLOSE_REQ) != 0) {
+    // Check for the socket close request flag or the remote disconnect
+    // request interrupt.
+    if ((intFlags & (WIZNET_SPI_ADAPTOR_SOCKET_INT_DISCON |
+        WIZNET_SPI_ADAPTOR_SOCKET_FLAG_CLOSE_REQ)) != 0) {
         *nextState = WIZNET_SOCKET_TCP_STATE_DISCONNECT;
     }
 
@@ -137,8 +151,9 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketTcpConnectInterruptCheck (
 
     // If an ARP or TCP handshake timeout occurred, the socket reverts
     // to its unconnected state.
-    // TODO: Notify failure condition to next higher layer.
     if ((intFlags & WIZNET_SPI_ADAPTOR_SOCKET_INT_TIMEOUT) != 0) {
+        gmosNalTcpipSocketSendNotification (socket,
+            GMOS_TCPIP_STACK_NOTIFY_TCP_CONNECT_TIMEOUT);
         *nextState = WIZNET_SOCKET_TCP_STATE_READY;
         interruptHandled = true;
     }
@@ -146,6 +161,8 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketTcpConnectInterruptCheck (
     // After completing the TCP handshake, start polling for transmit
     // or receive data.
     else if ((intFlags & WIZNET_SPI_ADAPTOR_SOCKET_INT_CON) != 0) {
+        gmosNalTcpipSocketSendNotification (socket,
+            GMOS_TCPIP_STACK_NOTIFY_TCP_SOCKET_CONNECTED);
         *nextState = WIZNET_SOCKET_TCP_STATE_ACTIVE;
         GMOS_LOG_FMT (LOG_DEBUG,
             "WIZnet TCP/IP : Socket %d TCP connection established.",
@@ -364,9 +381,10 @@ gmosNetworkStatus_t gmosDriverTcpipTcpConnect (
         return GMOS_NETWORK_STATUS_NOT_OPEN;
     }
 
-    // Check that the specified socket is open but not connected.
+    // Check that the specified socket is in a valid state for the
+    // connection request.
     if (nextState != WIZNET_SOCKET_TCP_STATE_READY) {
-        return GMOS_NETWORK_STATUS_CONNECTED;
+        return GMOS_NETWORK_STATUS_NOT_VALID;
     }
 
     // Allocate a temporary buffer for storing the server address.
@@ -432,53 +450,6 @@ gmosNetworkStatus_t gmosDriverTcpipTcpSend (
 }
 
 /*
- * Attempts to write an array of octet data to an established TCP
- * connection.
- */
-gmosNetworkStatus_t gmosDriverTcpipTcpWrite (
-    gmosNalTcpipSocket_t* tcpSocket, uint8_t* writeData,
-    uint16_t requestSize, uint16_t* transferSize)
-{
-    uint32_t maxTransferSize;
-    gmosBuffer_t writeBuffer = GMOS_BUFFER_INIT ();
-    gmosNetworkStatus_t stackStatus;
-
-    // Determine the maximum possible transfer size. This is set at half
-    // the number of free buffers in the memory pool.
-    maxTransferSize = gmosMempoolSegmentsAvailable ();
-    maxTransferSize *= GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE / 2;
-
-    // Indicate that no data can be transferred at this time.
-    if (maxTransferSize == 0) {
-        *transferSize = 0;
-        return GMOS_NETWORK_STATUS_RETRY;
-    }
-
-    // Determine the actual transfer size to use.
-    if (maxTransferSize < requestSize) {
-        requestSize = maxTransferSize;
-    }
-
-    // Copy the requested data to the local buffer. This should always
-    // succeed due to the previous transfer size checks.
-    gmosBufferAppend (&writeBuffer, writeData, requestSize);
-
-    // Attempt to send the buffer using the TCP send API call.
-    stackStatus = gmosDriverTcpipTcpSend (tcpSocket, &writeBuffer);
-    if (stackStatus == GMOS_NETWORK_STATUS_SUCCESS) {
-        *transferSize = requestSize;
-        return GMOS_NETWORK_STATUS_SUCCESS;
-    }
-
-    // Release the allocated write buffer memory on failure.
-    else {
-        gmosBufferReset (&writeBuffer, 0);
-        *transferSize = 0;
-        return stackStatus;
-    }
-}
-
-/*
  * Receives a block of data over an established TCP connection.
  */
 gmosNetworkStatus_t gmosDriverTcpipTcpReceive (
@@ -505,55 +476,6 @@ gmosNetworkStatus_t gmosDriverTcpipTcpReceive (
     } else {
         return GMOS_NETWORK_STATUS_RETRY;
     }
-}
-
-/*
- * Attempts to read an array of octet data from an established TCP
- * connection.
- */
-gmosNetworkStatus_t gmosDriverTcpipTcpRead (
-    gmosNalTcpipSocket_t* tcpSocket, uint8_t* readData,
-    uint16_t requestSize, uint16_t* transferSize)
-{
-    gmosStream_t* rxStream = &(tcpSocket->common.rxStream);
-    gmosBuffer_t payload = GMOS_BUFFER_INIT ();
-    gmosNetworkStatus_t stackStatus;
-    uint16_t payloadSize;
-    uint16_t readSize;
-    bool releaseBuffer;
-
-    // Attempt to receive a payload buffer from the recive data
-    // stream.
-    stackStatus = gmosDriverTcpipTcpReceive (tcpSocket, &payload);
-    if (stackStatus != GMOS_NETWORK_STATUS_SUCCESS) {
-        *transferSize = 0;
-        return stackStatus;
-    }
-
-    // Set the read data size and determine whether the payload buffer
-    // can be released on completion.
-    payloadSize = gmosBufferGetSize (&payload);
-    if (payloadSize > requestSize) {
-        readSize = requestSize;
-        releaseBuffer = false;
-    } else {
-        readSize = payloadSize;
-        releaseBuffer = true;
-    }
-
-    // Read the data from the buffer into the read data array.
-    gmosBufferRead (&payload, 0, readData, readSize);
-
-    // Release the buffer memory or push it back onto the receive
-    // buffer stream for subsequent access.
-    if (releaseBuffer) {
-        gmosBufferReset (&payload, 0);
-    } else {
-        gmosBufferRebase (&payload, payloadSize - requestSize);
-        gmosStreamPushBackBuffer (rxStream, &payload);
-    }
-    *transferSize = readSize;
-    return GMOS_NETWORK_STATUS_SUCCESS;
 }
 
 /*
@@ -595,10 +517,8 @@ gmosTaskStatus_t gmosNalTcpipSocketProcessTickTcp (
 
         // Issue notification callback on opening the socket.
         case WIZNET_SOCKET_TCP_STATE_OPEN :
-            if (socket->common.notifyHandler != NULL) {
-                socket->common.notifyHandler (socket->common.notifyData,
-                    GMOS_TCPIP_STACK_NOTIFY_TCP_SOCKET_OPENED);
-            }
+            gmosNalTcpipSocketSendNotification (socket,
+                GMOS_TCPIP_STACK_NOTIFY_TCP_SOCKET_OPENED);
             nextState = WIZNET_SOCKET_TCP_STATE_READY;
             break;
 
@@ -618,10 +538,8 @@ gmosTaskStatus_t gmosNalTcpipSocketProcessTickTcp (
                 WIZNET_SPI_ADAPTOR_SOCKET_COMMAND_DISCONNECT :
                 WIZNET_SPI_ADAPTOR_SOCKET_COMMAND_CLOSE;
             if (gmosNalTcpipSocketIssueCommand (socket, closeCommand)) {
-                if (socket->common.notifyHandler != NULL) {
-                    socket->common.notifyHandler (socket->common.notifyData,
-                        GMOS_TCPIP_STACK_NOTIFY_TCP_SOCKET_CLOSED);
-                }
+                gmosNalTcpipSocketSendNotification (socket,
+                    GMOS_TCPIP_STACK_NOTIFY_TCP_SOCKET_CLOSED);
                 nextPhase = WIZNET_SOCKET_PHASE_CLOSED;
                 nextState = WIZNET_SOCKET_STATE_CLOSING_STATUS_READ;
             }

@@ -35,16 +35,6 @@
 #include "gmos-tcpip-stack.h"
 
 /**
- * Specifies the maximum DNS address size based on the IPv6
- * configuration.
- */
-#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
-#define GMOS_CONFIG_TCPIP_DNS_MAX_ADDR_SIZE 16
-#else
-#define GMOS_CONFIG_TCPIP_DNS_MAX_ADDR_SIZE 4
-#endif
-
-/**
  * Defines the GubbinsMOS TCP/IP stack DNS server information structures
  * that are used to configure DNS lookups for a specific server.
  */
@@ -160,13 +150,13 @@ bool gmosTcpipDnsClientRemoveServer (gmosTcpipDnsClient_t* dnsClient,
  * @param useIpv6 This is a boolean flag which should be set to 'true'
  *     to request an IPv6 address and 'false' to request an IPv4
  *     address.
- * @param dnsAddress This is a pointer to a four octet array which will
- *     be populated with the resolved IPv4 address on successful
- *     resolution.
+ * @param dnsAddress This is a pointer to a four or sixteen octet array
+ *     which will be populated with the resolved IPv4 or IPv6 address on
+ *     successful resolution.
  * @return Returns a TCP/IP stack status value which will be set to
  *     'success' if the DNS entry was in the local cache and has been
- *     used to update the resolved IPv4 address, 'retry' if the DNS
- *     lookup is in progress or other status values to indicate failure.
+ *     used to update the resolved address, 'retry' if the DNS lookup
+ *     is still in progress or other status values to indicate failure.
  */
 gmosNetworkStatus_t gmosTcpipDnsClientQuery (
     gmosTcpipDnsClient_t* dnsClient, const char* dnsName,

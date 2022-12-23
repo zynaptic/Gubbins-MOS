@@ -320,25 +320,6 @@ gmosNetworkStatus_t gmosDriverTcpipTcpSend (
     gmosNalTcpipSocket_t* tcpSocket, gmosBuffer_t* payload);
 
 /**
- * Attempts to write an array of octet data to an established TCP
- * connection.
- * @param tcpSocket This is the TCP socket which is to be used to send
- *     the payload data.
- * @param writeData This is a pointer to the octet array that is to be
- *     written to the TCP connection.
- * @param requestSize This is the length of the octet array that should
- *     be written to the TCP connection.
- * @param transferSize This is a pointer to the transfer size value
- *     which will be updated with the actual number of octets written
- *     to the TCP connection.
- * @return Returns a network status value indicating success or the
- *     reason for failure.
- */
-gmosNetworkStatus_t gmosDriverTcpipTcpWrite (
-    gmosNalTcpipSocket_t* tcpSocket, uint8_t* writeData,
-    uint16_t requestSize, uint16_t* transferSize);
-
-/**
  * Receives a block of data over an established TCP connection.
  * @param tcpSocket This is the TCP socket which is to be used to
  *     receive the payload data.
@@ -351,25 +332,6 @@ gmosNetworkStatus_t gmosDriverTcpipTcpWrite (
  */
 gmosNetworkStatus_t gmosDriverTcpipTcpReceive (
     gmosNalTcpipSocket_t* tcpSocket, gmosBuffer_t* payload);
-
-/**
- * Attempts to read an array of octet data from an established TCP
- * connection.
- * @param tcpSocket This is the TCP socket which is to be used to
- *     receive the payload data.
- * @param readData This is a pointer to the octet array that is to be
- *     updated with the data read from the TCP connection.
- * @param requestSize This is the length of the octet array that may be
- *     used to store received data from the TCP connection.
- * @param transferSize This is a pointer to the transfer size value
- *     which will be updated with the actual number of octets read
- *     from the TCP connection.
- * @return Returns a network status value indicating success or the
- *     reason for failure.
- */
-gmosNetworkStatus_t gmosDriverTcpipTcpRead (
-    gmosNalTcpipSocket_t* tcpSocket, uint8_t* readData,
-    uint16_t requestSize, uint16_t* transferSize);
 
 /**
  * Closes the specified TCP socket, terminating any active connection

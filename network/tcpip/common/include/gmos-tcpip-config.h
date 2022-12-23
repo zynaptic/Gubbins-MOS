@@ -87,6 +87,16 @@
 #endif
 
 /**
+ * Specifies the maximum DNS address size based on the IPv6
+ * configuration.
+ */
+#if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+#define GMOS_CONFIG_TCPIP_DNS_MAX_ADDR_SIZE 16
+#else
+#define GMOS_CONFIG_TCPIP_DNS_MAX_ADDR_SIZE 4
+#endif
+
+/**
  * Specify the default primary IPv4 DNS server address as a 32-bit
  * integer in network byte order. This is the CloudFlare primary public
  * DNS server, but other public servers may be used instead.
