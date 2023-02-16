@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2021 Zynaptic Limited
+ * Copyright 2020-2023 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -57,6 +57,16 @@ typedef enum {
     GMOS_DRIVER_SPI_BUS_SELECTED,
     GMOS_DRIVER_SPI_BUS_ACTIVE
 } gmosDriverSpiBusState_t;
+
+/**
+ * This enumeration specifies the standard SPI bus clock modes.
+ */
+typedef enum {
+    GMOS_DRIVER_SPI_CLOCK_MODE_0 = 0,
+    GMOS_DRIVER_SPI_CLOCK_MODE_1 = 1,
+    GMOS_DRIVER_SPI_CLOCK_MODE_2 = 2,
+    GMOS_DRIVER_SPI_CLOCK_MODE_3 = 3
+} gmosDriverSpiClockMode_t;
 
 /*
  * This set of definitions specify the event bit masks used to indicate
