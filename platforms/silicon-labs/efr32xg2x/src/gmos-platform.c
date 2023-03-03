@@ -30,10 +30,14 @@
 #include "gmos-platform.h"
 #include "efr32-device.h"
 #include "efr32-driver-gpio.h"
+#include "em_core.h"
 
 // Provide mapping of log levels to human readable strings.
 static const char* logLevelNames [] = {
     "VERBOSE", "DEBUG  ", "INFO   ", "WARNING", "ERROR  ", "FAILURE" };
+
+// Allocate storage for critical section interrupt state.
+static CORE_DECLARE_IRQ_STATE;
 
 /*
  * Initialises the platform abstraction layer on startup.
@@ -53,17 +57,19 @@ void gmosPalInit (void)
 }
 
 /*
- * Claims the main platform mutex lock. Not currently implemented.
+ * Claims the main platform mutex lock.
  */
 void gmosPalMutexLock (void)
 {
+    CORE_ENTER_CRITICAL ();
 }
 
 /*
- * Releases the main platform mutex lock. Not currently implemented.
+ * Releases the main platform mutex lock.
  */
 void gmosPalMutexUnlock (void)
 {
+    CORE_EXIT_CRITICAL ();
 }
 
 /*

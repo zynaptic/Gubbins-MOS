@@ -50,6 +50,7 @@ PLATFORM_OBJ_FILE_NAMES = \
 	efr32-console-simple.o \
 	efr32-driver-gpio.o \
 	efr32-driver-spi.o \
+	efr32-driver-iic.o \
 	em_system.o \
 	em_core.o \
 	em_emu.o \
@@ -59,6 +60,7 @@ PLATFORM_OBJ_FILE_NAMES = \
 	em_ldma.o \
 	em_usart.o \
 	em_eusart.o \
+	em_i2c.o \
 	dmadrv.o \
 	spidrv.o \
 	sl_sleeptimer.o \

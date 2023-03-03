@@ -110,6 +110,16 @@
         { GMOS_PAL_SPI_BUS_ID_EUSART0, GMOS_PAL_SPI_BUS_ID_EUSART1 }
 #endif
 
+/**
+ * Specify the IIC bus controller transaction timeout delay as an
+ * integer number of milliseconds. This is the time between sending the
+ * transaction start bit and abandoning the transaction due to an
+ * unresponsive bus target.
+ */
+#ifndef GMOS_CONFIG_EFR32_IIC_BUS_TIMEOUT
+#define GMOS_CONFIG_EFR32_IIC_BUS_TIMEOUT 5000
+#endif
+
 /*
  * The Gecko SDK includes the 'nano' version of the C standard library,
  * so the optimised memcpy implementations can be used for stream and

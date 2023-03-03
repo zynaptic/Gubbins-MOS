@@ -148,7 +148,7 @@ bool gmosDriverSpiPalInit (gmosDriverSpiBus_t* spiInterface)
     // Store a local reference to the SPI interface data structure.
     gmosDriverSpiPalSpiInterfaces [i] = spiInterface;
 
-    // Store the index into the matching SPi bus data structures.
+    // Store the index into the matching SPI bus data structures.
     palData->spiIndex = i;
 
     // Select the appropriate USART instance.

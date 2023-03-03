@@ -244,8 +244,8 @@ gmosDriverSpiStatus_t gmosDriverSpiIoInlineWrite
  * to exceed the cost of carrying out a simple polled transaction.
  */
 gmosDriverSpiStatus_t gmosDriverSpiIoInlineRead
-   (gmosDriverSpiBus_t* spiInterface, uint8_t* readData,
-   uint16_t readSize)
+    (gmosDriverSpiBus_t* spiInterface, uint8_t* readData,
+    uint16_t readSize)
 {
     gmosDriverSpiStatus_t spiStatus = GMOS_DRIVER_SPI_STATUS_NOT_READY;
     if (spiInterface->busState == GMOS_DRIVER_SPI_BUS_SELECTED) {
