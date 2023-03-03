@@ -175,12 +175,16 @@ typedef struct gmosDriverSpiBus_t {
 /**
  * Initialises a SPI bus interface data structure and initiates the
  * platform specific SPI hardware setup process.
+ * @param spiInterface This is the SPI interface data structure which
+ *     is is to be initialised.
  */
 bool gmosDriverSpiBusInit (gmosDriverSpiBus_t* spiInterface);
 
 /**
  * Initialises a SPI device data structure with the specified SPI
  * protocol parameters.
+ * @param spiDevice This is the SPI device data structure which is to
+ *     be initialised.
  * @param clientTask This is the client task which is to be notified
  *     on completion of SPI interface I/O transactions.
  * @param spiChipSelectPin This is the GPIO pin which is to be used as
@@ -284,7 +288,8 @@ bool gmosDriverSpiIoRead (gmosDriverSpiBus_t* spiInterface,
  * @param transferSize This specifies the number of bytes that are to be
  *     transferred to and from the SPI peripheral.
  * @return Returns a boolean value which will be set to 'true' if the
- *     SPI device was selected and is now active and 'false' otherwise.
+ *     SPI transfer was initiated and is now active and 'false'
+ *     otherwise.
  */
 bool gmosDriverSpiIoTransfer (gmosDriverSpiBus_t* spiInterface,
     uint8_t* writeData, uint8_t* readData, uint16_t transferSize);
@@ -342,8 +347,8 @@ gmosDriverSpiStatus_t gmosDriverSpiIoInlineWrite
  *     failure of the inline transfer request.
  */
 gmosDriverSpiStatus_t gmosDriverSpiIoInlineRead
-   (gmosDriverSpiBus_t* spiInterface, uint8_t* readData,
-   uint16_t readSize);
+    (gmosDriverSpiBus_t* spiInterface, uint8_t* readData,
+    uint16_t readSize);
 
 /**
  * Requests a bidirectional inline SPI data transfer for short

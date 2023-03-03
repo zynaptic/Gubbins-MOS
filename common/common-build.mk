@@ -36,7 +36,7 @@ COMMON_OBJ_FILE_NAMES = \
 	gmos-streams.o \
 	gmos-buffers.o \
 	gmos-events.o \
-	gmos-driver-i2c.o \
+	gmos-driver-iic.o \
 	gmos-driver-spi.o \
 	gmos-driver-rtc.o \
 	gmos-driver-rtc-sw.o \
