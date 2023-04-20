@@ -73,12 +73,14 @@ COMPONENT_OBJECT_FILES = \
 	${GMOS_BUILD_DIR}/platform/*.o \
 	${GMOS_BUILD_DIR}/platform/*/*.o
 
-# Specify the network support timestamp and object files.
-ifdef GMOS_TARGET_NETWORK_DIR
+# If one or more network directories have been specified, add them
+# to the set of common components.
+ifdef GMOS_TARGET_NETWORK_DIRS
+NETWORK_BUILD_PATH = ${GMOS_BUILD_DIR}/network/$(DIR)
 COMPONENT_TIMESTAMPS += \
-	${GMOS_BUILD_DIR}/network/$(GMOS_TARGET_NETWORK_DIR)/timestamp
+	$(foreach DIR, ${GMOS_TARGET_NETWORK_DIRS}, $(NETWORK_BUILD_PATH)/timestamp)
 COMPONENT_OBJECT_FILES += \
-	${GMOS_BUILD_DIR}/network/$(GMOS_TARGET_NETWORK_DIR)/*.o
+	$(foreach DIR, ${GMOS_TARGET_NETWORK_DIRS}, $(NETWORK_BUILD_PATH)/*.o)
 endif
 
 # If one or more target radio directories have been specified, add them
@@ -89,6 +91,26 @@ COMPONENT_TIMESTAMPS += \
 	$(foreach DIR, ${GMOS_TARGET_RADIO_DIRS}, $(RADIO_BUILD_PATH)/timestamp)
 COMPONENT_OBJECT_FILES += \
 	$(foreach DIR, ${GMOS_TARGET_RADIO_DIRS}, $(RADIO_BUILD_PATH)/*.o)
+endif
+
+# If one or more target sensor directories have been specified, add them
+# to the set of common components.
+ifdef GMOS_TARGET_SENSOR_DIRS
+SENSOR_BUILD_PATH = ${GMOS_BUILD_DIR}/sensors/$(DIR)
+COMPONENT_TIMESTAMPS += \
+	$(foreach DIR, ${GMOS_TARGET_SENSOR_DIRS}, $(SENSOR_BUILD_PATH)/timestamp)
+COMPONENT_OBJECT_FILES += \
+	$(foreach DIR, ${GMOS_TARGET_SENSOR_DIRS}, $(SENSOR_BUILD_PATH)/*.o)
+endif
+
+# If one or more target display directories have been specified, add
+# them to the set of common components.
+ifdef GMOS_TARGET_DISPLAY_DIRS
+DISPLAY_BUILD_PATH = ${GMOS_BUILD_DIR}/displays/$(DIR)
+COMPONENT_TIMESTAMPS += \
+	$(foreach DIR, ${GMOS_TARGET_DISPLAY_DIRS}, $(DISPLAY_BUILD_PATH)/timestamp)
+COMPONENT_OBJECT_FILES += \
+	$(foreach DIR, ${GMOS_TARGET_DISPLAY_DIRS}, $(DISPLAY_BUILD_PATH)/*.o)
 endif
 
 # Link all the generated object files. Note that 'shell ls' is used to
@@ -110,15 +132,28 @@ include ${GMOS_GIT_DIR}/common/common-build.mk
 # platform specific source build process.
 include ${TARGET_PLATFORM_DIR}/platform-build.mk
 
-# Include the network build makefile fragment if required.
-ifdef GMOS_TARGET_NETWORK_DIR
-include ${GMOS_GIT_DIR}/network/${GMOS_TARGET_NETWORK_DIR}/network-build.mk
+# Include the network build makefile fragments if required.
+ifdef GMOS_TARGET_NETWORK_DIRS
+NETWORK_SOURCE_PATH = ${GMOS_GIT_DIR}/network/$(DIR)
+include $(foreach DIR, ${GMOS_TARGET_NETWORK_DIRS}, $(NETWORK_SOURCE_PATH)/network-build.mk)
 endif
 
 # Include the target radio makefile fragments if specified.
 ifdef GMOS_TARGET_RADIO_DIRS
 RADIO_SOURCE_PATH = ${GMOS_GIT_DIR}/radios/$(DIR)
 include $(foreach DIR, ${GMOS_TARGET_RADIO_DIRS}, $(RADIO_SOURCE_PATH)/radio-build.mk)
+endif
+
+# Include the target sensor makefile fragments if specified.
+ifdef GMOS_TARGET_SENSOR_DIRS
+SENSOR_SOURCE_PATH = ${GMOS_GIT_DIR}/sensors/$(DIR)
+include $(foreach DIR, ${GMOS_TARGET_SENSOR_DIRS}, $(SENSOR_SOURCE_PATH)/sensor-build.mk)
+endif
+
+# Include the target display makefile fragments if specified.
+ifdef GMOS_TARGET_DISPLAY_DIRS
+DISPLAY_SOURCE_PATH = ${GMOS_GIT_DIR}/displays/$(DIR)
+include $(foreach DIR, ${GMOS_TARGET_DISPLAY_DIRS}, $(DISPLAY_SOURCE_PATH)/display-build.mk)
 endif
 
 # Remove all build files.
