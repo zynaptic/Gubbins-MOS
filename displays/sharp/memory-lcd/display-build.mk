@@ -24,7 +24,7 @@
 # Specify the source code directories to use.
 MEMLCD_DRIVER_PATH = sharp/memory-lcd
 MEMLCD_DRIVER_SRC_DIR = ${GMOS_GIT_DIR}/displays/${MEMLCD_DRIVER_PATH}
-DISPLAY_COMMON_SRC_DIR = ${GMOS_GIT_DIR}/displays/common
+DISPLAY_COMMON_DIR = ${GMOS_GIT_DIR}/displays/common
 
 # List all the header directories that are required to build the
 # display driver code.
@@ -32,12 +32,11 @@ MEMLCD_HEADER_DIRS = \
 	${GMOS_APP_DIR}/include \
 	${GMOS_GIT_DIR}/common/include \
 	${TARGET_PLATFORM_DIR}/include \
-	${DISPLAY_COMMON_SRC_DIR}/include \
+	${DISPLAY_COMMON_DIR}/include \
 	${MEMLCD_DRIVER_SRC_DIR}/include
 
 # List all the application object files that need to be built.
 MEMLCD_OBJ_FILE_NAMES = \
-	gmos-display-raster.o \
 	gmos-display-memlcd.o
 
 # Specify the local build directory.
@@ -51,10 +50,6 @@ MEMLCD_OBJ_FILES = ${addprefix ${LOCAL_DIR}/, ${MEMLCD_OBJ_FILE_NAMES}}
 
 # Run the C compiler on the driver specific files.
 ${LOCAL_DIR}/%.o : ${MEMLCD_DRIVER_SRC_DIR}/src/%.c | ${LOCAL_DIR}
-	${CC} ${CFLAGS} ${addprefix -I, ${MEMLCD_HEADER_DIRS}} -o $@ $<
-
-# Run the C compiler on the common display files.
-${LOCAL_DIR}/%.o : ${DISPLAY_COMMON_SRC_DIR}/src/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} ${addprefix -I, ${MEMLCD_HEADER_DIRS}} -o $@ $<
 
 # Timestamp the application object files.

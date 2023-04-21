@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2020-2022 Zynaptic Limited
+# Copyright 2020-2023 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -106,6 +106,7 @@ endif
 # If one or more target display directories have been specified, add
 # them to the set of common components.
 ifdef GMOS_TARGET_DISPLAY_DIRS
+GMOS_TARGET_DISPLAY_DIRS += common
 DISPLAY_BUILD_PATH = ${GMOS_BUILD_DIR}/displays/$(DIR)
 COMPONENT_TIMESTAMPS += \
 	$(foreach DIR, ${GMOS_TARGET_DISPLAY_DIRS}, $(DISPLAY_BUILD_PATH)/timestamp)
