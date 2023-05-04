@@ -190,15 +190,6 @@
 #endif
 
 /**
- * This configuration option specifies the size of the I2C data buffers
- * that are used for read and write transactions. This places an upper
- * limit on the size of I2C transactions that are supported.
- */
-#ifndef GMOS_CONFIG_I2C_BUFFER_SIZE
-#define GMOS_CONFIG_I2C_BUFFER_SIZE 32
-#endif
-
-/**
  * This configuration option specifies the size of the platform EEPROM
  * tags which are used to identify distinct EEPROM data records in tag,
  * length, value format.

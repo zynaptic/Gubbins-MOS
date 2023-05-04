@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include "gmos-config.h"
 
 #ifdef __cplusplus
@@ -145,7 +146,7 @@ static inline void _id_ ## _start (gmosTaskState_t* taskState,         \
 {                                                                      \
     taskState->taskTickFn = _ ## _id_ ## _exec_;                       \
     taskState->taskData = taskData;                                    \
-    taskState->taskName = taskName;                                    \
+    taskState->taskName = GMOS_TASK_NAME_WRAPPER (taskName);           \
     gmosSchedulerTaskStart (taskState);                                \
 }
 

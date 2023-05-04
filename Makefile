@@ -96,6 +96,7 @@ endif
 # If one or more target sensor directories have been specified, add them
 # to the set of common components.
 ifdef GMOS_TARGET_SENSOR_DIRS
+GMOS_TARGET_SENSOR_DIRS += common
 SENSOR_BUILD_PATH = ${GMOS_BUILD_DIR}/sensors/$(DIR)
 COMPONENT_TIMESTAMPS += \
 	$(foreach DIR, ${GMOS_TARGET_SENSOR_DIRS}, $(SENSOR_BUILD_PATH)/timestamp)
