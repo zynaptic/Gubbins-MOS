@@ -83,6 +83,16 @@
 #endif
 
 /**
+ * Specify the maximum number of supported GPIO interrupt service
+ * routines. In principle, up to 12 EFR32 GPIOs can be used as interrupt
+ * sources, but restricting the available number can reduce resource
+ * utilisation.
+ */
+#ifndef GMOS_CONFIG_EFR32_GPIO_MAX_ISRS
+#define GMOS_CONFIG_EFR32_GPIO_MAX_ISRS 4
+#endif
+
+/**
  * Specify the number of DMA channels that will be configured for use.
  * The valid range is from 0 to 8. Increasing the number of configured
  * DMA channels will increase the amount of memory allocated to the DMA

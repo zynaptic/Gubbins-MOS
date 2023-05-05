@@ -25,6 +25,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
+#include "gmos-config.h"
 #include "gmos-driver-gpio.h"
 #include "efr32-driver-gpio.h"
 #include "em_cmu.h"
@@ -43,6 +44,16 @@ static uint16_t gmosDriverGpioPulldownFlags [4];
 // This is the set of GPIO output enable flags.
 static uint16_t gmosDriverGpioOutputEnFlags [4];
 
+// This is the map of GPIO interrupt IDs to ISR slots.
+static uint8_t gmosDriverGpioIsrMap [12];
+
+// Allocate the specified number of ISR slots, using an array of GPIO
+// pin IDs and an array of associated callback functions.
+static gmosDriverGpioIsr_t gpioIsrHandlers [GMOS_CONFIG_EFR32_GPIO_MAX_ISRS];
+static uint16_t gpioIsrPinIds [GMOS_CONFIG_EFR32_GPIO_MAX_ISRS];
+static uint8_t gpioIsrIntIds [GMOS_CONFIG_EFR32_GPIO_MAX_ISRS];
+static void* gpioIsrDataItems [GMOS_CONFIG_EFR32_GPIO_MAX_ISRS];
+
 /*
  * Sets the slew rate for conventional GPIO pins. The slew rate is set
  * for each GPIO bank, so the maximum requested slew rate for all pins
@@ -58,9 +69,7 @@ static inline void gmosDriverGpioSetSlewRate (
     currentSlewRate = (gpioCtrlReg & _GPIO_P_CTRL_SLEWRATE_MASK) >>
         _GPIO_P_CTRL_SLEWRATE_SHIFT;
     if (driveStrength > currentSlewRate) {
-        GPIO->P[gpioPort].CTRL =
-            (gpioCtrlReg & ~_GPIO_P_CTRL_SLEWRATE_MASK) |
-            (driveStrength << _GPIO_P_CTRL_SLEWRATE_SHIFT);
+        GPIO_SlewrateSet (gpioPort, driveStrength, 0);
     }
 }
 
@@ -74,8 +83,8 @@ bool gmosDriverGpioPinInit (uint16_t gpioPinId, bool openDrain,
     uint8_t driveStrength, int8_t biasResistor)
 {
     GPIO_Port_TypeDef gpioPort;
-    uint16_t gpioPin;
-    uint16_t gpioPinMask;
+    uint_fast16_t gpioPin;
+    uint_fast16_t gpioPinMask;
 
     // Extract the GPIO port and pin ID.
     gpioPort = (gpioPinId >> 8) & 0x03;
@@ -125,11 +134,11 @@ bool gmosDriverGpioPinInit (uint16_t gpioPinId, bool openDrain,
 bool gmosDriverGpioSetAsInput (uint16_t gpioPinId)
 {
     GPIO_Port_TypeDef gpioPort;
-    uint16_t gpioPin;
-    uint16_t gpioPinMask;
-    uint16_t gpioFilterEn;
-    uint16_t gpioPullupEn;
-    uint16_t gpioPulldownEn;
+    uint_fast16_t gpioPin;
+    uint_fast16_t gpioPinMask;
+    uint_fast16_t gpioFilterEn;
+    uint_fast16_t gpioPullupEn;
+    uint_fast16_t gpioPulldownEn;
     GPIO_Mode_TypeDef gpioMode;
     uint32_t gpioOption;
 
@@ -176,11 +185,11 @@ bool gmosDriverGpioSetAsInput (uint16_t gpioPinId)
 bool gmosDriverGpioSetAsOutput (uint16_t gpioPinId)
 {
     GPIO_Port_TypeDef gpioPort;
-    uint16_t gpioPin;
-    uint16_t gpioPinMask;
-    uint16_t gpioOpenDrainEn;
-    uint16_t gpioFilterEn;
-    uint16_t gpioPullupEn;
+    uint_fast16_t gpioPin;
+    uint_fast16_t gpioPinMask;
+    uint_fast16_t gpioOpenDrainEn;
+    uint_fast16_t gpioFilterEn;
+    uint_fast16_t gpioPullupEn;
     GPIO_Mode_TypeDef gpioMode;
     uint32_t gpioOutput;
 
@@ -234,9 +243,9 @@ bool gmosDriverGpioSetAsOutput (uint16_t gpioPinId)
 void gmosDriverGpioSetPinState (uint16_t gpioPinId, bool pinState)
 {
     GPIO_Port_TypeDef gpioPort;
-    uint16_t gpioPin;
-    uint16_t gpioPinMask;
-    uint16_t gpioOutputEn;
+    uint_fast16_t gpioPin;
+    uint_fast16_t gpioPinMask;
+    uint_fast16_t gpioOutputEn;
 
     // Extract the GPIO port and pin ID.
     gpioPort = (gpioPinId >> 8) & 0x03;
@@ -264,7 +273,7 @@ void gmosDriverGpioSetPinState (uint16_t gpioPinId, bool pinState)
 bool gmosDriverGpioGetPinState (uint16_t gpioPinId)
 {
     GPIO_Port_TypeDef gpioPort;
-    uint16_t gpioPin;
+    uint_fast16_t gpioPin;
     uint32_t pinState;
 
     // Extract the GPIO port and pin ID.
@@ -274,6 +283,135 @@ bool gmosDriverGpioGetPinState (uint16_t gpioPinId)
     // Read the state of the input buffer.
     pinState = GPIO_PinInGet (gpioPort, gpioPin);
     return (pinState == 0) ? false : true;
+}
+
+/*
+ * Initialises a general purpose IO pin for interrupt generation. This
+ * should be called for each interrupt input GPIO pin prior to accessing
+ * it via any of the other API functions. The interrupt is not enabled
+ * at this stage.
+ */
+bool gmosDriverGpioInterruptInit (uint16_t gpioPinId,
+    gmosDriverGpioIsr_t gpioIsr, void* gpioIsrData,
+    int8_t biasResistor)
+{
+    GPIO_Port_TypeDef gpioPort;
+    uint_fast16_t gpioPin;
+    uint_fast8_t intIdBase;
+    uint_fast8_t intIdTop;
+    uint_fast8_t intId;
+    uint_fast8_t slot;
+
+    // Select an interrupt ID for the specified GPIO. This is done in
+    // blocks of four, as described in the datasheet.
+    gpioPort = (gpioPinId >> 8) & 0x03;
+    gpioPin = gpioPinId & 0x0F;
+    if (gpioPin < 4) {
+        intIdBase = 0;
+        intIdTop = 3;
+    } else if (gpioPin < 8) {
+        intIdBase = 4;
+        intIdTop = 7;
+    } else if (gpioPin < 10) {
+        intIdBase = 8;
+        intIdTop = 11;
+    } else {
+        return false;
+    }
+    for (intId = intIdBase; intId <= intIdTop; intId++) {
+        if (gmosDriverGpioIsrMap [intId] == 0xFF) {
+            break;
+        }
+    }
+    if (intId > intIdTop) {
+        return false;
+    }
+
+    // Select the next available ISR callback slot.
+    for (slot = 0; slot < GMOS_CONFIG_EFR32_GPIO_MAX_ISRS; slot++) {
+        if (gpioIsrHandlers [slot] == NULL) {
+            break;
+        }
+    }
+    if (slot >= GMOS_CONFIG_EFR32_GPIO_MAX_ISRS) {
+        return false;
+    }
+
+    // Configure the GPIO pin and set it as an input.
+    if (!gmosDriverGpioPinInit (gpioPinId, false, 0, biasResistor)) {
+        return false;
+    }
+
+    // Set up the interrupt routing registers with interrupts disabled.
+    GPIO_ExtIntConfig (gpioPort, gpioPin, intId, false, false, false);
+
+    // Populate the local ISR slot.
+    gmosDriverGpioIsrMap [intId] = slot;
+    gpioIsrHandlers [slot] = gpioIsr;
+    gpioIsrPinIds [slot] = gpioPinId;
+    gpioIsrIntIds [slot] = intId;
+    gpioIsrDataItems [slot] = gpioIsrData;
+    return true;
+}
+
+/*
+ * Enables a GPIO interrupt for rising and/or falling edge detection.
+ * This should be called after initialising a general purpose IO pin
+ * as an interrupt source in order to receive interrupt notifications.
+ */
+void gmosDriverGpioInterruptEnable (uint16_t gpioPinId,
+    bool risingEdge, bool fallingEdge)
+{
+    uint_fast8_t i;
+    uint_fast8_t intId = 0xFF;
+
+    // Determine the interrupt ID which is associated with the specified
+    // GPIO pin.
+    for (i = 0; i < GMOS_CONFIG_EFR32_GPIO_MAX_ISRS; i++) {
+        if ((gpioIsrHandlers [i] != NULL) &&
+            (gpioIsrPinIds [i] == gpioPinId)) {
+            intId = gpioIsrIntIds [i];
+            break;
+        }
+    }
+    if (intId == 0xFF) {
+        return;
+    }
+
+    // Set the rising and falling edge options.
+    BUS_RegBitWrite (&(GPIO->EXTIRISE), intId, risingEdge);
+    BUS_RegBitWrite (&(GPIO->EXTIFALL), intId, fallingEdge);
+
+    // Clear any pending interrupts before setting interrupt enable.
+    GPIO_IntClear (1 << intId);
+    GPIO_IntEnable (1 << intId);
+}
+
+/*
+ * Disables a GPIO interrupt for the specified GPIO pin. This should be
+ * called after enabling a general purpose IO pin as an interrupt source
+ * in order to stop receiving interrupt notifications.
+ */
+void gmosDriverGpioInterruptDisable (uint16_t gpioPinId)
+{
+    uint_fast8_t i;
+    uint_fast8_t intId = 0xFF;
+
+    // Determine the interrupt ID which is associated with the specified
+    // GPIO pin.
+    for (i = 0; i < GMOS_CONFIG_EFR32_GPIO_MAX_ISRS; i++) {
+        if ((gpioIsrHandlers [i] != NULL) &&
+            (gpioIsrPinIds [i] == gpioPinId)) {
+            intId = gpioIsrIntIds [i];
+            break;
+        }
+    }
+    if (intId == 0xFF) {
+        return;
+    }
+
+    // Disable the interrupt.
+    GPIO_IntDisable (1 << intId);
 }
 
 /*
@@ -295,5 +433,100 @@ void gmosPalGpioInit (void)
         gmosDriverGpioPulldownFlags [i] = 0;
         gmosDriverGpioOutputEnFlags [i] = 0;
         GPIO_SlewrateSet (i, 0, 0);
+    }
+
+    // Clear the interrupt index fields and ISR callback slots.
+    for (i = 0; i < 12; i++) {
+        gmosDriverGpioIsrMap [i] = 0xFF;
+    }
+    for (i = 0; i < GMOS_CONFIG_EFR32_GPIO_MAX_ISRS; i++) {
+        gpioIsrHandlers [i] = NULL;
+    }
+
+    // Disable all low level GPIO interrupts.
+    GPIO_IntDisable (0xFFF);
+
+    // Enable top level GPIO interrupts in the NVIC.
+    if (CORE_NvicIRQDisabled(GPIO_ODD_IRQn)) {
+        NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
+        NVIC_EnableIRQ(GPIO_ODD_IRQn);
+    }
+    if (CORE_NvicIRQDisabled(GPIO_EVEN_IRQn)) {
+        NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
+        NVIC_EnableIRQ(GPIO_EVEN_IRQn);
+    }
+}
+
+/*
+ * Dispatch the selected GPIO interrupt to the approriate interrupt
+ * service routine.
+ */
+static void gmosPalGpioIsrDispatch (uint8_t intId)
+{
+    uint_fast8_t slot = gmosDriverGpioIsrMap [intId];
+
+    // Clear the interrupt flag before processing.
+    GPIO_IntClear (1L << intId);
+
+    // Dispatch to the interrupt handler.
+    if (slot < GMOS_CONFIG_EFR32_GPIO_MAX_ISRS) {
+        gmosDriverGpioIsr_t gpioIsrHandler = gpioIsrHandlers [slot];
+        if (gpioIsrHandler != NULL) {
+            gpioIsrHandler (gpioIsrDataItems [slot]);
+        }
+    }
+}
+
+/*
+ * Provide interrupt handler for GPIO interrupts in even bit positions.
+ */
+void GPIO_EVEN_IRQHandler(void)
+{
+    uint32_t intFlags;
+    uint_fast8_t intId;
+
+    // Get all even interrupts on entry.
+    intFlags = GPIO_IntGetEnabled ();
+    while ((intFlags & 0x555) != 0) {
+
+        // Select the next interrupt to process.
+        for (intId = 0; intId < 12; intId += 2) {
+            if ((intFlags & 1) != 0) {
+                break;
+            } else {
+                intFlags >>= 2;
+            }
+        }
+        gmosPalGpioIsrDispatch (intId);
+
+        // Check for more interrupts to process.
+        intFlags = GPIO_IntGetEnabled ();
+    }
+}
+
+/*
+ * Provide interrupt handler for GPIO interrupts in odd bit positions.
+ */
+void GPIO_ODD_IRQHandler(void)
+{
+    uint32_t intFlags;
+    uint_fast8_t intId;
+
+    // Get all odd interrupts on entry.
+    intFlags = GPIO_IntGetEnabled ();
+    while ((intFlags & 0xAAA) != 0) {
+
+        // Select the next interrupt to process.
+        for (intId = 1; intId < 12; intId += 2) {
+            if ((intFlags & 2) != 0) {
+                break;
+            } else {
+                intFlags >>= 2;
+            }
+        }
+        gmosPalGpioIsrDispatch (intId);
+
+        // Check for more interrupts to process.
+        intFlags = GPIO_IntGetEnabled ();
     }
 }
