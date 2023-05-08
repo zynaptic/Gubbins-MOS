@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2022 Zynaptic Limited
+# Copyright 2022-2023 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -80,7 +80,7 @@ CFLAGS += -Wall
 CFLAGS += -g
 CFLAGS += -ffunction-sections
 CFLAGS += -fdata-sections
-CFLAGS += -nostdlib
+CFLAGS += --specs=nano.specs
 CFLAGS += -lgcc
 CFLAGS += -DTARGET_DEVICE=${GMOS_TARGET_DEVICE}
 CFLAGS += -MMD
@@ -90,7 +90,7 @@ CFLAGS += -O2
 LDFLAGS += -mcpu=${ARCH_NAME}
 LDFLAGS += -mthumb
 LDFLAGS += -mfloat-abi=soft
-LDFLAGS += -nostdlib
+LDFLAGS += --specs=nano.specs
 LDFLAGS += -Wl,--gc-sections
 
 # Linking the bootloader does not use the standard linker script.
@@ -114,17 +114,6 @@ LDWRAPPERS += \
 	__aeabi_uidivmod \
 	__aeabi_uldivmod
 
-# Enable function wrappers for efficient memory operations.
-LDWRAPPERS += \
-	memcpy \
-	memset \
-	__aeabi_memcpy \
-	__aeabi_memset \
-	__aeabi_memcpy4 \
-	__aeabi_memset4 \
-	__aeabi_memcpy8 \
-	__aeabi_memset8
-
 # Enable function wrappers for simplified printf support.
 LDWRAPPERS += \
 	snprintf \
@@ -133,5 +122,8 @@ LDWRAPPERS += \
 # Add function wrappers to linker options.
 LDFLAGS += $(foreach WRAPFN, ${LDWRAPPERS}, -Wl,--wrap=${WRAPFN})
 
-# Add the required gcc runtime library.
+# Required linker library names.
 LDLIBS += gcc
+LDLIBS += c
+LDLIBS += m
+LDLIBS += nosys

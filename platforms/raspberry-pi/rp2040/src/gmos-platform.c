@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022 Zynaptic Limited
+ * Copyright 2022-2023 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,23 +80,14 @@ void gmosPalMutexUnlock (void)
 }
 
 /*
- * Provides platform level handling of fixed string log messages.
+ * Provides platform level handling of formatted string log messages
+ * after argument list mapping.
  */
-void gmosPalLog (const char* fileName, uint32_t lineNo,
-    gmosPalLogLevel_t logLevel, const char* msgPtr)
-{
-    gmosPalLogFmt (fileName, lineNo, logLevel, msgPtr);
-}
-
-/*
- * Provides platform level handling of formatted string log messages.
- */
-void gmosPalLogFmt (const char* fileName, uint32_t lineNo,
-    gmosPalLogLevel_t logLevel, const char* msgPtr, ...)
+static void gmosPalLogFmtArgs (const char* fileName, uint32_t lineNo,
+    gmosPalLogLevel_t logLevel, const char* msgPtr, va_list args)
 {
     char writeBuffer [GMOS_CONFIG_LOG_MESSAGE_SIZE + 2];
     size_t writeSize;
-    va_list args;
     const char* levelString;
 
     // Map the log level to the corresponding text.
@@ -106,7 +97,6 @@ void gmosPalLogFmt (const char* fileName, uint32_t lineNo,
     levelString = logLevelNames [logLevel];
 
     // Add message debug prefix.
-    va_start (args, msgPtr);
     if (GMOS_CONFIG_PICO_DEBUG_CONSOLE_INCLUDE_UPTIME) {
         uint64_t uptime = time_us_64 ();
         if (fileName != NULL) {
@@ -151,6 +141,26 @@ void gmosPalLogFmt (const char* fileName, uint32_t lineNo,
             gmosPalSerialConsoleWrite ((uint8_t*) "...\n", 4);
         }
     }
+}
+
+/*
+ * Provides platform level handling of fixed string log messages.
+ */
+void gmosPalLog (const char* fileName, uint32_t lineNo,
+    gmosPalLogLevel_t logLevel, const char* msgPtr)
+{
+    gmosPalLogFmt (fileName, lineNo, logLevel, msgPtr);
+}
+
+/*
+ * Provides platform level handling of formatted string log messages.
+ */
+void gmosPalLogFmt (const char* fileName, uint32_t lineNo,
+    gmosPalLogLevel_t logLevel, const char* msgPtr, ...)
+{
+    va_list args;
+    va_start (args, msgPtr);
+    gmosPalLogFmtArgs (fileName, lineNo, logLevel, msgPtr, args);
     va_end (args);
 }
 
@@ -165,76 +175,31 @@ void gmosPalAssertFail (const char* fileName, uint32_t lineNo,
 }
 
 /*
- * Provides a temporary printf stub.
+ * Log printf requests as info messages.
  */
-int printf (const char* fmt, ...)
+int printf (const char* msgPtr, ...)
 {
+    va_list args;
+    va_start (args, msgPtr);
+    gmosPalLogFmtArgs (NULL, 0, LOG_INFO, msgPtr, args);
+    va_end (args);
     return 0;
 }
 
 /*
- * Provides a temporary vprintf stub.
+ * Log vprintf requests as info messages.
  */
-int vprintf (const char* fmt, va_list arg)
+int vprintf (const char* msgPtr, va_list args)
 {
+    gmosPalLogFmtArgs (NULL, 0, LOG_INFO, msgPtr, args);
     return 0;
 }
 
 /*
- * Provides a temporary puts stub.
+ * Log puts requests as info messages.
  */
-int puts (const char* msg)
+int puts (const char* msgPtr)
 {
+    gmosPalLog (NULL, 0, LOG_INFO, msgPtr);
     return 0;
-}
-
-/*
- * Provides a simple strlen implementation.
- */
-size_t strlen (const char *cs) {
-    uint8_t* pcs = (uint8_t*) cs;
-    size_t count = 0;
-    while (*pcs != '\0') {
-        pcs++;
-        count++;
-    }
-    return count;
-}
-
-/*
- * Provides a simple strcmp implementation.
- */
-int strcmp (const char* cs, const char* ct) {
-    uint8_t* pcs = (uint8_t*) cs;
-    uint8_t* pct = (uint8_t*) ct;
-    int result = 0;
-    int i;
-    for (i = 0; true; i++) {
-        result = (int)(*pcs) - (int)(*pct);
-        if ((*pcs == '\0') || (result != 0)) {
-            break;
-        }
-        pcs++;
-        pct++;
-    }
-    return result;
-}
-
-/*
- * Provides a simple memcmp implementation.
- */
-int memcmp (const void* cs, const void* ct, size_t n) {
-    uint8_t* pcs = (uint8_t*) cs;
-    uint8_t* pct = (uint8_t*) ct;
-    int result = 0;
-    int i;
-    for (i = 0; i < n; i++) {
-        result = (int)(*pcs) - (int)(*pct);
-        if (result != 0) {
-            break;
-        }
-        pcs++;
-        pct++;
-    }
-    return result;
 }
