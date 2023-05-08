@@ -68,6 +68,16 @@ typedef enum {
     GMOS_DRIVER_SPI_CLOCK_MODE_3 = 3
 } gmosDriverSpiClockMode_t;
 
+/**
+ * This enumeration specifies the available SPI chip select line option
+ * flags.
+ */
+typedef enum {
+    GMOS_DRIVER_SPI_CHIP_SELECT_OPTION_ACTIVE_LOW  = 0,
+    GMOS_DRIVER_SPI_CHIP_SELECT_OPTION_ACTIVE_HIGH = 1,
+    GMOS_DRIVER_SPI_CHIP_SELECT_OPTION_OPEN_DRAIN  = 2
+} gmosDriverSpiChipSelectOption_t;
+
 /*
  * This set of definitions specify the event bit masks used to indicate
  * transaction completion status from the platform abstraction layer
@@ -112,6 +122,10 @@ typedef struct gmosDriverSpiDevice_t {
     // This is the SPI clock frequency to be used during the transfer,
     // expressed as an integer multiple of 1kHz.
     uint16_t spiClockRate;
+
+    // This is a set of option flags which are used to select the
+    // behaviour of the SPI device chip select line.
+    uint8_t spiChipSelectOptions;
 
     // This is the SPI clock mode to be used during the transfer,
     // expressed using the conventional SPI clock mode enumeration.
@@ -189,6 +203,9 @@ bool gmosDriverSpiBusInit (gmosDriverSpiBus_t* spiInterface);
  *     on completion of SPI interface I/O transactions.
  * @param spiChipSelectPin This is the GPIO pin which is to be used as
  *     the dedicated chip select for the SPI device.
+ * @param spiChipSelectOptions This is a set of option flags which are
+ *     used to configure the behaviour of the dedicated chip select for
+ *     this SPI device.
  * @param spiClockRate This is the maximum SPI clock frequency to be
  *     used during bus transfers, expressed as an integer multiple of
  *     1kHz. This will typically be rounded down to the closest clock
@@ -202,7 +219,8 @@ bool gmosDriverSpiBusInit (gmosDriverSpiBus_t* spiInterface);
  */
 bool gmosDriverSpiDeviceInit (gmosDriverSpiDevice_t* spiDevice,
     gmosTaskState_t* clientTask, uint16_t spiChipSelectPin,
-    uint16_t spiClockRate, uint8_t spiClockMode);
+    gmosDriverSpiChipSelectOption_t spiChipSelectOptions,
+    uint16_t spiClockRate, gmosDriverSpiClockMode_t spiClockMode);
 
 /**
  * Selects a SPI device peripheral connected to the SPI bus. This

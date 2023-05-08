@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2021 Zynaptic Limited
+ * Copyright 2020-2023 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -61,19 +61,32 @@ bool gmosDriverSpiBusInit (gmosDriverSpiBus_t* spiInterface)
  */
 bool gmosDriverSpiDeviceInit (gmosDriverSpiDevice_t* spiDevice,
     gmosTaskState_t* clientTask, uint16_t spiChipSelectPin,
-    uint16_t spiClockRate, uint8_t spiClockMode)
+    gmosDriverSpiChipSelectOption_t spiChipSelectOptions,
+    uint16_t spiClockRate, gmosDriverSpiClockMode_t spiClockMode)
 {
+    bool csIdleState;
+    bool csOutputType;
+
     // Populate the SPI device data structure.
     spiDevice->spiChipSelectPin = spiChipSelectPin;
+    spiDevice->spiChipSelectOptions = spiChipSelectOptions;
     spiDevice->spiClockRate = spiClockRate;
     spiDevice->spiClockMode = spiClockMode;
 
     // Initialise the completion event data structure.
     gmosEventInit (&(spiDevice->completionEvent), clientTask);
 
+    // Derive the chip select pin options.
+    csIdleState = ((spiChipSelectOptions &
+        GMOS_DRIVER_SPI_CHIP_SELECT_OPTION_ACTIVE_HIGH) != 0) ?
+        false : true;
+    csOutputType = ((spiChipSelectOptions &
+        GMOS_DRIVER_SPI_CHIP_SELECT_OPTION_OPEN_DRAIN) != 0) ?
+        GMOS_DRIVER_GPIO_OUTPUT_OPEN_DRAIN :
+        GMOS_DRIVER_GPIO_OUTPUT_PUSH_PULL;
+
     // Initialise the single chip select output.
-    if (!gmosDriverGpioPinInit (spiChipSelectPin,
-        GMOS_DRIVER_GPIO_OUTPUT_PUSH_PULL,
+    if (!gmosDriverGpioPinInit (spiChipSelectPin, csOutputType,
         GMOS_CONFIG_SPI_GPIO_DRIVE_STRENGTH,
         GMOS_DRIVER_GPIO_INPUT_PULL_NONE)) {
         return false;
@@ -81,7 +94,7 @@ bool gmosDriverSpiDeviceInit (gmosDriverSpiDevice_t* spiDevice,
     if (!gmosDriverGpioSetAsOutput (spiChipSelectPin)) {
         return false;
     }
-    gmosDriverGpioSetPinState (spiChipSelectPin, 1);
+    gmosDriverGpioSetPinState (spiChipSelectPin, csIdleState);
     return true;
 }
 
@@ -95,6 +108,10 @@ bool gmosDriverSpiDeviceSelect (gmosDriverSpiBus_t* spiInterface,
     gmosDriverSpiDevice_t* spiDevice)
 {
     bool selectOk = false;
+    bool csActiveState = ((spiDevice->spiChipSelectOptions &
+        GMOS_DRIVER_SPI_CHIP_SELECT_OPTION_ACTIVE_HIGH) != 0) ?
+        true : false;
+
     if (spiInterface->busState == GMOS_DRIVER_SPI_BUS_IDLE) {
         spiInterface->busState = GMOS_DRIVER_SPI_BUS_SELECTED;
 
@@ -104,7 +121,8 @@ bool gmosDriverSpiDeviceSelect (gmosDriverSpiBus_t* spiInterface,
             spiInterface->device = spiDevice;
             gmosDriverSpiPalClockSetup (spiInterface);
         }
-        gmosDriverGpioSetPinState (spiDevice->spiChipSelectPin, 0);
+        gmosDriverGpioSetPinState (
+            spiDevice->spiChipSelectPin, csActiveState);
         gmosSchedulerStayAwake ();
         selectOk = true;
     }
@@ -120,10 +138,15 @@ bool gmosDriverSpiDeviceRelease (gmosDriverSpiBus_t* spiInterface,
     gmosDriverSpiDevice_t* spiDevice)
 {
     bool releaseOk = false;
+    bool csIdleState = ((spiDevice->spiChipSelectOptions &
+        GMOS_DRIVER_SPI_CHIP_SELECT_OPTION_ACTIVE_HIGH) != 0) ?
+        false : true;
+
     if ((spiInterface->busState == GMOS_DRIVER_SPI_BUS_SELECTED) &&
         (spiInterface->device == spiDevice)) {
         spiInterface->busState = GMOS_DRIVER_SPI_BUS_IDLE;
-        gmosDriverGpioSetPinState (spiDevice->spiChipSelectPin, 1);
+        gmosDriverGpioSetPinState (
+            spiDevice->spiChipSelectPin, csIdleState);
         gmosSchedulerCanSleep ();
         releaseOk = true;
     }
