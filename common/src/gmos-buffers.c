@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2022 Zynaptic Limited
+ * Copyright 2020-2023 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -65,10 +65,11 @@ static void gmosBufferDiscardContents (gmosBuffer_t* buffer)
  * boundary conditions.
  */
 static void gmosBufferCopyToSegments (gmosMempoolSegment_t* segment,
-    uint16_t segmentOffset, uint8_t* sourceData, uint16_t copySize)
+    uint_fast16_t segmentOffset, const uint8_t* sourceData,
+    uint_fast16_t copySize)
 {
     uint8_t* blockPtr;
-    uint16_t blockSize;
+    uint_fast16_t blockSize;
 
     // Skip to the segment containing the start of the data block.
     while (segmentOffset >= GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE) {
@@ -104,10 +105,11 @@ static void gmosBufferCopyToSegments (gmosMempoolSegment_t* segment,
  * boundary conditions.
  */
 static void gmosBufferCopyFromSegments (gmosMempoolSegment_t* segment,
-    uint16_t segmentOffset, uint8_t* targetData, uint16_t copySize)
+    uint_fast16_t segmentOffset, uint8_t* targetData,
+    uint_fast16_t copySize)
 {
     uint8_t* blockPtr;
-    uint16_t blockSize;
+    uint_fast16_t blockSize;
 
     // Skip to the segment containing the start of the data block.
     while (segmentOffset >= GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE) {
@@ -185,11 +187,12 @@ bool gmosBufferReset (gmosBuffer_t* buffer, uint16_t size)
  * Increases the size of the buffer to the specified size, adding
  * capacity to the end of the buffer.
  */
-static bool gmosBufferIncrSizeEnd (gmosBuffer_t* buffer, uint16_t size)
+static bool gmosBufferIncrSizeEnd (
+    gmosBuffer_t* buffer, uint_fast16_t size)
 {
     bool extendOk = true;
-    uint16_t segmentCount;
-    uint16_t newSegmentCount;
+    uint_fast16_t segmentCount;
+    uint_fast16_t newSegmentCount;
     gmosMempoolSegment_t** segmentPtr;
     gmosMempoolSegment_t* newSegments;
 
@@ -223,9 +226,10 @@ static bool gmosBufferIncrSizeEnd (gmosBuffer_t* buffer, uint16_t size)
  * Decreases the size of the buffer to the specified size, removing
  * capacity from the end of the buffer.
  */
-static void gmosBufferDecrSizeEnd (gmosBuffer_t* buffer, uint16_t size)
+static void gmosBufferDecrSizeEnd (
+    gmosBuffer_t* buffer, uint_fast16_t size)
 {
-    uint16_t byteCount;
+    uint_fast16_t byteCount;
     gmosMempoolSegment_t** segmentPtr;
 
     // Follow the segment list to the trim point.
@@ -248,12 +252,13 @@ static void gmosBufferDecrSizeEnd (gmosBuffer_t* buffer, uint16_t size)
  * Increases the size of the buffer to the specified size, adding
  * capacity to the start of the buffer.
  */
-static bool gmosBufferIncrSizeStart (gmosBuffer_t* buffer, uint16_t size)
+static bool gmosBufferIncrSizeStart (
+    gmosBuffer_t* buffer, uint_fast16_t size)
 {
     bool extendOk = true;
-    uint16_t extraByteCount;
-    uint16_t newSegmentCount;
-    uint16_t newOffset;
+    uint_fast16_t extraByteCount;
+    uint_fast16_t newSegmentCount;
+    uint_fast16_t newOffset;
     gmosMempoolSegment_t** segmentPtr;
     gmosMempoolSegment_t* newSegments;
 
@@ -298,10 +303,11 @@ static bool gmosBufferIncrSizeStart (gmosBuffer_t* buffer, uint16_t size)
  * Decreases the size of the buffer to the specified size, removing
  * capacity from the start of the buffer.
  */
-static void gmosBufferDecrSizeStart (gmosBuffer_t* buffer, uint16_t size)
+static void gmosBufferDecrSizeStart (
+    gmosBuffer_t* buffer, uint_fast16_t size)
 {
-    uint16_t trimByteCount;
-    uint16_t segmentCount;
+    uint_fast16_t trimByteCount;
+    uint_fast16_t segmentCount;
     gmosMempoolSegment_t** segmentPtr;
     gmosMempoolSegment_t* freeSegments;
 
@@ -425,7 +431,7 @@ bool gmosBufferRebase (gmosBuffer_t* buffer, uint16_t size)
  * The buffer must be large enough to hold all the data being written.
  */
 bool gmosBufferWrite (gmosBuffer_t* buffer, uint16_t offset,
-    uint8_t* writeData, uint16_t writeSize)
+    const uint8_t* writeData, uint16_t writeSize)
 {
     bool writeOk;
 
@@ -468,9 +474,9 @@ bool gmosBufferRead (gmosBuffer_t* buffer, uint16_t offset,
  * segments if required.
  */
 bool gmosBufferAppend (gmosBuffer_t* buffer,
-    uint8_t* writeData, uint16_t writeSize)
+    const uint8_t* writeData, uint16_t writeSize)
 {
-    uint16_t offset = buffer->bufferSize;
+    uint_fast16_t offset = buffer->bufferSize;
     bool appendOk;
 
     // Attempt to extend the buffer before initiating the copy.
@@ -490,7 +496,7 @@ bool gmosBufferAppend (gmosBuffer_t* buffer,
  * segments if required.
  */
 bool gmosBufferPrepend (gmosBuffer_t* buffer,
-    uint8_t* writeData, uint16_t writeSize)
+    const uint8_t* writeData, uint16_t writeSize)
 {
     bool prependOk;
 
@@ -531,7 +537,7 @@ void gmosBufferMove (gmosBuffer_t* source, gmosBuffer_t* destination)
  */
 bool gmosBufferCopy (gmosBuffer_t* source, gmosBuffer_t* destination)
 {
-    uint16_t segmentCount;
+    uint_fast16_t segmentCount;
     gmosMempoolSegment_t* segmentList;
     gmosMempoolSegment_t* sourceSegment;
     gmosMempoolSegment_t* targetSegment;
@@ -569,13 +575,85 @@ bool gmosBufferCopy (gmosBuffer_t* source, gmosBuffer_t* destination)
 }
 
 /*
+ * Perform concatenation where data from source buffer B is appended to
+ * source buffer A.
+ */
+static inline void gmosBufferConcatenateIntoA (
+    gmosBuffer_t* sourceA, gmosBuffer_t* sourceB)
+{
+    uint8_t copyData [2 * GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE];
+    uint_fast16_t copySize;
+
+    // Loop until all data in source B has been copied to source A.
+    while (sourceB->bufferSize > 0) {
+        copySize = sizeof (copyData);
+        if (copySize > sourceB->bufferSize) {
+            copySize = sourceB->bufferSize;
+        }
+        gmosBufferRead (sourceB, 0, copyData, copySize);
+        gmosBufferRebase (sourceB, sourceB->bufferSize - copySize);
+        gmosBufferAppend (sourceA, copyData, copySize);
+    }
+}
+
+/*
+ * Perform concatenation where data from source buffer A is prepended to
+ * source buffer B.
+ */
+static inline void gmosBufferConcatenateIntoB (
+    gmosBuffer_t* sourceA, gmosBuffer_t* sourceB)
+{
+    uint8_t copyData [2 * GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE];
+    uint_fast16_t copySize;
+    uint_fast16_t copyOffset;
+
+    // Loop until all data in source A has been copied to source B.
+    while (sourceA->bufferSize > 0) {
+        copySize = sizeof (copyData);
+        if (copySize > sourceA->bufferSize) {
+            copySize = sourceA->bufferSize;
+        }
+        copyOffset = sourceA->bufferSize - copySize;
+        gmosBufferRead (sourceA, copyOffset, copyData, copySize);
+        gmosBufferResize (sourceA, sourceA->bufferSize - copySize);
+        gmosBufferPrepend (sourceB, copyData, copySize);
+    }
+}
+
+/*
+ * Implements a buffer concatenate operation, which concatenates the
+ * contents of two source buffers and places the result in a destination
+ * buffer.
+ */
+bool gmosBufferConcatenate (gmosBuffer_t* sourceA,
+    gmosBuffer_t* sourceB, gmosBuffer_t* destination)
+{
+    // Perform concatenation when source A is the largest buffer.
+    if (sourceA->bufferSize >= sourceB->bufferSize) {
+        gmosBufferConcatenateIntoA (sourceA, sourceB);
+        if (destination != sourceA) {
+            gmosBufferMove (sourceA, destination);
+        }
+    }
+
+    // Perform concatenation when source B is the largest buffer.
+    else {
+        gmosBufferConcatenateIntoB (sourceA, sourceB);
+        if (destination != sourceB) {
+            gmosBufferMove (sourceB, destination);
+        }
+    }
+    return true;
+}
+
+/*
  * Gets a reference to the buffer segment that contains data at the
  * specified buffer offset.
  */
 gmosMempoolSegment_t* gmosBufferGetSegment (gmosBuffer_t* buffer,
     uint16_t dataOffset)
 {
-    uint16_t byteCount;
+    uint_fast16_t byteCount;
     gmosMempoolSegment_t* segment;
 
     // Check for out of range requests.

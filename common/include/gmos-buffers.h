@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2022 Zynaptic Limited
+ * Copyright 2020-2023 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -152,7 +152,7 @@ bool gmosBufferRebase (gmosBuffer_t* buffer, uint16_t size);
  *     not large enough to hold the new data.
  */
 bool gmosBufferWrite (gmosBuffer_t* buffer, uint16_t offset,
-    uint8_t* writeData, uint16_t writeSize);
+    const uint8_t* writeData, uint16_t writeSize);
 
 /**
  * Reads a block of data from the buffer at the specified buffer offset.
@@ -185,7 +185,7 @@ bool gmosBufferRead (gmosBuffer_t* buffer, uint16_t offset,
  *     allocate additional memory to the buffer failed.
  */
 bool gmosBufferAppend (gmosBuffer_t* buffer,
-    uint8_t* writeData, uint16_t writeSize);
+    const uint8_t* writeData, uint16_t writeSize);
 
 /**
  * Prepends a block of data to the start of the buffer, increasing the
@@ -201,7 +201,7 @@ bool gmosBufferAppend (gmosBuffer_t* buffer,
  *     allocate additional memory to the buffer failed.
  */
 bool gmosBufferPrepend (gmosBuffer_t* buffer,
-    uint8_t* writeData, uint16_t writeSize);
+    const uint8_t* writeData, uint16_t writeSize);
 
 /**
  * Implements a zero copy move operation, transferring the contents of a
@@ -231,6 +231,28 @@ void gmosBufferMove (gmosBuffer_t* source, gmosBuffer_t* destination);
  *     to allocate memory for the destination buffer failed.
  */
 bool gmosBufferCopy (gmosBuffer_t* source, gmosBuffer_t* destination);
+
+/**
+ * Implements a buffer concatenate operation, which concatenates the
+ * contents of two source buffers and places the result in a destination
+ * buffer. Any existing contents of the destination buffer will be
+ * discarded. After successful completion, the source buffers will be
+ * empty and the destination buffer will contain the concatenated source
+ * buffer contents.
+ * @param sourceA This is the buffer which contains the first block of
+ *     data to be concatenated.
+ * @param sourceB This is the buffer which contains the second block of
+ *     data to be concatenated. It must not be the same buffer as used
+ *     for source A.
+ * @param destination This is the buffer into which the concatenated
+ *     buffer data will be copied. It may be the same buffer as used for
+ *     either of the source buffers.
+ * @return Returns a boolean value which will be set to 'true' if the
+ *     buffer concatenation was successful and 'false' if an attempt
+ *     to allocate memory for the destination buffer failed.
+ */
+bool gmosBufferConcatenate (gmosBuffer_t* sourceA,
+    gmosBuffer_t* sourceB, gmosBuffer_t* destination);
 
 /**
  * Gets a reference to the buffer segment that contains data at the
