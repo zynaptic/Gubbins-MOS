@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2022 Zynaptic Limited
+ * Copyright 2020-2023 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,9 +20,9 @@
  * This header defines the common API for accessing general purpose
  * microcontroller hardware timers. Hardware timers may be used for
  * situations where the scheduler system timer does not provide
- * sufficient accuracy. The maximum timer counter size is 16 bits, since
- * this is the most common hardware timer size for the type of low end
- * microcontrollers supported by GubbinsMOS.
+ * sufficient accuracy. The maximum supported timer counter size is 32
+ * bits, although many hardware implementations will be restricted to
+ * smaller counter widths of typically 8 or 16 bits.
  */
 
 #ifndef GMOS_DRIVER_TIMER_H
@@ -47,6 +47,7 @@ typedef void (*gmosDriverTimerIsr_t) (void* timerIsrData);
  */
 typedef enum  {
     GMOS_DRIVER_TIMER_STATE_RESET = 0,
+    GMOS_DRIVER_TIMER_STATE_FREE_RUNNING,
     GMOS_DRIVER_TIMER_STATE_ONE_SHOT,
     GMOS_DRIVER_TIMER_STATE_CONTINUOUS
 } gmosDriverTimerState_t;
@@ -93,7 +94,7 @@ typedef struct gmosDriverTimer_t {
     uint32_t frequency;
 
     // Specifies the maximum supported value for the timer counter.
-    uint16_t maxValue;
+    uint32_t maxValue;
 
     // Specifies the current active timer state.
     uint8_t activeState;
@@ -182,10 +183,10 @@ bool gmosDriverTimerReset (gmosDriverTimer_t* timer, bool resetHold);
  *     that is to be accessed.
  * @return Returns the current contents of the timer counter register.
  */
-uint16_t gmosDriverTimerGetValue (gmosDriverTimer_t* timer);
+uint32_t gmosDriverTimerGetValue (gmosDriverTimer_t* timer);
 
 /**
- * Sets a one-shot alarm for the timer counter. This is a 16-bit value
+ * Sets a one-shot alarm for the timer counter. This is a 32-bit value
  * which will be compared against the current timer counter value,
  * triggering a call to the interrupt service routine on the timer clock
  * tick following a match. If the timer is currently in its reset hold
@@ -201,10 +202,11 @@ uint16_t gmosDriverTimerGetValue (gmosDriverTimer_t* timer);
  * @return Returns a boolean value which will be set to 'true' on
  *     successfully setting the alarm and 'false' on failure.
  */
-bool gmosDriverTimerRunOneShot (gmosDriverTimer_t* timer, uint16_t alarm);
+bool gmosDriverTimerRunOneShot (
+    gmosDriverTimer_t* timer, uint32_t alarm);
 
 /**
- * Sets a repeating alarm for the timer counter. This is a 16-bit value
+ * Sets a repeating alarm for the timer counter. This is a 32-bit value
  * which will be compared against the current timer counter value,
  * triggering a call to the interrupt service routine on the timer clock
  * tick following a match. If the timer is currently in its reset hold
@@ -220,7 +222,8 @@ bool gmosDriverTimerRunOneShot (gmosDriverTimer_t* timer, uint16_t alarm);
  * @return Returns a boolean value which will be set to 'true' on
  *     successfully setting the alarm and 'false' on failure.
  */
-bool gmosDriverTimerRunRepeating (gmosDriverTimer_t* timer, uint16_t alarm);
+bool gmosDriverTimerRunRepeating (
+    gmosDriverTimer_t* timer, uint32_t alarm);
 
 #ifdef __cplusplus
 }

@@ -99,7 +99,7 @@ LDFLAGS += -Wl,--gc-sections
 LDFLAGS += -Wl,-Map=${GMOS_BUILD_DIR}/platform/target.map
 LDFLAGS += -mfpu=fpv5-sp-d16
 LDFLAGS += -mfloat-abi=hard
-LD_FLAGS += --specs=nano.specs
+LDFLAGS += --specs=nano.specs
 LDFLAGS += -T${GMOS_BUILD_DIR}/platform/target.ld
 
 # Required linker library names.

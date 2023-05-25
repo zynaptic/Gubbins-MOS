@@ -49,6 +49,7 @@ PLATFORM_OBJ_FILE_NAMES = \
 	efr32-timer.o \
 	efr32-console-simple.o \
 	efr32-driver-gpio.o \
+	efr32-driver-timer.o \
 	efr32-driver-spi.o \
 	efr32-driver-iic.o \
 	em_system.o \

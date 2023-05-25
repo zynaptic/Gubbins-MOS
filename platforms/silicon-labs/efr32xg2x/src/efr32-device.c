@@ -110,7 +110,7 @@ static inline void gmosPalHfxoSetup ()
         }
         hfxoInit.ctuneXoAna = (uint8_t) ctune;
     }
-    SystemHFXOClockSet (39000000);
+    SystemHFXOClockSet (GMOS_CONFIG_EFR32_HFXO_FREQUENCY);
     CMU_HFXOInit (&hfxoInit);
 }
 
@@ -133,8 +133,15 @@ static inline void gmosPalLfxoSetup (void)
  */
 static inline void gmosPalClockSetup (void)
 {
-    // Use the high frequency oscillator for all system and bus clocks.
+    // Use the high frequency oscillator as the system clock.
+#if (GMOS_CONFIG_EFR32_SYSTEM_CLOCK == GMOS_CONFIG_EFR32_HFXO_FREQUENCY)
     CMU_CLOCK_SELECT_SET (SYSCLK, HFXO);
+#else
+#error "System clock PLL is not currently supported."
+#endif
+
+    // Use the high frequency oscillator for all the main peripheral
+    // group clocks.
 #if defined(_CMU_EM01GRPACLKCTRL_MASK)
     CMU_CLOCK_SELECT_SET (EM01GRPACLK, HFXO);
 #endif

@@ -27,12 +27,31 @@
 #include <stdbool.h>
 
 /**
+ * Specify the frequency of the high frequency crystal oscillator. The
+ * default setting is 39MHz, which corresponds to the oscillator that is
+ * fitted to the standard Silicon Labs radio modules.
+ */
+#ifndef GMOS_CONFIG_EFR32_HFXO_FREQUENCY
+#define GMOS_CONFIG_EFR32_HFXO_FREQUENCY 39000000
+#endif
+
+/**
  * Set a fixed HFXO tuning capacitor value which is suitable for most
  * standard implementations. A negative value indicates that the default
  * device specific settings should be used.
  */
 #ifndef GMOS_CONFIG_EFR32_HFXO_FIXED_CTUNE_VAL
 #define GMOS_CONFIG_EFR32_HFXO_FIXED_CTUNE_VAL -1
+#endif
+
+/**
+ * Specify the system clock rate. The default setting is 39MHz, which
+ * corresponds to the 39MHz high frequency oscillator as present on the
+ * standard Silicon Labs radio modules. Other values which require use
+ * of the PLL are not currently supported.
+ */
+#ifndef GMOS_CONFIG_EFR32_SYSTEM_CLOCK
+#define GMOS_CONFIG_EFR32_SYSTEM_CLOCK GMOS_CONFIG_EFR32_HFXO_FREQUENCY
 #endif
 
 /**
