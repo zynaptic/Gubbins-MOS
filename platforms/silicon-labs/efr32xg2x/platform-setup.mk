@@ -54,6 +54,10 @@ ifndef GMOS_GECKO_SDK_DIR
 GMOS_GECKO_SDK_DIR = ${HOME}/SimplicityStudio/SDKs/gecko_sdk
 endif
 
+# Specify device specific SDK file locations.
+GMOS_TARGET_DEVICE_FAMILY_DIR := \
+	${GMOS_GECKO_SDK_DIR}/platform/Device/SiliconLabs/${GMOS_TARGET_DEVICE_FAMILY}
+
 # Specify the various standard command line tools to use.
 CC = $(ARM_GCC_TOOLCHAIN_DIR)/bin/arm-none-eabi-gcc
 AS = $(ARM_GCC_TOOLCHAIN_DIR)/bin/arm-none-eabi-gcc
@@ -70,25 +74,31 @@ ASFLAGS += -Wall
 ASFLAGS += -MMD
 ASFLAGS += -MP
 
-# C compiler options.
-CFLAGS += -c
-CFLAGS += -g3
-CFLAGS += -gdwarf-2
-CFLAGS += -mcpu=${ARCH_NAME}
-CFLAGS += -mthumb
+# Common C/C++ compiler options.
+CXXFLAGS += -c
+CXXFLAGS += -g3
+CXXFLAGS += -gdwarf-2
+CXXFLAGS += -mcpu=${ARCH_NAME}
+CXXFLAGS += -mthumb
+CXXFLAGS += -D${GMOS_TARGET_DEVICE_VARIANT}=1
+CXXFLAGS += -Os
+CXXFLAGS += -Wall
+CXXFLAGS += -Wextra
+CXXFLAGS += -ffunction-sections
+CXXFLAGS += -fdata-sections
+CXXFLAGS += -mfpu=fpv5-sp-d16
+CXXFLAGS += -mfloat-abi=hard
+CXXFLAGS += -mcmse
+CXXFLAGS += --specs=nano.specs
+CXXFLAGS += -MMD
+CXXFLAGS += -MP
+
+# C specific compiler options.
+CFLAGS = ${CXXFLAGS}
 CFLAGS += -std=c99
-CFLAGS += -D${GMOS_TARGET_DEVICE_VARIANT}=1
-CFLAGS += -Os
-CFLAGS += -Wall
-CFLAGS += -Wextra
-CFLAGS += -ffunction-sections
-CFLAGS += -fdata-sections
-CFLAGS += -mfpu=fpv5-sp-d16
-CFLAGS += -mfloat-abi=hard
-CFLAGS += -mcmse
-CFLAGS += --specs=nano.specs
-CFLAGS += -MMD
-CFLAGS += -MP
+
+# C++ specific compiler options.
+CPPFLAGS = ${CXXFLAGS}
 
 # Linker options.
 LDFLAGS += -g3
@@ -101,9 +111,12 @@ LDFLAGS += -mfpu=fpv5-sp-d16
 LDFLAGS += -mfloat-abi=hard
 LDFLAGS += --specs=nano.specs
 LDFLAGS += -T${GMOS_BUILD_DIR}/platform/target.ld
+LDFLAGS += -L${GMOS_GECKO_SDK_DIR}/platform/emdrv/nvm3/lib
 
 # Required linker library names.
 LDLIBS += gcc
 LDLIBS += c
 LDLIBS += m
 LDLIBS += nosys
+LDLIBS += supc++
+LDLIBS += nvm3_CM33_gcc

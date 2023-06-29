@@ -76,6 +76,7 @@ COMPONENT_OBJECT_FILES = \
 # If one or more network directories have been specified, add them
 # to the set of common components.
 ifdef GMOS_TARGET_NETWORK_DIRS
+GMOS_TARGET_NETWORK_DIRS += common
 NETWORK_BUILD_PATH = ${GMOS_BUILD_DIR}/network/$(DIR)
 COMPONENT_TIMESTAMPS += \
 	$(foreach DIR, ${GMOS_TARGET_NETWORK_DIRS}, $(NETWORK_BUILD_PATH)/timestamp)
@@ -115,15 +116,6 @@ COMPONENT_OBJECT_FILES += \
 	$(foreach DIR, ${GMOS_TARGET_DISPLAY_DIRS}, $(DISPLAY_BUILD_PATH)/*.o)
 endif
 
-# Link all the generated object files. Note that 'shell ls' is used to
-# get the list of object files instead of 'wildcard', since the wildcard
-# expansion can occur before the timestamp dependencies are met.
-${GMOS_BUILD_DIR}/firmware.elf : ${COMPONENT_TIMESTAMPS}
-	${LD} -o $@ ${LDFLAGS} \
-		$(shell ls -xw0 ${COMPONENT_OBJECT_FILES}) \
-		$(addprefix -l, ${LDLIBS})
-	${OS} $@
-
 # Include the application source files makefile fragment.
 include ${GMOS_APP_DIR}/app-build.mk
 
@@ -157,6 +149,15 @@ ifdef GMOS_TARGET_DISPLAY_DIRS
 DISPLAY_SOURCE_PATH = ${GMOS_GIT_DIR}/displays/$(DIR)
 include $(foreach DIR, ${GMOS_TARGET_DISPLAY_DIRS}, $(DISPLAY_SOURCE_PATH)/display-build.mk)
 endif
+
+# Link all the generated object files. Note that 'shell ls' is used to
+# get the list of object files instead of 'wildcard', since the wildcard
+# expansion can occur before the timestamp dependencies are met.
+${GMOS_BUILD_DIR}/firmware.elf : ${COMPONENT_TIMESTAMPS}
+	${LD} -o $@ ${LDFLAGS} \
+		$(shell ls -xw0 ${COMPONENT_OBJECT_FILES}) \
+		$(addprefix -l, ${LDLIBS})
+	${OS} $@
 
 # Remove all build files.
 clean :
