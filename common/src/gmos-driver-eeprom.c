@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2022 Zynaptic Limited
+ * Copyright 2020-2023 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,7 +25,24 @@
 #include <stddef.h>
 
 #include "gmos-config.h"
+
+// Do not include the common EEPROM support if there is a platform
+// specific library implementation.
+#if !GMOS_CONFIG_EEPROM_PLATFORM_LIBRARY
 #include "gmos-driver-eeprom.h"
+
+/*
+ * This enumeration specifies the various EEPROM operating states.
+ */
+typedef enum {
+    GMOS_DRIVER_EEPROM_STATE_IDLE,
+    GMOS_DRIVER_EEPROM_STATE_RESET_TAG_WRITE,
+    GMOS_DRIVER_EEPROM_STATE_CREATE_END_TAG_WRITE,
+    GMOS_DRIVER_EEPROM_STATE_CREATE_VALUE_WRITE,
+    GMOS_DRIVER_EEPROM_STATE_CREATE_HEADER_WRITE,
+    GMOS_DRIVER_EEPROM_STATE_UPDATE_VALUE_WRITE,
+    GMOS_DRIVER_EEPROM_STATE_COMPLETION_WAIT
+} gmosDriverEepromState_t;
 
 /*
  * Define the EEPROM end of record marker. This consists of the end of
@@ -336,7 +353,7 @@ gmosDriverEepromStatus_t gmosDriverEepromRecordCreate (
  */
 gmosDriverEepromStatus_t gmosDriverEepromRecordWrite (
     gmosDriverEeprom_t* eeprom, gmosDriverEepromTag_t recordTag,
-    uint8_t* writeData, uint16_t writeOffset, uint16_t writeSize,
+    uint8_t* writeData, uint16_t writeSize,
     gmosPalEepromCallback_t callbackHandler, void* callbackData)
 {
     gmosDriverEepromStatus_t status;
@@ -351,13 +368,12 @@ gmosDriverEepromStatus_t gmosDriverEepromRecordWrite (
     }
 
     // Check for valid access parameters.
-    if (writeOffset + writeSize > recordLength) {
+    if (writeSize != recordLength) {
         return GMOS_DRIVER_EEPROM_STATUS_INVALID_LENGTH;
     }
 
     // Set up the write transaction.
-    eeprom->writeOffset = recordBase +
-        writeOffset + GMOS_DRIVER_EEPROM_HEADER_SIZE;
+    eeprom->writeOffset = recordBase + GMOS_DRIVER_EEPROM_HEADER_SIZE;
     eeprom->writeSize = writeSize;
     eeprom->writeData = writeData;
     eeprom->callbackHandler = callbackHandler;
@@ -408,3 +424,5 @@ gmosDriverEepromStatus_t gmosDriverEepromRecordRead (
     }
     return GMOS_DRIVER_EEPROM_STATUS_SUCCESS;
 }
+
+#endif // GMOS_CONFIG_EEPROM_PLATFORM_LIBRARY

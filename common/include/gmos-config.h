@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2022 Zynaptic Limited
+ * Copyright 2020-2023 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -207,14 +207,13 @@
 #endif
 
 /**
- * This configuration option is used to select real time clock software
- * emulation for platforms that do not have dedicated RTC hardware.
- * The software emulation uses the system timer, so the emulated RTC
- * accuracy will depend on the accuracy of the system timer clock
- * source.
+ * This configuration option is used to select a platform specific
+ * EEPROM emulation library for platforms that use some other form of
+ * non-volatile memory storage. It replaces the complete EEPROM
+ * implementation with a platform specific alternative.
  */
-#ifndef GMOS_CONFIG_RTC_SOFTWARE_EMULATION
-#define GMOS_CONFIG_RTC_SOFTWARE_EMULATION false
+#ifndef GMOS_CONFIG_EEPROM_PLATFORM_LIBRARY
+#define GMOS_CONFIG_EEPROM_PLATFORM_LIBRARY false
 #endif
 
 /**
@@ -226,6 +225,17 @@
  */
 #ifndef GMOS_CONFIG_EEPROM_SOFTWARE_EMULATION
 #define GMOS_CONFIG_EEPROM_SOFTWARE_EMULATION false
+#endif
+
+/**
+ * This configuration option is used to select real time clock software
+ * emulation for platforms that do not have dedicated RTC hardware.
+ * The software emulation uses the system timer, so the emulated RTC
+ * accuracy will depend on the accuracy of the system timer clock
+ * source.
+ */
+#ifndef GMOS_CONFIG_RTC_SOFTWARE_EMULATION
+#define GMOS_CONFIG_RTC_SOFTWARE_EMULATION false
 #endif
 
 #endif // GMOS_CONFIG_H

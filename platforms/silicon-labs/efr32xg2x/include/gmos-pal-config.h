@@ -149,6 +149,15 @@
 #define GMOS_CONFIG_EFR32_IIC_BUS_TIMEOUT 5000
 #endif
 
+/**
+ * Specify the NVM3 key space that is used for GubbinsMOS EEPROM
+ * emulation tokens. This is assigned to the 'user' key space by
+ * default.
+ */
+#ifndef GMOS_CONFIG_EFR32_EEPROM_NVM3_KEY_SPACE
+#define GMOS_CONFIG_EFR32_EEPROM_NVM3_KEY_SPACE 0x00000
+#endif
+
 /*
  * The Gecko SDK includes the 'nano' version of the C standard library,
  * so the optimised memcpy implementations can be used for stream and
@@ -162,5 +171,28 @@
  * by dividing the 32.768kHz LFXO clock by 32.
  */
 #define GMOS_CONFIG_SYSTEM_TIMER_FREQUENCY 1024
+
+/*
+ * This configuration option specifies the size of the platform EEPROM
+ * tags which are used to identify distinct EEPROM data records in tag,
+ * length, value format. This must be set to 16 bits for use with the
+ * NVM3 library.
+ */
+#define GMOS_CONFIG_EEPROM_TAG_SIZE 2
+
+/*
+ * This configuration option specifies the length field of the platform
+ * EEPROM data records in tag, length, value format. This must be set to
+ * 16 bits for use with the NVM3 library.
+ */
+#define GMOS_CONFIG_EEPROM_LENGTH_SIZE 2
+
+/*
+ * This configuration option is used to select a platform specific
+ * EEPROM emulation library for platforms that use some other form of
+ * non-volatile memory storage. It replaces the complete EEPROM
+ * implementation with the NVM3 library wrapper.
+ */
+#define GMOS_CONFIG_EEPROM_PLATFORM_LIBRARY true
 
 #endif // GMOS_PAL_CONFIG_H

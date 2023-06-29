@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2022 Zynaptic Limited
+ * Copyright 2020-2023 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -106,19 +106,6 @@ typedef enum {
 } gmosDriverEepromStatus_t;
 
 /**
- * This enumeration specifies the various EEPROM operating states.
- */
-typedef enum {
-    GMOS_DRIVER_EEPROM_STATE_IDLE,
-    GMOS_DRIVER_EEPROM_STATE_RESET_TAG_WRITE,
-    GMOS_DRIVER_EEPROM_STATE_CREATE_END_TAG_WRITE,
-    GMOS_DRIVER_EEPROM_STATE_CREATE_VALUE_WRITE,
-    GMOS_DRIVER_EEPROM_STATE_CREATE_HEADER_WRITE,
-    GMOS_DRIVER_EEPROM_STATE_UPDATE_VALUE_WRITE,
-    GMOS_DRIVER_EEPROM_STATE_COMPLETION_WAIT
-} gmosDriverEepromState_t;
-
-/**
  * Defines the function prototype to be used for EEPROM transaction
  * complete callbacks.
  * @param status This is the completion status for the EEPROM
@@ -146,8 +133,18 @@ typedef struct gmosPalEepromConfig_t gmosPalEepromConfig_t;
 
 /**
  * Defines the GubbinsMOS EEPROM driver state data structure that is
+ * used for managing a platform specific EEPROM driver implementation.
+ * The full type definition must be provided by the associated platform
+ * specific library.
+ */
+#if GMOS_CONFIG_EEPROM_PLATFORM_LIBRARY
+typedef struct gmosDriverEeprom_t gmosDriverEeprom_t;
+
+/**
+ * Defines the GubbinsMOS EEPROM driver state data structure that is
  * used for managing the low level hardware for a single EEPROM driver.
  */
+#else // GMOS_CONFIG_EEPROM_PLATFORM_LIBRARY
 typedef struct gmosDriverEeprom_t {
 
     // This is an opaque pointer to the platform abstraction layer data
@@ -165,6 +162,18 @@ typedef struct gmosDriverEeprom_t {
     // initialisation.
     uint8_t* baseAddress;
 
+    // This is a pointer to the current record data used during write
+    // transactions.
+    uint8_t* writeData;
+
+    // This is the callback handler to be used on completion of the
+    // current transaction.
+    gmosPalEepromCallback_t callbackHandler;
+
+    // This is the opaque data item that will be passed back as the
+    // callback handler parameter.
+    void* callbackData;
+
     // This is the EEPROM driver worker task that implements the EEPROM
     // access state machine.
     gmosTaskState_t workerTask;
@@ -180,25 +189,14 @@ typedef struct gmosDriverEeprom_t {
     // This is the current EEPROM write transaction size.
     uint16_t writeSize;
 
-    // This is a pointer to the current record data used during write
-    // transactions.
-    uint8_t* writeData;
-
     // This is the current EEPROM driver state.
     uint8_t eepromState;
-
-    // This is the callback handler to be used on completion of the
-    // current transaction.
-    gmosPalEepromCallback_t callbackHandler;
-
-    // This is the opaque data item that will be passed back as the
-    // callback handler parameter.
-    void* callbackData;
 
     // This is the current EEPROM record write header value.
     uint8_t writeHeader [GMOS_DRIVER_EEPROM_HEADER_SIZE];
 
 } gmosDriverEeprom_t;
+#endif // GMOS_CONFIG_EEPROM_PLATFORM_LIBRARY
 
 /**
  * Provides a platform configuration setup macro to be used when
@@ -210,10 +208,10 @@ typedef struct gmosDriverEeprom_t {
  *     hardware.
  * @param _palConfig_ This is a platform specific EEPROM configuration
  *     data structure that defines a set of fixed configuration options
- *     to be used with the SPI interface.
+ *     to be used with the EEPROM driver.
  */
 #define GMOS_DRIVER_EEPROM_PAL_CONFIG(_palData_, _palConfig_)          \
-    { _palData_, _palConfig_, NULL, {0}, 0 }
+    { _palData_, _palConfig_, NULL, NULL, NULL, NULL, {0}, 0, 0, 0, 0, {0} }
 
 /**
  * Initialises the EEPROM driver. This should be called once on startup
@@ -283,13 +281,11 @@ gmosDriverEepromStatus_t gmosDriverEepromRecordCreate (
  * @param recordTag This is the unique tag which is used to identify the
  *     EEPROM record which is to be updated.
  * @param writeData This is a pointer to the write data array which is
- *     to be copied into the EEPROM.
- * @param writeOffset This is the offset within the EEPROM record to
- *     which the EEPROM data is to be written. This must be set to zero
- *     if the entire record is being written.
+ *     to be copied into the EEPROM. It must remain valid until the
+ *     write transaction has completed.
  * @param writeSize This specifies the number of bytes which are to be
  *     written to the EEPROM record. This must match the stored record
- *     length if the entire record is being written.
+ *     length.
  * @param callbackHandler This is the callback handler that will be
  *     called on transaction completion. If a null callback handler is
  *     specified, this call will block until completion.
@@ -301,7 +297,7 @@ gmosDriverEepromStatus_t gmosDriverEepromRecordCreate (
  */
 gmosDriverEepromStatus_t gmosDriverEepromRecordWrite (
     gmosDriverEeprom_t* eeprom, gmosDriverEepromTag_t recordTag,
-    uint8_t* writeData, uint16_t writeOffset, uint16_t writeSize,
+    uint8_t* writeData, uint16_t writeSize,
     gmosPalEepromCallback_t callbackHandler, void* callbackData);
 
 /**

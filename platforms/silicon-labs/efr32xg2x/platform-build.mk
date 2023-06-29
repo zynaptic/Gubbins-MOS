@@ -50,6 +50,7 @@ PLATFORM_OBJ_FILE_NAMES = \
 	efr32-driver-timer.o \
 	efr32-driver-spi.o \
 	efr32-driver-iic.o \
+	efr32-driver-eeprom.o \
 	sdk-em_system.o \
 	sdk-em_core.o \
 	sdk-em_emu.o \
@@ -60,6 +61,7 @@ PLATFORM_OBJ_FILE_NAMES = \
 	sdk-em_usart.o \
 	sdk-em_eusart.o \
 	sdk-em_i2c.o \
+	sdk-em_msc.o \
 	sdk-dmadrv.o \
 	sdk-spidrv.o \
 	sdk-nvm3_default_common_linker.o \

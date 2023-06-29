@@ -28,6 +28,7 @@
 
 // Selects the counter to use for the sleep timer. This will be the
 // BURTC counter for EFR32xG2x devices.
+#define SL_SLEEPTIMER_PERIPHERAL_BURTC 1
 #define SL_SLEEPTIMER_PERIPHERAL \
         SL_SLEEPTIMER_PERIPHERAL_BURTC
 

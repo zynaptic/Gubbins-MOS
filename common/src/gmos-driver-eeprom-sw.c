@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2022 Zynaptic Limited
+ * Copyright 2020-2023 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,13 +25,15 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "gmos-config.h"
-#include "gmos-platform.h"
-#include "gmos-driver-eeprom.h"
 
 // Use EEPROM software implementation instead of dedicated hardware.
+#if !GMOS_CONFIG_EEPROM_PLATFORM_LIBRARY
 #if GMOS_CONFIG_EEPROM_SOFTWARE_EMULATION
+#include "gmos-platform.h"
+#include "gmos-driver-eeprom.h"
 
 /*
  * Initialises the EEPROM driver platform abstraction layer. This will
@@ -107,3 +109,4 @@ bool gmosPalEepromWritePoll (gmosDriverEeprom_t* eeprom)
 }
 
 #endif // GMOS_CONFIG_EEPROM_SOFTWARE_EMULATION
+#endif // GMOS_CONFIG_EEPROM_PLATFORM_LIBRARY
