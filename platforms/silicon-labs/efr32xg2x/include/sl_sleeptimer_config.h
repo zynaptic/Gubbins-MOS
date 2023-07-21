@@ -26,15 +26,22 @@
 
 #include "gmos-config.h"
 
-// Selects the counter to use for the sleep timer. This will be the
-// BURTC counter for EFR32xG2x devices.
-#define SL_SLEEPTIMER_PERIPHERAL_BURTC 1
-#define SL_SLEEPTIMER_PERIPHERAL \
-        SL_SLEEPTIMER_PERIPHERAL_BURTC
+// This list specifies the available sleep timer options, copied from
+// the default sleep timer configuration file.
+#define SL_SLEEPTIMER_PERIPHERAL_DEFAULT 0
+#define SL_SLEEPTIMER_PERIPHERAL_RTCC    1
+#define SL_SLEEPTIMER_PERIPHERAL_PRORTC  2
+#define SL_SLEEPTIMER_PERIPHERAL_RTC     3
+#define SL_SLEEPTIMER_PERIPHERAL_SYSRTC  4
+#define SL_SLEEPTIMER_PERIPHERAL_BURTC   5
+#define SL_SLEEPTIMER_PERIPHERAL_WTIMER  6
+#define SL_SLEEPTIMER_PERIPHERAL_TIMER   7
 
-// Divide the 32.768 kHz source clock to give the 1024 Hz system tick.
-#define SL_SLEEPTIMER_FREQ_DIVIDER \
-        (32768 / GMOS_CONFIG_SYSTEM_TIMER_FREQUENCY)
+// Selects the counter to use for the sleep timer. This will be the
+// SYSRTC counter for EFR32xG2x devices to ensure that it is correctly
+// configured for use by the vendor radio libraries.
+#define SL_SLEEPTIMER_PERIPHERAL \
+        SL_SLEEPTIMER_PERIPHERAL_SYSRTC
 
 // Wallclock support is provided by the common GubbinsMOS RTC library.
 #define SL_SLEEPTIMER_WALLCLOCK_CONFIG 0

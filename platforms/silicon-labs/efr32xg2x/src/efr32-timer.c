@@ -24,7 +24,15 @@
 #include <stdint.h>
 
 #include "gmos-config.h"
+#include "gmos-platform.h"
+#include "em_core.h"
 #include "sl_sleeptimer.h"
+
+// Store the last high bit read back from the fast sleep timer.
+static uint8_t lastTickCountHighBit;
+
+// Hold the high order bits of the slow GubbinsMOS system timer.
+static uint8_t timerHighOrderBits;
 
 /*
  * Initialises the low power sleep timer.
@@ -32,22 +40,57 @@
 void gmosPalSystemTimerInit (void)
 {
     sl_sleeptimer_init ();
+    lastTickCountHighBit =
+        (uint8_t) ((sl_sleeptimer_get_tick_count ()) >> 31);
+    timerHighOrderBits = 0;
 }
 
 /*
- * Directly reads the 32-bit sleep timer counter.
+ * Read the the 32-bit sleep timer counter with scaling.
  */
 uint32_t gmosPalGetTimer (void)
 {
-    return sl_sleeptimer_get_tick_count ();
+    uint32_t timerValue;
+    uint32_t tickCount;
+    uint8_t tickCountHighBit;
+
+    // Implement atomic updates on fast counter wrap.
+    CORE_DECLARE_IRQ_STATE;
+    CORE_ENTER_CRITICAL ();
+    tickCount = sl_sleeptimer_get_tick_count ();
+    tickCountHighBit = (uint8_t) (tickCount >> 31);
+
+    // Increment the high order bit counter on tick counter wrap.
+    if ((lastTickCountHighBit != 0) && (tickCountHighBit == 0)) {
+        timerHighOrderBits += 1;
+    }
+    lastTickCountHighBit = tickCountHighBit;
+
+    // Divide the 32.768 kHz tick counter by 32 to give the expected
+    // GubbinsMOS system timer frequency.
+    timerValue = timerHighOrderBits;
+    timerValue = (timerValue << 27) | (tickCount >> 5);
+    CORE_EXIT_CRITICAL ();
+
+    return timerValue;
 }
 
 /*
- * Enter a low power idle state for the specified duration. Not
- * currently implemented.
+ * Enter a low power idle state for the specified duration.
  */
 void gmosPalIdle (uint32_t duration)
 {
+    // In order to ensure correct behaviour for the hardware timer
+    // overflow into the high order bits, any sleep duration needs to
+    // be restricted to less than half the period of the hardware timer.
+    // Therefore a maximum sleep duration of 6 hours is imposed here.
+    uint32_t maxDuration = GMOS_MS_TO_TICKS (6 * 60 * 60 * 1000);
+    if (duration > maxDuration) {
+        duration = maxDuration;
+    }
+
+    // TODO: Sleep on idle is not currently implemented.
+
     return;
 }
 

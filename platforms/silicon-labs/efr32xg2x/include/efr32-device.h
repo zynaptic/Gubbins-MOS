@@ -47,6 +47,13 @@ void gmosPalSerialConsoleInit (void);
  *     transmission and 'false' if there is currently insufficient space
  *     in the serial console transmit queue.
  */
-bool gmosPalSerialConsoleWrite (uint8_t* writeData, uint16_t writeSize);
+bool gmosPalSerialConsoleWrite (
+    const uint8_t* writeData, uint16_t writeSize);
+
+/**
+ * Flushes the EFR32 serial debug console after an assertion. This
+ * function does not return.
+ */
+void gmosPalSerialConsoleFlushAssertion (void);
 
 #endif // EFR32_DEVICE_H
