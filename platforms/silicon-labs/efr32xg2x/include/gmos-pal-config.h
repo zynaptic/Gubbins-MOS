@@ -70,12 +70,49 @@
 #endif
 
 /**
- * Specify the pin to be used as the debug console UART transmit enable,
- * if required. This is primarily used for selecting the virtual COM
- * port on the Silicon Labs Wireless Pro Kit.
+ * Specify the pin to be used as the debug console UART receive pin.
+ * This is only required if an interactive debug service is being used.
  */
-#ifndef GMOS_CONFIG_EFR32_DEBUG_CONSOLE_TX_EN
-// Leave undefined by default.
+#ifndef GMOS_CONFIG_EFR32_DEBUG_CONSOLE_RX_PIN
+#define GMOS_CONFIG_EFR32_DEBUG_CONSOLE_RX_PIN \
+        GMOS_DRIVER_GPIO_UNUSED_PIN_ID
+#endif
+
+/**
+ * Specify the pin to be used as the debug console UART CTS transmit
+ * flow control pin.
+ */
+#ifndef GMOS_CONFIG_EFR32_DEBUG_CONSOLE_CTS_PIN
+#define GMOS_CONFIG_EFR32_DEBUG_CONSOLE_CTS_PIN \
+        GMOS_DRIVER_GPIO_UNUSED_PIN_ID
+#endif
+
+/**
+ * Specify the pin to be used as the debug console UART RTS receive
+ * flow control pin.
+ */
+#ifndef GMOS_CONFIG_EFR32_DEBUG_CONSOLE_RTS_PIN
+#define GMOS_CONFIG_EFR32_DEBUG_CONSOLE_RTS_PIN \
+        GMOS_DRIVER_GPIO_UNUSED_PIN_ID
+#endif
+
+/**
+ * Specify that debug console flow control signals should be inverted.
+ * These are normally active low, but this option may be set in order
+ * to use active high signals.
+ */
+#ifndef GMOS_CONFIG_EFR32_DEBUG_CONSOLE_RTS_CTS_INV
+#define GMOS_CONFIG_EFR32_DEBUG_CONSOLE_RTS_CTS_INV false
+#endif
+
+/**
+ * Specify the pin to be used as the debug console UART enable, if
+ * required. This is primarily used for selecting the virtual COM port
+ * on the Silicon Labs Wireless Pro Kit.
+ */
+#ifndef GMOS_CONFIG_EFR32_DEBUG_CONSOLE_EN_PIN
+#define GMOS_CONFIG_EFR32_DEBUG_CONSOLE_EN_PIN \
+        GMOS_DRIVER_GPIO_UNUSED_PIN_ID
 #endif
 
 /**

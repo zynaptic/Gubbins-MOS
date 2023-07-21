@@ -91,14 +91,21 @@ void gmosPalSerialConsoleInit (void)
         GMOS_DRIVER_GPIO_INPUT_PULL_NONE);
     gmosDriverGpioSetAsOutput (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_TX_PIN);
 
-    // Assert the transmit enable pin if required.
-#ifdef GMOS_CONFIG_EFR32_DEBUG_CONSOLE_TX_EN
-    gmosDriverGpioPinInit (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_TX_EN,
-        GMOS_DRIVER_GPIO_OUTPUT_PUSH_PULL, EFR32_GPIO_DRIVER_SLEW_SLOW,
-        GMOS_DRIVER_GPIO_INPUT_PULL_NONE);
-    gmosDriverGpioSetAsOutput (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_TX_EN);
-    gmosDriverGpioSetPinState (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_TX_EN, true);
-#endif
+    // Configure the selected GPIO pin for USART CTS if required.
+    if (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_CTS_PIN != GMOS_DRIVER_GPIO_UNUSED_PIN_ID) {
+        gmosDriverGpioPinInit (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_CTS_PIN,
+            GMOS_DRIVER_GPIO_OUTPUT_PUSH_PULL, EFR32_GPIO_DRIVER_SLEW_SLOW,
+            GMOS_DRIVER_GPIO_INPUT_PULL_UP);
+    }
+
+    // Assert the debug console enable pin if required.
+    if (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_EN_PIN != GMOS_DRIVER_GPIO_UNUSED_PIN_ID) {
+        gmosDriverGpioPinInit (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_EN_PIN,
+            GMOS_DRIVER_GPIO_OUTPUT_PUSH_PULL, EFR32_GPIO_DRIVER_SLEW_SLOW,
+            GMOS_DRIVER_GPIO_INPUT_PULL_NONE);
+        gmosDriverGpioSetAsOutput (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_EN_PIN);
+        gmosDriverGpioSetPinState (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_EN_PIN, true);
+    }
 
     // Route the USART0 transmit signal to the specified pin.
     txPinPort = (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_TX_PIN >> 8) & 0x03;
@@ -108,18 +115,52 @@ void gmosPalSerialConsoleInit (void)
         (txPinSel << _GPIO_USART_TXROUTE_PIN_SHIFT);
     GPIO->USARTROUTE[0].ROUTEEN = GPIO_USART_ROUTEEN_TXPEN;
 
+    // Route the USART0 CTS signal from the specified pin.
+    if (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_CTS_PIN != GMOS_DRIVER_GPIO_UNUSED_PIN_ID) {
+        txPinPort = (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_CTS_PIN >> 8) & 0x03;
+        txPinSel = GMOS_CONFIG_EFR32_DEBUG_CONSOLE_CTS_PIN & 0x0F;
+        GPIO->USARTROUTE[0].CTSROUTE =
+            (txPinPort << _GPIO_USART_CTSROUTE_PORT_SHIFT) |
+            (txPinSel << _GPIO_USART_CTSROUTE_PIN_SHIFT);
+    }
+
     // Initialise USART0 ready for use.
     usartInit.baudrate = GMOS_CONFIG_EFR32_DEBUG_CONSOLE_BAUD_RATE;
+    if (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_CTS_PIN != GMOS_DRIVER_GPIO_UNUSED_PIN_ID) {
+        usartInit.hwFlowControl = usartHwFlowControlCts;
+    }
     USART_InitAsync (USART0, &usartInit);
+
+    // Invert the CTS signal if required.
+    if (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_RTS_CTS_INV) {
+        USART0->CTRLX |= USART_CTRLX_CTSINV;
+    }
 }
 
 /*
  * Attempts to write the contents of the supplied data buffer to the
  * EFR32 serial debug console.
  */
-bool gmosPalSerialConsoleWrite (uint8_t* writeData, uint16_t writeSize)
+bool gmosPalSerialConsoleWrite (
+    const uint8_t* writeData, uint16_t writeSize)
 {
     return gmosStreamWriteAll (&consoleStream, writeData, writeSize);
+}
+
+/*
+ * Flushes the EFR32 serial debug console after an assertion. This
+ * function does not return.
+ */
+void gmosPalSerialConsoleFlushAssertion (void)
+{
+    uint8_t txByte;
+    while (true) {
+        if ((USART0->STATUS & USART_STATUS_TXBL) != 0) {
+            if (gmosStreamReadByte (&consoleStream, &txByte)) {
+                USART0->TXDATA = (uint32_t) txByte;
+            }
+        }
+    }
 }
 
 #endif // GMOS_CONFIG_EFR32_DEBUG_CONSOLE_USE_DMA

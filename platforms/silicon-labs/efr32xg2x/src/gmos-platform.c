@@ -137,11 +137,13 @@ void gmosPalLogFmt (const char* fileName, uint32_t lineNo,
 }
 
 /*
- * Provides platform level handling of assert conditions.
+ * Provides platform level handling of assert conditions. This logs the
+ * assertion and then goes into an infinite loop to push the message
+ * out onto the debug console.
  */
 void gmosPalAssertFail (const char* fileName, uint32_t lineNo,
-    const char* message)
+    const char* msgPtr)
 {
-    // Not currently implemented.
-    while (true) {};
+    gmosPalLogFmt (fileName, lineNo, LOG_FAILURE, msgPtr);
+    gmosPalSerialConsoleFlushAssertion ();
 }
