@@ -44,6 +44,7 @@
 // Enable PSA API support (medium profile with key storage).
 #define MBEDTLS_PSA_CRYPTO_C
 #define MBEDTLS_PSA_CRYPTO_STORAGE_C
+#define MBEDTLS_PSA_CRYPTO_DRIVERS
 #define MBEDTLS_PSA_CRYPTO_CONFIG
 #define MBEDTLS_PSA_CRYPTO_CONFIG_FILE "efr32-crypto-config-psa.h"
 #include "mbedtls/config_psa.h"
