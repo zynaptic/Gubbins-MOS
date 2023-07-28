@@ -58,6 +58,10 @@ endif
 GMOS_TARGET_DEVICE_FAMILY_DIR := \
 	${GMOS_GECKO_SDK_DIR}/platform/Device/SiliconLabs/${GMOS_TARGET_DEVICE_FAMILY}
 
+# Specify that the platform layer provides the PSA cryptography library
+# and provide the path to the API header directory.
+GMOS_PLATFORM_PSA_CRYPTO_API_DIR = ${GMOS_GECKO_SDK_DIR}/util/third_party/mbedtls/include
+
 # Specify the various standard command line tools to use.
 CC = $(ARM_GCC_TOOLCHAIN_DIR)/bin/arm-none-eabi-gcc
 AS = $(ARM_GCC_TOOLCHAIN_DIR)/bin/arm-none-eabi-gcc

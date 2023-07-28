@@ -30,11 +30,13 @@ PLATFORM_HEADER_DIRS = \
 	${TARGET_PLATFORM_DIR}/include \
 	${GMOS_GECKO_SDK_DIR}/platform/common/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/emlib/inc \
+	${GMOS_GECKO_SDK_DIR}/platform/peripheral/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/emdrv/common/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/emdrv/spidrv/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/emdrv/dmadrv/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/emdrv/nvm3/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/emdrv/nvm3/config/s2 \
+	${GMOS_GECKO_SDK_DIR}/platform/service/mpu/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/service/sleeptimer/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/CMSIS/Core/Include \
 	${GMOS_TARGET_DEVICE_FAMILY_DIR}/Include
@@ -55,20 +57,27 @@ PLATFORM_OBJ_FILE_NAMES = \
 	sdk-em_core.o \
 	sdk-em_emu.o \
 	sdk-em_cmu.o \
+	sdk-em_rmu.o \
 	sdk-em_burtc.o \
 	sdk-em_gpio.o \
 	sdk-em_ldma.o \
 	sdk-em_usart.o \
 	sdk-em_eusart.o \
 	sdk-em_i2c.o \
+	sdk-em_se.o \
 	sdk-em_msc.o \
+	sdk-em_prs.o \
+	sdk-peripheral_sysrtc.o \
 	sdk-dmadrv.o \
 	sdk-spidrv.o \
 	sdk-nvm3_default_common_linker.o \
 	sdk-nvm3_lock.o \
 	sdk-nvm3_hal_flash.o \
+	sdk-sl_mpu.o \
+	sdk-sl_malloc.o \
 	sdk-sl_sleeptimer.o \
 	sdk-sl_sleeptimer_hal_burtc.o \
+	sdk-sl_sleeptimer_hal_sysrtc.o \
 	sdk-startup_${GMOS_TARGET_DEVICE_FAMILY_LC}.o \
 	sdk-system_${GMOS_TARGET_DEVICE_FAMILY_LC}.o
 
@@ -110,8 +119,17 @@ ${LOCAL_DIR}/sdk-%.o : ${GMOS_GECKO_SDK_DIR}/platform/*/src/%.c | ${LOCAL_DIR}
 ${LOCAL_DIR}/sdk-%.o : ${GMOS_GECKO_SDK_DIR}/platform/*/*/src/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
 
+# Run the C compiler on the Silicon Labs core utilities files.
+${LOCAL_DIR}/sdk-%.o : ${GMOS_GECKO_SDK_DIR}/util/silicon_labs/*/*/%.c | ${LOCAL_DIR}
+	${CC} ${CFLAGS} ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
+
+# Include the makefile fragment for building the platform specific
+# cryptography library.
+include ${TARGET_PLATFORM_DIR}/platform-crypto-build.mk
+
 # Timestamp the target platform object files.
-${LOCAL_DIR}/timestamp : ${PLATFORM_OBJ_FILES} ${LOCAL_DIR}/target.ld
+${LOCAL_DIR}/timestamp : ${PLATFORM_OBJ_FILES} \
+	${PLATFORM_CRYPTO_OBJ_FILES} ${LOCAL_DIR}/target.ld
 	touch $@
 
 # Create the local build directory.
