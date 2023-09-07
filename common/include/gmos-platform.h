@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2022 Zynaptic Limited
+ * Copyright 2020-2023 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -82,6 +82,18 @@ typedef enum {
 #endif
 
 /**
+ * This is a macro that may be used to introduce a memory barrier during
+ * code optimisation in order to ensure correct ordering of memory
+ * accesses. Typical uses would be ensuring that peripheral registers
+ * are only accessed once the associated peripheral clock has been
+ * enabled or ensuring that peripheral setup is complete prior to
+ * enabling DMA transfers.
+ */
+#ifndef GMOS_MEMORY_BARRIER
+#define GMOS_MEMORY_BARRIER()
+#endif
+
+/**
  * This is a macro that may be used to wrap message strings for
  * efficient storage on the target platform. The default option uses
  * standard 'C' strings. An alternative definition may be provided in
@@ -104,7 +116,7 @@ typedef enum {
 #endif
 
 /**
- * This is a macro that may be ised to access ROM data for efficient
+ * This is a macro that may be used to access ROM data for efficient
  * storage on the target platform. The default option uses standard 'C'
  * indexed access.
  */
@@ -114,13 +126,39 @@ typedef enum {
 #endif
 
 /**
- * This is a macro that may be ised to access ROM data for efficient
+ * This is a macro that may be used to access ROM data for efficient
  * storage on the target platform. The default option uses standard 'C'
  * sizeof operator.
  */
 #ifndef GMOS_PLATFORM_ROM_SIZE
 #define GMOS_PLATFORM_ROM_SIZE(_romName_) \
     (sizeof (_romName_))
+#endif
+
+/**
+ * This is a macro that may be used to obtain the address of a labelled
+ * C statement. The default implementation makes use of a GCC specific
+ * extension that implements this directly. When using other compilers
+ * this may need to be implemented using inline assembly.
+ * @param _label_ This is the C statement label for which the address is
+ *     being obtained.
+ * @return Returns the address of the C statement label as a pointer to
+ *     a void type.
+ */
+#ifndef GMOS_PLATFORM_GET_LABEL_ADDRESS
+#define GMOS_PLATFORM_GET_LABEL_ADDRESS(_label_) (&&_label_)
+#endif
+
+/**
+ * This is a macro that jumps to the address of a labelled C statement.
+ * The default implementation makes use of a GCC specific extension that
+ * implements this directly. When using other compilers this may need to
+ * be implemented using inline assembly.
+ * @param _addr_ This is the address of the C statement label from which
+ *     execution is to be continued.
+ */
+#ifndef GMOS_PLATFORM_GOTO_LABEL_ADDRESS
+#define GMOS_PLATFORM_GOTO_LABEL_ADDRESS(_addr_) goto *(_addr_)
 #endif
 
 /**
