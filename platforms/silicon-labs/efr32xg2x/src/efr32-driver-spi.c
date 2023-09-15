@@ -228,19 +228,41 @@ void gmosDriverSpiPalClockSetup (gmosDriverSpiBus_t* spiInterface)
     gmosDriverSpiDevice_t* spiDevice = spiInterface->device;
     SPIDRV_Handle_t sdkHandle;
     uint32_t spiClockRequest;
+    uint32_t spiClockFreqReq;
     uint32_t spiClockFreq;
     Ecode_t sdkStatus;
 
+    // The data sheet mentions a maximum SPI clock rate of 20 MHz for
+    // the EUSART, and in practise anything over 9.75Mhz (ie 1/4 the
+    // 39MHz source clock) appears to cause problems. This is not
+    // formally specified in the data sheet, but it is enforced here.
+    spiClockRequest = 1000 * (uint32_t) (spiDevice->spiClockRate);
+    spiClockFreqReq = (spiClockRequest < 9750000) ?
+        spiClockRequest : 9750000;
+
     // Select the closest SPI clock scaling to the one requested.
     sdkHandle = &(gmosDriverSpiPalSdkHandleData [palData->spiIndex]);
-    spiClockRequest = 1000 * (uint32_t) (spiDevice->spiClockRate);
-    sdkStatus = SPIDRV_SetBitrate (sdkHandle, spiClockRequest);
+    sdkStatus = SPIDRV_SetBitrate (sdkHandle, spiClockFreqReq);
     if (sdkStatus == ECODE_EMDRV_SPIDRV_OK) {
         sdkStatus = SPIDRV_GetBitrate (sdkHandle, &spiClockFreq);
     }
     GMOS_ASSERT (ASSERT_CONFORMANCE,
         (sdkStatus == ECODE_EMDRV_SPIDRV_OK),
         "Requested SPI clock frequency is not supported.");
+
+    // The SDK library does the wrong thing here and rounds the clock
+    // rate up instead of rounding it down. Therefore if there is not an
+    // exact match, the requested clock rate is divided by two and a
+    // second request is made.
+    if (spiClockFreqReq < spiClockFreq) {
+        sdkStatus = SPIDRV_SetBitrate (sdkHandle, spiClockFreqReq / 2);
+        if (sdkStatus == ECODE_EMDRV_SPIDRV_OK) {
+            sdkStatus = SPIDRV_GetBitrate (sdkHandle, &spiClockFreq);
+        }
+        GMOS_ASSERT (ASSERT_CONFORMANCE,
+            (sdkStatus == ECODE_EMDRV_SPIDRV_OK),
+            "Requested SPI clock frequency is not supported.");
+    }
     if (spiClockRequest != spiClockFreq) {
         GMOS_LOG_FMT (LOG_VERBOSE,
             "Requested SPI clock %d Hz, using closest option %d Hz",
