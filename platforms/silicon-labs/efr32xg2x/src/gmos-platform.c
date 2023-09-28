@@ -147,3 +147,41 @@ void gmosPalAssertFail (const char* fileName, uint32_t lineNo,
     gmosPalLogFmt (fileName, lineNo, LOG_FAILURE, msgPtr);
     gmosPalSerialConsoleFlushAssertion ();
 }
+
+/*
+ * If required, allocate memory for the heap.
+ */
+#if (GMOS_CONFIG_HEAP_SIZE > 0)
+#include <stdlib.h>
+uint8_t gmosPalHeap [GMOS_CONFIG_HEAP_SIZE] __attribute__ ((section (".heap")));
+#endif
+
+/*
+ * Implement platform specific heap allocation.
+ */
+void* gmosPalMalloc (size_t size)
+{
+    GMOS_ASSERT (ASSERT_FAILURE, GMOS_CONFIG_HEAP_SIZE > 0,
+        "No Dynamic Memory Support.");
+    return malloc (size);
+}
+
+/*
+ * Implement platform specific heap allocation.
+ */
+void* gmosPalCalloc (size_t num, size_t size)
+{
+    GMOS_ASSERT (ASSERT_FAILURE, GMOS_CONFIG_HEAP_SIZE > 0,
+        "No Dynamic Memory Support.");
+    return calloc (num, size);
+}
+
+/*
+ * Implement platform specific heap free.
+ */
+void gmosPalFree (void* memPtr)
+{
+    GMOS_ASSERT (ASSERT_FAILURE, GMOS_CONFIG_HEAP_SIZE > 0,
+        "No Dynamic Memory Support.");
+    free (memPtr);
+}

@@ -68,7 +68,19 @@ typedef enum {
  * constraints.
  */
 #ifndef GMOS_MALLOC
-#define GMOS_MALLOC(_size_) NULL
+void* gmosPalMalloc (size_t size);
+#define GMOS_MALLOC(_size_) gmosPalMalloc (_size_)
+#endif
+
+/**
+ * This is a macro that may be used to support heap based memory
+ * allocation using the standard 'C' library call convention. This will
+ * be unsupported on most microcontroller targets due to memory
+ * constraints.
+ */
+#ifndef GMOS_CALLOC
+void* gmosPalCalloc (size_t num, size_t size);
+#define GMOS_CALLOC(_num_, _size_) gmosPalCalloc (_num_, _size_)
 #endif
 
 /**
@@ -78,7 +90,8 @@ typedef enum {
  * due to memory constraints.
  */
 #ifndef GMOS_FREE
-#define GMOS_FREE(_mem_)
+void gmosPalFree (void* memPtr);
+#define GMOS_FREE(_mem_) gmosPalFree (_mem_)
 #endif
 
 /**

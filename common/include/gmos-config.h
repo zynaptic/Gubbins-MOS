@@ -75,6 +75,16 @@
 #endif
 
 /**
+ * This configuration option specifies the size of the 'C' language heap
+ * to be used for applications where dynamic memory allocation is
+ * required. It is expressed as an integer number of bytes. A value of
+ * zero is used to disable dynamic memory management.
+ */
+#ifndef GMOS_CONFIG_HEAP_SIZE
+#define GMOS_CONFIG_HEAP_SIZE 0
+#endif
+
+/**
  * This configuration option specifies whether the memory pool should
  * use the heap for data storage. This will only be possible if the
  * 'GMOS_MALLOC' and 'GMOS_FREE' macros are supported by the target
