@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2023 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,18 +27,22 @@
 #include "gmos-platform.h"
 #include "gmos-mempool.h"
 
+// Specify the lower free capacity threshold when dynamic memory
+// management is being used.
+#define FREE_SEGMENT_THRESHOLD (GMOS_CONFIG_MEMPOOL_SEGMENT_NUMBER / 4)
+
 // Statically allocate the memory pool area.
-#if (GMOS_CONFIG_MEMPOOL_USE_HEAP == false)
-static gmosMempoolSegment_t gmosMempool [GMOS_CONFIG_MEMPOOL_SEGMENT_NUMBER];
-#else
+#if (GMOS_CONFIG_MEMPOOL_USE_HEAP)
 static gmosMempoolSegment_t gmosMempool [0];
+#else
+static gmosMempoolSegment_t gmosMempool [GMOS_CONFIG_MEMPOOL_SEGMENT_NUMBER];
 #endif
 
 // Specifies the head of the free segment list.
 static gmosMempoolSegment_t* gmosMempoolFreeList;
 
 // Specifies the number of available free segments.
-static uint16_t gmosMempoolFreeSegmentCount;
+static uint_fast16_t gmosMempoolFreeSegmentCount;
 
 /*
  * Initialises the memory pool. This should be called exactly once on
@@ -47,7 +51,7 @@ static uint16_t gmosMempoolFreeSegmentCount;
  */
 void gmosMempoolInit (void)
 {
-    uint16_t i;
+    uint_fast16_t i;
     gmosMempoolSegment_t** nextSegmentPtr;
     gmosMempoolSegment_t* currentSegment;
 
@@ -72,6 +76,62 @@ void gmosMempoolInit (void)
 }
 
 /*
+ * When dynamic memory mangement is being used, the memory pool can be
+ * extended if the number of free segments falls below a set threshold.
+ */
+#if (GMOS_CONFIG_MEMPOOL_USE_HEAP)
+static void checkLowerCapacityThreshold (void)
+{
+    gmosMempoolSegment_t* newSegment;
+
+    // Loop until the lower threshold limit is restored.
+    while (gmosMempoolFreeSegmentCount < FREE_SEGMENT_THRESHOLD) {
+        newSegment = (gmosMempoolSegment_t*)
+            GMOS_MALLOC (sizeof (gmosMempoolSegment_t));
+
+        // Append the new segment to the start of the free list.
+        if (newSegment != NULL) {
+            newSegment->nextSegment = gmosMempoolFreeList;
+            gmosMempoolFreeList = newSegment;
+            gmosMempoolFreeSegmentCount += 1;
+        }
+
+        // Leave the memory pool below the lower capacity threshold if
+        // there is insufficient memory on the heap.
+        else {
+            return;
+        }
+    }
+}
+#else
+#define checkLowerCapacityThreshold()
+#endif
+
+/*
+ * When dynamic memory mangement is being used, the memory pool can be
+ * trimmed if the number of free segments is above the nominal capacity.
+ */
+#if (GMOS_CONFIG_MEMPOOL_USE_HEAP)
+static void checkUpperCapacityThreshold (void)
+{
+    gmosMempoolSegment_t* oldSegment;
+
+    // Loop until the upper threshold limit is restored.
+    while (gmosMempoolFreeSegmentCount >
+        GMOS_CONFIG_MEMPOOL_SEGMENT_NUMBER) {
+
+        // Remove the old segment from the start of the free list.
+        oldSegment = gmosMempoolFreeList;
+        gmosMempoolFreeList = oldSegment->nextSegment;
+        GMOS_FREE (oldSegment);
+        gmosMempoolFreeSegmentCount -= 1;
+    }
+}
+#else
+#define checkUpperCapacityThreshold()
+#endif
+
+/*
  * Determines the number of free memory pool segments currently
  * available for allocation.
  */
@@ -91,6 +151,7 @@ gmosMempoolSegment_t* gmosMempoolAlloc (void)
         segment->nextSegment = NULL;
         gmosMempoolFreeSegmentCount -= 1;
     }
+    checkLowerCapacityThreshold ();
     return segment;
 }
 
@@ -104,6 +165,7 @@ void gmosMempoolFree (gmosMempoolSegment_t* freeSegment)
         gmosMempoolFreeList = freeSegment;
         gmosMempoolFreeSegmentCount += 1;
     }
+    checkUpperCapacityThreshold ();
 }
 
 /*
@@ -112,7 +174,7 @@ void gmosMempoolFree (gmosMempoolSegment_t* freeSegment)
  */
 gmosMempoolSegment_t* gmosMempoolAllocSegments (uint16_t segmentCount)
 {
-    uint16_t i;
+    uint_fast16_t i;
     gmosMempoolSegment_t* segment;
     gmosMempoolSegment_t* result = NULL;
 
@@ -128,6 +190,7 @@ gmosMempoolSegment_t* gmosMempoolAllocSegments (uint16_t segmentCount)
         segment->nextSegment = NULL;
         gmosMempoolFreeSegmentCount -= segmentCount;
     }
+    checkLowerCapacityThreshold ();
     return result;
 }
 
@@ -136,7 +199,7 @@ gmosMempoolSegment_t* gmosMempoolAllocSegments (uint16_t segmentCount)
  */
 void gmosMempoolFreeSegments (gmosMempoolSegment_t* freeSegments)
 {
-    uint16_t segmentCount = 0;
+    uint_fast16_t segmentCount = 0;
     gmosMempoolSegment_t* segment;
 
     // Count the number of free segments and return them to the free
@@ -152,4 +215,5 @@ void gmosMempoolFreeSegments (gmosMempoolSegment_t* freeSegments)
         gmosMempoolFreeList = freeSegments;
     }
     gmosMempoolFreeSegmentCount += segmentCount;
+    checkUpperCapacityThreshold ();
 }

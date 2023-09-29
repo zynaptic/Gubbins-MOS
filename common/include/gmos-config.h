@@ -86,12 +86,15 @@
 
 /**
  * This configuration option specifies whether the memory pool should
- * use the heap for data storage. This will only be possible if the
- * 'GMOS_MALLOC' and 'GMOS_FREE' macros are supported by the target
- * platform.
+ * use the heap for data storage. By default this will be enabled if
+ * the heap is in use.
  */
 #ifndef GMOS_CONFIG_MEMPOOL_USE_HEAP
+#if (GMOS_CONFIG_HEAP_SIZE > 0)
+#define GMOS_CONFIG_MEMPOOL_USE_HEAP true
+#else
 #define GMOS_CONFIG_MEMPOOL_USE_HEAP false
+#endif
 #endif
 
 /**
@@ -105,7 +108,9 @@
 
 /**
  * This configuration option specifies the number of memory pool
- * segments to be allocated.
+ * segments to be allocated. When the heap is being used for memory
+ * pool storage, this sets the number of pre-allocated segments to be
+ * assigned to the memory pool free list on startup.
  */
 #ifndef GMOS_CONFIG_MEMPOOL_SEGMENT_NUMBER
 #define GMOS_CONFIG_MEMPOOL_SEGMENT_NUMBER 64
