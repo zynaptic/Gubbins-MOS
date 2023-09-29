@@ -49,6 +49,24 @@
 #define MBEDTLS_PSA_CRYPTO_CONFIG_FILE "efr32-crypto-config-psa.h"
 #include "mbedtls/config_psa.h"
 
+// Enable PAKE support.
+#define MBEDTLS_ECJPAKE_C
+#define MBEDTLS_KEY_EXCHANGE_ECJPAKE_ENABLED
+
+// Enable DTLS support (with TLS 1.2 as a prerequisite).
+#define MBEDTLS_SSL_TLS_C
+#define MBEDTLS_SSL_CLI_C
+#define MBEDTLS_SSL_EXPORT_KEYS
+#define MBEDTLS_SSL_PROTO_TLS1_2
+#define MBEDTLS_SSL_PROTO_DTLS
+
+// Memory management functions should be explicitly provided by the
+// platform.
+#define MBEDTLS_PLATFORM_C
+#define MBEDTLS_PLATFORM_MEMORY
+#define MBEDTLS_PLATFORM_CALLOC_MACRO gmosPalCalloc
+#define MBEDTLS_PLATFORM_FREE_MACRO   gmosPalFree
+
 // Include the platform specific configuration settings for PSA hardware
 // acceleration.
 #include "sli_mbedtls_omnipresent.h"

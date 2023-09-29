@@ -70,7 +70,9 @@ PLATFORM_CRYPTO_OBJ_FILE_NAMES = \
 	crypto-sli_se_transparent_driver_hash.o \
 	crypto-sli_se_transparent_driver_mac.o \
 	crypto-sli_se_transparent_key_derivation.o \
+	crypto-mbedtls-platform.o \
 	crypto-mbedtls-platform_util.o \
+	crypto-mbedtls-debug.o \
 	crypto-mbedtls-bignum.o \
 	crypto-mbedtls-constant_time.o \
 	crypto-mbedtls-entropy.o \
@@ -84,7 +86,9 @@ PLATFORM_CRYPTO_OBJ_FILE_NAMES = \
 	crypto-mbedtls-hmac_drbg.o \
 	crypto-mbedtls-ecp.o \
 	crypto-mbedtls-ecp_curves.o \
+	crypto-mbedtls-ecdh.o \
 	crypto-mbedtls-ecdsa.o \
+	crypto-mbedtls-ecjpake.o \
 	crypto-mbedtls-pk.o \
 	crypto-mbedtls-pk_wrap.o \
 	crypto-mbedtls-pkparse.o \
@@ -92,6 +96,12 @@ PLATFORM_CRYPTO_OBJ_FILE_NAMES = \
 	crypto-mbedtls-asn1parse.o \
 	crypto-mbedtls-asn1write.o \
 	crypto-mbedtls-ctr_drbg.o \
+	crypto-mbedtls-ssl_tls.o \
+	crypto-mbedtls-ssl_msg.o \
+	crypto-mbedtls-ssl_client.o \
+	crypto-mbedtls-ssl_tls12_client.o \
+	crypto-mbedtls-ssl_ciphersuites.o \
+	crypto-mbedtls-ssl_debug_helpers_generated.o \
 	crypto-mbedtls-psa_crypto.o \
 	crypto-mbedtls-psa_crypto_cipher.o \
 	crypto-mbedtls-psa_crypto_hash.o \
