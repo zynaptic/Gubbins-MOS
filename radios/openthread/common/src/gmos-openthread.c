@@ -21,7 +21,9 @@
  * OpenThread stack into the GubbinsMOS runtime framework.
  */
 
+#include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 
 #include "gmos-config.h"
 #include "gmos-platform.h"
@@ -30,6 +32,7 @@
 #include "openthread-core-config.h"
 #include "openthread/instance.h"
 #include "openthread/tasklet.h"
+#include "openthread/random_crypto.h"
 #include "openthread/platform/logging.h"
 
 /*
@@ -67,6 +70,9 @@ GMOS_TASK_DEFINITION (gmosOpenThreadTask,
  */
 bool gmosOpenThreadInit (gmosOpenThreadStack_t* openThreadStack)
 {
+    uint32_t entropy;
+    otError otStatus;
+
     // Initialise the platform specific OpenThread RAL.
     if (!gmosOpenThreadRalInit (openThreadStack)) {
         return false;
@@ -78,6 +84,20 @@ bool gmosOpenThreadInit (gmosOpenThreadStack_t* openThreadStack)
     // Initialise the OpenThread CLI using the debug console.
     if (!gmosOpenThreadCliInit (openThreadStack)) {
         return false;
+    }
+
+    // Initialise the OpenThread network control task.
+    if (!gmosOpenThreadNetInit (openThreadStack)) {
+        return false;
+    }
+
+    // Seed the platform random number generator, which is used for
+    // random delay insertion. Use the high quality OpenThread random
+    // number generator to add entropy.
+    otStatus = otRandomCryptoFillBuffer (
+        (uint8_t*) &entropy, sizeof (entropy));
+    if (otStatus == OT_ERROR_NONE) {
+        gmosPalAddRandomEntropy (entropy);
     }
 
     // Run the OpenThread processing task.
@@ -106,4 +126,20 @@ void otPlatAssertFail(const char *aFilename, int aLineNumber)
 {
     gmosPalAssertFail (aFilename, aLineNumber,
         "OpenThread Internal Error.");
+}
+
+/*
+ * Use the standard platform heap for memory allocations.
+ */
+void *otPlatCAlloc (size_t aNum, size_t aSize)
+{
+    return GMOS_CALLOC (aNum, aSize);
+}
+
+/*
+ * Use the standard platform heap for memory free operations.
+ */
+void otPlatFree (void *aPtr)
+{
+    GMOS_FREE (aPtr);
 }

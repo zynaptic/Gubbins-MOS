@@ -29,6 +29,19 @@
 #include "gmos-scheduler.h"
 
 /**
+ * This enumeration specifies the status values that can be returned by
+ * various OpenThread access functions. Where appropriate the
+ * enumeration uses the same numeric values as the internal OpenThread
+ * error codes.
+ */
+typedef enum {
+    GMOS_OPENTHREAD_STATUS_SUCCESS       = 0,  // OT_ERROR_NONE
+    GMOS_OPENTHREAD_STATUS_FAILED        = 1,  // OT_ERROR_FAILED
+    GMOS_OPENTHREAD_STATUS_INVALID_STATE = 13, // OT_ERROR_INVALID_STATE
+    GMOS_OPENTHREAD_STATUS_NOT_READY     = 36, // OT_ERROR_PENDING
+} gmosOpenThreadStatus_t;
+
+/**
  * Defines the OpenThread radio specific I/O state data structure. The
  * full type definition must be provided by the associated radio
  * abstraction layer.
@@ -64,8 +77,16 @@ typedef struct gmosOpenThreadStack_t {
     void* otInstance;
 
     // This is the GubbinsMOS scheduler task state that is used to
-    // manage the OpenThread GubbinsMOS task.
+    // run the core OpenThread processing loop.
     gmosTaskState_t openThreadTask;
+
+    // This is the GubbinsMOS scheduler task state that is used to
+    // run the OpenThread network control task.
+    gmosTaskState_t netControlTask;
+
+    // This is the current state of the OpenThread network control state
+    // machine.
+    uint8_t netControlState;
 
 } gmosOpenThreadStack_t;
 
@@ -82,8 +103,8 @@ typedef struct gmosOpenThreadStack_t {
  *     data structure that defines a set of fixed configuration options
  *     to be used with the OpenThread radio.
  */
-#define GMOS_OPENTHREAD_RAL_CONFIG(_ralData_, _ralConfig_)             \
-    { _ralData_, _ralConfig_, NULL, {} }
+#define GMOS_OPENTHREAD_RAL_CONFIG(_ralData_, _ralConfig_) \
+    { _ralData_, _ralConfig_, NULL, {}, {}, 0 }
 
 /**
  * Initialises an OpenThread stack on startup.
@@ -95,6 +116,29 @@ typedef struct gmosOpenThreadStack_t {
  *     otherwise.
  */
 bool gmosOpenThreadInit (gmosOpenThreadStack_t* openThreadStack);
+
+/**
+ * Initialises the OpenThread network control task on startup.
+ * @param openThreadStack This is the OpenThread stack data structure
+ *     that will be used for managing GubbinsMOS access to the
+ *     OpenThread stack.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully completing the initialisation process and 'false'
+ *     otherwise.
+ */
+bool gmosOpenThreadNetInit (gmosOpenThreadStack_t* openThreadStack);
+
+/**
+ * Determines the current status of the OpenThread network. The
+ * OpenThread network is ready for use once this returns a successful
+ * status value.
+ * @param openThreadStack This is the OpenThread stack data structure
+ *     that is being used for the network startup process.
+ * @return Returns a status value which indicates the current status of
+ *     the network.
+ */
+gmosOpenThreadStatus_t gmosOpenThreadNetStatus (
+    gmosOpenThreadStack_t* openThreadStack);
 
 /**
  * Initialises the OpenThread CLI on startup. This may be used during

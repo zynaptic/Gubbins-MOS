@@ -56,8 +56,29 @@
 // Support ping operation from the console.
 #define OPENTHREAD_CONFIG_PING_SENDER_ENABLE 1
 
-// Don't use the thread protocol heap for mbedTLS allocations.
+// Don't use the OpenThread protocol heap for mbedTLS allocations.
 #define OPENTHREAD_CONFIG_ENABLE_BUILTIN_MBEDTLS_MANAGEMENT 0
+
+// Use the standard library heap for OpenThread allocations.
+#define OPENTHREAD_CONFIG_HEAP_EXTERNAL_ENABLE 1
+
+// Support network time synchronisation.
+#define OPENTHREAD_CONFIG_SNTP_CLIENT_ENABLE 1
+
+// CoAP API support is required.
+#define OPENTHREAD_CONFIG_COAP_API_ENABLE 1
+#define OPENTHREAD_CONFIG_COAP_OBSERVE_API_ENABLE 1
+
+// Enable device joining support using pre-shared key. The commissioner
+// role is not currently supported.
+#define OPENTHREAD_CONFIG_JOINER_ENABLE 1
+
+// Use SLAAC to support routing outside the mesh.
+#define OPENTHREAD_CONFIG_IP6_SLAAC_ENABLE 1
+
+// Support DNS based service discovery.
+#define OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE 1
+#define OPENTHREAD_CONFIG_DNS_CLIENT_SERVICE_DISCOVERY_ENABLE 1
 
 // Disable TCP support since this still appears to be in development.
 #define OPENTHREAD_CONFIG_TCP_ENABLE 0

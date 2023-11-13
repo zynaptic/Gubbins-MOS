@@ -36,7 +36,10 @@ OPENTHREAD_HEADER_DIRS += \
 
 # List all the common component object files that need to be built.
 OPENTHREAD_OBJ_FILE_NAMES = \
-	gmos-openthread.o
+	gmos-openthread.o \
+	gmos-openthread-join.o \
+	gmos-openthread-resdir.o \
+	gmos-openthread-sntp.o
 
 # Add all the OpenThread API components to the build.
 OPENTHREAD_API_FILE_NAMES = \
@@ -129,7 +132,8 @@ OPENTHREAD_OBJ_FILE_NAMES += \
 endif
 
 # Specify additional OpenThread compiler options.
-OTFLAGS = -DOPENTHREAD_CONFIG_CORE_USER_CONFIG_HEADER_ENABLE
+OTFLAGS = -DOPENTHREAD_CONFIG_CORE_USER_CONFIG_HEADER_ENABLE \
+	-DMBEDTLS_CONFIG_FILE='"efr32-crypto-config.h"'
 
 # Run the C compiler on the GubbinsMOS common source files.
 ${LOCAL_DIR}/%.o : ${OPENTHREAD_COMMON_SRC_DIR}/src/%.c | ${LOCAL_DIR}

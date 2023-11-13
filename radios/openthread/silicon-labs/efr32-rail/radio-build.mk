@@ -49,7 +49,12 @@ OPENTHREAD_HEADER_DIRS = \
 	${GMOS_GECKO_SDK_DIR}/platform/emlib/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/CMSIS/Core/Include \
 	${OPENTHREAD_EFR32_PLATFORM_DIR}/platform-abstraction/efr32 \
-	${GMOS_GECKO_SDK_DIR}/util/third_party/mbedtls/include
+	${OPENTHREAD_EFR32_PLATFORM_DIR}/platform-abstraction/include \
+	${GMOS_GECKO_SDK_DIR}/util/third_party/mbedtls/include \
+	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/se_manager/inc \
+	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/sl_psa_driver/inc \
+	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/inc \
+	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/config
 
 # List all the header directories that are required to build the
 # platform specific OpenThread components.
