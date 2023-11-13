@@ -116,6 +116,16 @@ COMPONENT_OBJECT_FILES += \
 	$(foreach DIR, ${GMOS_TARGET_DISPLAY_DIRS}, $(DISPLAY_BUILD_PATH)/*.o)
 endif
 
+# If one or more external module directories have been specified, add
+# them to the set of common components.
+ifdef GMOS_EXTERNAL_MODULE_DIRS
+EXTERNAL_MODULE_BUILD_PATH = ${GMOS_BUILD_DIR}/external/$(notdir ${DIR})
+COMPONENT_TIMESTAMPS += \
+	$(foreach DIR, ${GMOS_EXTERNAL_MODULE_DIRS}, $(EXTERNAL_MODULE_BUILD_PATH)/timestamp)
+COMPONENT_OBJECT_FILES += \
+	$(foreach DIR, ${GMOS_EXTERNAL_MODULE_DIRS}, $(EXTERNAL_MODULE_BUILD_PATH)/*.o)
+endif
+
 # Include the application source files makefile fragment.
 include ${GMOS_APP_DIR}/app-build.mk
 
@@ -148,6 +158,11 @@ endif
 ifdef GMOS_TARGET_DISPLAY_DIRS
 DISPLAY_SOURCE_PATH = ${GMOS_GIT_DIR}/displays/$(DIR)
 include $(foreach DIR, ${GMOS_TARGET_DISPLAY_DIRS}, $(DISPLAY_SOURCE_PATH)/display-build.mk)
+endif
+
+# Include the external module makefile fragments if specified.
+ifdef GMOS_EXTERNAL_MODULE_DIRS
+include $(foreach DIR, ${GMOS_EXTERNAL_MODULE_DIRS}, $(DIR)/external-build.mk)
 endif
 
 # Link all the generated object files. Note that 'shell ls' is used to
