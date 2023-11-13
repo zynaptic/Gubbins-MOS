@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2022 Zynaptic Limited
+ * Copyright 2020-2023 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -202,7 +202,7 @@ uint16_t gmosStreamGetPushBackCapacity (gmosStream_t* stream);
  *     parameter.
  */
 uint16_t gmosStreamWrite (gmosStream_t* stream,
-    uint8_t* writeData, uint16_t writeSize);
+    const uint8_t* writeData, uint16_t writeSize);
 
 /**
  * Writes data from a local byte array to a GubbinsMOS byte stream.
@@ -219,7 +219,7 @@ uint16_t gmosStreamWrite (gmosStream_t* stream,
  *     no write data was transferred to the byte stream.
  */
 bool gmosStreamWriteAll (gmosStream_t* stream,
-    uint8_t* writeData, uint16_t writeSize);
+    const uint8_t* writeData, uint16_t writeSize);
 
 /**
  * Writes data from a local byte array to a GubbinsMOS byte stream,
@@ -238,7 +238,7 @@ bool gmosStreamWriteAll (gmosStream_t* stream,
  *     no write data was transferred to the byte stream.
  */
 bool gmosStreamWriteMessage (gmosStream_t* stream,
-    uint8_t* writeData, uint16_t writeSize);
+    const uint8_t* writeData, uint16_t writeSize);
 
 /**
  * Writes a single byte to a byte stream.

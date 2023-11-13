@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2022 Zynaptic Limited
+ * Copyright 2020-2023 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -96,7 +96,7 @@ void gmosStreamSetConsumerTask (
 uint16_t gmosStreamGetWriteCapacity (gmosStream_t* stream)
 {
     uint32_t maxFreeBytes;
-    uint16_t maxStreamBytes;
+    uint_fast16_t maxStreamBytes;
 
     // There is no space in an empty segment list.
     if (stream->segmentList == NULL) {
@@ -114,7 +114,7 @@ uint16_t gmosStreamGetWriteCapacity (gmosStream_t* stream)
     // Limit the number of free bytes to the maximum for the stream.
     maxStreamBytes = stream->maxSize - stream->size;
     if (maxFreeBytes < maxStreamBytes) {
-        maxStreamBytes = (uint16_t) maxFreeBytes;
+        maxStreamBytes = (uint_fast16_t) maxFreeBytes;
     }
     return maxStreamBytes;
 }
@@ -135,7 +135,7 @@ uint16_t gmosStreamGetReadCapacity (gmosStream_t* stream)
 uint16_t gmosStreamGetPushBackCapacity (gmosStream_t* stream)
 {
     uint32_t maxFreeBytes;
-    uint16_t maxStreamBytes;
+    uint_fast16_t maxStreamBytes;
 
     // There is no space in an empty segment list.
     if (stream->segmentList == NULL) {
@@ -152,7 +152,7 @@ uint16_t gmosStreamGetPushBackCapacity (gmosStream_t* stream)
     // Limit the number of free bytes to the maximum for the stream.
     maxStreamBytes = stream->maxSize - stream->size;
     if (maxFreeBytes < maxStreamBytes) {
-        maxStreamBytes = (uint16_t) maxFreeBytes;
+        maxStreamBytes = (uint_fast16_t) maxFreeBytes;
     }
     return maxStreamBytes;
 }
@@ -163,11 +163,11 @@ uint16_t gmosStreamGetPushBackCapacity (gmosStream_t* stream)
  * checked for adequate write capacity.
  */
 static void gmosStreamCommonWrite (gmosStream_t* stream,
-    uint8_t* writeData, uint16_t writeSize)
+    const uint8_t* writeData, uint16_t writeSize)
 {
-    uint16_t remainingBytes = writeSize;
-    uint8_t* sourcePtr = writeData;
-    uint16_t copySize;
+    uint_fast16_t remainingBytes = writeSize;
+    const uint8_t* sourcePtr = writeData;
+    uint_fast16_t copySize;
     uint8_t* copyPtr;
     gmosMempoolSegment_t* segment;
 
@@ -226,9 +226,9 @@ static void gmosStreamCommonWrite (gmosStream_t* stream,
  * to the specified number of bytes may be written.
  */
 uint16_t gmosStreamWrite (gmosStream_t* stream,
-    uint8_t* writeData, uint16_t writeSize)
+    const uint8_t* writeData, uint16_t writeSize)
 {
-    uint16_t transferSize;
+    uint_fast16_t transferSize;
 
     // Determine the maximum possible write transfer size.
     transferSize = gmosStreamGetWriteCapacity (stream);
@@ -249,7 +249,7 @@ uint16_t gmosStreamWrite (gmosStream_t* stream,
  * transfer or no data will be transferred.
  */
 bool gmosStreamWriteAll (gmosStream_t* stream,
-    uint8_t* writeData, uint16_t writeSize)
+    const uint8_t* writeData, uint16_t writeSize)
 {
     // Determine if there is insufficient space for the entire transfer.
     if (gmosStreamGetWriteCapacity (stream) < writeSize) {
@@ -270,7 +270,7 @@ bool gmosStreamWriteAll (gmosStream_t* stream,
  * be transferred.
  */
 bool gmosStreamWriteMessage (gmosStream_t* stream,
-    uint8_t* writeData, uint16_t writeSize)
+    const uint8_t* writeData, uint16_t writeSize)
 {
     // Determine if there is insufficient space for the entire transfer.
     if (gmosStreamGetWriteCapacity (stream) < ((uint32_t) writeSize) + 2) {
@@ -342,9 +342,9 @@ bool gmosStreamWriteByte (gmosStream_t* stream, uint8_t writeByte)
 static void gmosStreamCommonRead (gmosStream_t* stream,
     uint8_t* readData, uint16_t readSize)
 {
-    uint16_t remainingBytes = readSize;
+    uint_fast16_t remainingBytes = readSize;
     uint8_t* targetPtr = readData;
-    uint16_t copySize;
+    uint_fast16_t copySize;
     uint8_t* copyPtr;
     gmosMempoolSegment_t* segment = stream->segmentList;
 
@@ -381,7 +381,7 @@ static void gmosStreamCommonRead (gmosStream_t* stream,
 uint16_t gmosStreamRead (gmosStream_t* stream,
     uint8_t* readData, uint16_t readSize)
 {
-    uint16_t transferSize;
+    uint_fast16_t transferSize;
 
     // Determine the maximum possible read transfer size.
     transferSize = stream->size;
@@ -427,7 +427,7 @@ uint16_t gmosStreamReadMessage (gmosStream_t* stream,
 {
     uint8_t msgSizeLow;
     uint8_t msgSizeHigh;
-    uint16_t msgSize;
+    uint_fast16_t msgSize;
 
     // Attempt to access the message size bytes. This will fail if no
     // data is available.
@@ -435,7 +435,7 @@ uint16_t gmosStreamReadMessage (gmosStream_t* stream,
         !gmosStreamPeekByte (stream, &msgSizeHigh, 1)) {
         return 0;
     }
-    msgSize = (((uint16_t) msgSizeHigh) << 8) | msgSizeLow;
+    msgSize = (((uint_fast16_t) msgSizeHigh) << 8) | msgSizeLow;
 
     // Check that all of the message is available.
     if (stream->size < msgSize + 2) {
@@ -494,7 +494,7 @@ bool gmosStreamReadByte (gmosStream_t* stream, uint8_t* readByte)
 bool gmosStreamPeekByte (gmosStream_t* stream,
     uint8_t* peekByte, uint16_t offset)
 {
-    uint16_t residualOffset;
+    uint_fast16_t residualOffset;
     gmosMempoolSegment_t* segment;
 
     // Determine if there is data available.
@@ -527,11 +527,11 @@ bool gmosStreamPeekByte (gmosStream_t* stream,
 bool gmosStreamPushBack (gmosStream_t* stream,
     uint8_t* pushBackData, uint16_t pushBackSize)
 {
-    uint16_t remainingBytes = pushBackSize;
+    uint_fast16_t remainingBytes = pushBackSize;
     uint8_t* sourcePtr = pushBackData + pushBackSize;
-    uint16_t copySize;
+    uint_fast16_t copySize;
     uint8_t* copyPtr;
-    uint16_t copyOffset;
+    uint_fast16_t copyOffset;
     gmosMempoolSegment_t* segment;
 
     // Determine if there is insufficient space for the entire transfer.
@@ -595,7 +595,7 @@ bool gmosStreamSendBuffer (gmosStream_t* stream, gmosBuffer_t* buffer)
 {
     bool sendOk = false;
     uint8_t* writeData = (uint8_t*) buffer;
-    uint16_t writeSize = sizeof (gmosBuffer_t);
+    uint_fast16_t writeSize = sizeof (gmosBuffer_t);
 
     // Attempt to copy the buffer data structure to the stream. On
     // success, set the buffer as empty to avoid duplicate references
@@ -615,7 +615,7 @@ bool gmosStreamSendBuffer (gmosStream_t* stream, gmosBuffer_t* buffer)
 bool gmosStreamAcceptBuffer (gmosStream_t* stream, gmosBuffer_t* buffer)
 {
     uint8_t* readData = (uint8_t*) buffer;
-    uint16_t readSize = sizeof (gmosBuffer_t);
+    uint_fast16_t readSize = sizeof (gmosBuffer_t);
 
     // Always discard existing contents of the output buffer.
     gmosBufferReset (buffer, 0);
@@ -634,7 +634,7 @@ bool gmosStreamPushBackBuffer (gmosStream_t* stream, gmosBuffer_t* buffer)
 {
     bool pushBackOk = false;
     uint8_t* pushBackData = (uint8_t*) buffer;
-    uint16_t pushBackSize = sizeof (gmosBuffer_t);
+    uint_fast16_t pushBackSize = sizeof (gmosBuffer_t);
 
     // Attempt to push back the buffer data structure to the stream. On
     // success, set the buffer as empty to avoid duplicate references
