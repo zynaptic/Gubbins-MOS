@@ -31,6 +31,7 @@
 #include "efr32-device.h"
 #include "efr32-driver-gpio.h"
 #include "em_core.h"
+#include "em_emu.h"
 
 // Provide mapping of log levels to human readable strings.
 static const char* logLevelNames [] = {
@@ -184,4 +185,13 @@ void gmosPalFree (void* memPtr)
     GMOS_ASSERT (ASSERT_FAILURE, GMOS_CONFIG_HEAP_SIZE > 0,
         "No Dynamic Memory Support.");
     free (memPtr);
+}
+
+/*
+ * Include access to the core temperature sensor here. This reads the
+ * core temperature directly without using the SDK driver.
+ */
+float gmosPalGetCoreTempFloat (void)
+{
+    return EMU_TemperatureGet ();
 }

@@ -56,4 +56,12 @@ bool gmosPalSerialConsoleWrite (
  */
 void gmosPalSerialConsoleFlushAssertion (void);
 
+/**
+ * Reads the EFR32 core temperature sensor value as a 32-bit floating
+ * point value.
+ * @return Returns the current EFR32 core temperature as a floating
+ *     point value.
+ */
+float gmosPalGetCoreTempFloat (void);
+
 #endif // EFR32_DEVICE_H
