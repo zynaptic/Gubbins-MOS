@@ -23,6 +23,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdarg.h>
 #include <printf.h>
 
@@ -94,7 +95,7 @@ void gmosPalLogFmt (const char* fileName, uint32_t lineNo,
     const char* levelString;
 
     // Map the log level to the corresponding text.
-    if ((logLevel < LOG_VERBOSE) || (logLevel > LOG_ERROR)) {
+    if (logLevel > LOG_ERROR) {
         logLevel = LOG_ERROR;
     }
     levelString = logLevelNames [logLevel];
@@ -162,9 +163,13 @@ uint8_t gmosPalHeap [GMOS_CONFIG_HEAP_SIZE] __attribute__ ((section (".heap")));
  */
 void* gmosPalMalloc (size_t size)
 {
-    GMOS_ASSERT (ASSERT_FAILURE, GMOS_CONFIG_HEAP_SIZE > 0,
-        "No Dynamic Memory Support.");
+#if (GMOS_CONFIG_HEAP_SIZE > 0)
     return malloc (size);
+#else
+    (void) size;
+    GMOS_ASSERT_FAIL ("No Dynamic Memory Support.");
+    return NULL;
+#endif
 }
 
 /*
@@ -172,9 +177,14 @@ void* gmosPalMalloc (size_t size)
  */
 void* gmosPalCalloc (size_t num, size_t size)
 {
-    GMOS_ASSERT (ASSERT_FAILURE, GMOS_CONFIG_HEAP_SIZE > 0,
-        "No Dynamic Memory Support.");
+#if (GMOS_CONFIG_HEAP_SIZE > 0)
     return calloc (num, size);
+#else
+    (void) num;
+    (void) size;
+    GMOS_ASSERT_FAIL ("No Dynamic Memory Support.");
+    return NULL;
+#endif
 }
 
 /*
@@ -182,9 +192,12 @@ void* gmosPalCalloc (size_t num, size_t size)
  */
 void gmosPalFree (void* memPtr)
 {
-    GMOS_ASSERT (ASSERT_FAILURE, GMOS_CONFIG_HEAP_SIZE > 0,
-        "No Dynamic Memory Support.");
+#if (GMOS_CONFIG_HEAP_SIZE > 0)
     free (memPtr);
+#else
+    (void) memPtr;
+    GMOS_ASSERT_FAIL ("No Dynamic Memory Support.");
+#endif
 }
 
 /*
