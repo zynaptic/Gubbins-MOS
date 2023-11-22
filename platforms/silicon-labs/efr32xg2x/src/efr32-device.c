@@ -33,6 +33,15 @@
 #include "em_emu.h"
 #include "em_cmu.h"
 
+// The high frequency oscillator configuration used by the various
+// Silicon Labs libraries needs to be consistent with the settings
+// used here.
+#include "sl_device_init_hfxo_config.h"
+#if ((SL_DEVICE_INIT_HFXO_MODE != cmuHfxoOscMode_Crystal) || \
+     (SL_DEVICE_INIT_HFXO_FREQ != 39000000))
+#error "Inconsistent HFXO configuration options."
+#endif
+
 // If supported, select the pre-calibrated high frequency oscillator
 // tuning capacitor value from a fixed offset in the USERDATA page.
 #define HFXO_MFG_CTUNE_ADDR 0x0FE00100UL

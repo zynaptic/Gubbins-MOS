@@ -24,10 +24,10 @@
 
 /***************************************************************************//**
  * @file
- * @brief Power Amplifier configuration file.
+ * @brief DEVICE_INIT_HFXO Config
  *******************************************************************************
  * # License
- * <b>Copyright 2020 Silicon Laboratories Inc. www.silabs.com</b>
+ * <b>Copyright 2022 Silicon Laboratories Inc. www.silabs.com</b>
  *******************************************************************************
  *
  * SPDX-License-Identifier: Zlib
@@ -52,54 +52,30 @@
  *
  ******************************************************************************/
 
-#ifndef SL_RAIL_UTIL_PA_CONFIG_H
-#define SL_RAIL_UTIL_PA_CONFIG_H
-
-#include "rail_types.h"
+#ifndef SL_DEVICE_INIT_HFXO_CONFIG_H
+#define SL_DEVICE_INIT_HFXO_CONFIG_H
 
 // <<< Use Configuration Wizard in Context Menu >>>
-// <h>PA configuration
 
-// <o SL_RAIL_UTIL_PA_POWER_DECI_DBM> Initial PA Power (deci-dBm, 100 = 10.0 dBm)
-// <i> Default: 100
-#define SL_RAIL_UTIL_PA_POWER_DECI_DBM      100
+// <o SL_DEVICE_INIT_HFXO_MODE> Mode
+// <i>
+// <cmuHfxoOscMode_Crystal=> Crystal oscillator
+// <cmuHfxoOscMode_ExternalSine=> External sine wave
+// <i> Default: cmuHfxoOscMode_Crystal
+#define SL_DEVICE_INIT_HFXO_MODE           cmuHfxoOscMode_Crystal
 
-// <o SL_RAIL_UTIL_PA_RAMP_TIME_US> PA Ramp Time (microseconds)
-// <10-10:1>
-// <i> Default: 10
-#define SL_RAIL_UTIL_PA_RAMP_TIME_US        10
+// <o SL_DEVICE_INIT_HFXO_FREQ> Frequency <38000000-40000000>
+// <i> Default: 39000000
+#define SL_DEVICE_INIT_HFXO_FREQ           39000000
 
-// <o SL_RAIL_UTIL_PA_VOLTAGE_MV> Milli-volts on PA supply pin (PA_VDD)
-// <0-65535:1>
-// <i> Default: 3300
-#define SL_RAIL_UTIL_PA_VOLTAGE_MV          3300
+// <o SL_DEVICE_INIT_HFXO_PRECISION> HFXO precision in PPM <0-65535>
+// <i> Default: 500
+#define SL_DEVICE_INIT_HFXO_PRECISION      500
 
-// <o SL_RAIL_UTIL_PA_SELECTION_2P4GHZ> 2.4 GHz PA Selection
-// <RAIL_TX_POWER_MODE_2P4GIG_HIGHEST=> Highest Possible
-// <RAIL_TX_POWER_MODE_2P4GIG_HP=> High Power (chip-specific)
-// <RAIL_TX_POWER_MODE_2P4GIG_LP=> Low Power
-// <RAIL_TX_POWER_MODE_NONE=> Disable
-// <i> Default: RAIL_TX_POWER_MODE_2P4GIG_HIGHEST
-#define SL_RAIL_UTIL_PA_SELECTION_2P4GHZ    RAIL_TX_POWER_MODE_2P4GIG_HIGHEST
+// <o SL_DEVICE_INIT_HFXO_CTUNE> CTUNE <0-255>
+// <i> Default: 140
+#define SL_DEVICE_INIT_HFXO_CTUNE          140
 
-// <o SL_RAIL_UTIL_PA_SELECTION_SUBGHZ> Sub-1 GHz PA Selection
-// <RAIL_TX_POWER_MODE_NONE=> Disable
-// <i> Default: RAIL_TX_POWER_MODE_NONE
-#define SL_RAIL_UTIL_PA_SELECTION_SUBGHZ    RAIL_TX_POWER_MODE_NONE
-
-// <s.50 SL_RAIL_UTIL_PA_CURVE_HEADER> Header file containing custom PA curves
-// <i> Default: "pa_curves_efr32.h"
-#define SL_RAIL_UTIL_PA_CURVE_HEADER        "pa_curves_efr32.h"
-
-// <s.50 SL_RAIL_UTIL_PA_CURVE_TYPES> Header file containing PA curve types
-// <i> Default: "pa_curve_types_efr32.h"
-#define SL_RAIL_UTIL_PA_CURVE_TYPES         "pa_curve_types_efr32.h"
-
-// <q SL_RAIL_UTIL_PA_CALIBRATION_ENABLE> Enable PA Calibration
-// <i> Default: 0
-#define SL_RAIL_UTIL_PA_CALIBRATION_ENABLE  0
-
-// </h>
 // <<< end of configuration section >>>
 
-#endif // SL_RAIL_UTIL_PA_CONFIG_H
+#endif // SL_DEVICE_INIT_HFXO_CONFIG_H
