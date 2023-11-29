@@ -58,6 +58,22 @@
 #define GMOS_CONFIG_CBOR_MAX_STRING_SIZE 1024
 #endif
 
+/**
+ * This configuration option provides the ability to restrict the size
+ * of CBOR arrays.
+ */
+#ifndef GMOS_CONFIG_CBOR_MAX_ARRAY_SIZE
+#define GMOS_CONFIG_CBOR_MAX_ARRAY_SIZE 256
+#endif
+
+/**
+ * This configuration option provides the ability to restrict the size
+ * of CBOR maps.
+ */
+#ifndef GMOS_CONFIG_CBOR_MAX_MAP_SIZE
+#define GMOS_CONFIG_CBOR_MAX_MAP_SIZE 256
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif // __cplusplus
@@ -82,8 +98,10 @@ typedef enum {
  */
 #if GMOS_CONFIG_CBOR_SUPPORT_64_BIT_VALUES
 typedef uint64_t gmosFormatCborTypeParam_t;
+typedef int64_t  gmosFormatCborMapIntKey_t;
 #else
 typedef uint32_t gmosFormatCborTypeParam_t;
+typedef int32_t  gmosFormatCborMapIntKey_t;
 #endif
 
 /**
@@ -137,6 +155,17 @@ bool gmosFormatCborEncodeNull (gmosBuffer_t* buffer);
  *     insufficient buffer memory available.
  */
 bool gmosFormatCborEncodeUndefined (gmosBuffer_t* buffer);
+
+/**
+ * Encodes a CBOR indefinite length break code and appends it to the
+ * specified GubbinsMOS buffer.
+ * @param buffer This is the buffer to which the new CBOR break code
+ *     will be appended.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully appending the break code and 'false' if there is
+ *     insufficient buffer memory available.
+ */
+bool gmosFormatCborEncodeBreakCode (gmosBuffer_t* buffer);
 
 /**
  * Encodes a CBOR boolean value and appends it to the specified
@@ -356,13 +385,14 @@ bool gmosFormatCborEncodeIndefBreak (gmosBuffer_t* buffer);
  * data item to which the tag applies.
  * @param buffer This is the buffer to which the new CBOR data tag
  *     descriptor will be appended.
- * @param tagId This is the data tag identifier which should be used
+ * @param tagNumber This is the data tag identifier which should be used
  *     to tag the subsequent data item.
  * @return Returns a boolean value which will be set to 'true' on
  *     successfully appending the new descriptor and 'false' if there is
  *     insufficient buffer memory available.
  */
-bool gmosFormatCborEncodeTag (gmosBuffer_t* buffer, uint32_t tagId);
+bool gmosFormatCborEncodeTag (gmosBuffer_t* buffer,
+    gmosFormatCborTypeParam_t tagNumber);
 
 /**
  * Initialises a CBOR parser by scanning a CBOR message held in the
@@ -391,6 +421,353 @@ bool gmosFormatCborParserScan (gmosFormatCborParser_t* parser,
  *     be reset, with all allocated resources being released.
  */
 void gmosFormatCborParserReset (gmosFormatCborParser_t* parser);
+
+/**
+ * Checks for a CBOR null value at the specified parser token index
+ * position.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a null value token.
+ * @return Returns a boolean value which will be set to 'true' if a
+ *     valid null value token is present at the specified index position
+ *     and 'false' otherwise.
+ */
+bool gmosFormatCborMatchNull (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex);
+
+/**
+ * Checks for a CBOR undefined value at the specified parser token index
+ * position.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of an undefined value token.
+ * @return Returns a boolean value which will be set to 'true' if a
+ *     valid undefined value token is present at the specified index
+ *     position and 'false' otherwise.
+ */
+bool gmosFormatCborMatchUndefined (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex);
+
+/**
+ * Decodes a CBOR boolean value at the specified parser token index
+ * position.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR boolean value token.
+ * @param value This is a pointer to the variable which is to be updated
+ *     with the decoded CBOR boolean value.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully decoding the CBOR boolean value and 'false'
+ *     otherwise.
+ */
+bool gmosFormatCborDecodeBool (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, bool* value);
+
+/**
+ * Decodes a CBOR 32-bit unsigned integer value at the specified parser
+ * token index position. The encoded value must be in the valid range
+ * of the native 32-bit unsigned integer data type.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR unsigned integer value token.
+ * @param value This is a pointer to the variable which is to be updated
+ *     with the decoded 32-bit unsigned integer value.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully decoding the 32-bit unsigned integer value and
+ *     'false' otherwise.
+ */
+bool gmosFormatCborDecodeUint32 (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, uint32_t* value);
+
+/**
+ * Decodes a CBOR 32-bit signed integer value at the specified parser
+ * token index position. The encoded value must be in the valid range
+ * of the native 32-bit signed integer data type.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR signed integer value token.
+ * @param value This is a pointer to the variable which is to be updated
+ *     with the decoded 32-bit signed integer value.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully decoding the 32-bit signed integer value and 'false'
+ *     otherwise.
+ */
+bool gmosFormatCborDecodeInt32 (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, int32_t* value);
+
+/**
+ * Decodes a CBOR 64-bit unsigned integer value at the specified parser
+ * token index position. The encoded value must be in the valid range
+ * of the native 64-bit unsigned integer data type.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR unsigned integer value token.
+ * @param value This is a pointer to the variable which is to be updated
+ *     with the decoded 64-bit unsigned integer value.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully decoding the 64-bit unsigned integer value and
+ *     'false' otherwise.
+ */
+#if GMOS_CONFIG_CBOR_SUPPORT_64_BIT_VALUES
+bool gmosFormatCborDecodeUint64 (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, uint64_t* value);
+#endif
+
+/**
+ * Decodes a CBOR 64-bit signed integer value at the specified parser
+ * token index position. The encoded value must be in the valid range
+ * of the native 64-bit signed integer data type.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR signed integer value token.
+ * @param value This is a pointer to the variable which is to be updated
+ *     with the decoded 64-bit signed integer value.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully decoding the 64-bit signed integer value and 'false'
+ *     otherwise.
+ */
+#if GMOS_CONFIG_CBOR_SUPPORT_64_BIT_VALUES
+bool gmosFormatCborDecodeInt64 (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, int64_t* value);
+#endif
+
+/**
+ * Decodes a CBOR 32-bit floating point value at the specified parser
+ * token index position. The encoded value must be in a valid format
+ * for the IEEE 754 32-bit floating point data type.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR 32-bit floating point token.
+ * @param value This is a pointer to the variable which is to be updated
+ *     with the decoded 32-bit floating point value.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully decoding the 32-bit floating point value and 'false'
+ *     otherwise.
+ */
+#if GMOS_CONFIG_CBOR_SUPPORT_FLOAT_VALUES
+bool gmosFormatCborDecodeFloat32 (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, float* value);
+#endif
+
+/**
+ * Decodes a CBOR 64-bit floating point value at the specified parser
+ * token index position. The encoded value must be in a valid format
+ * for the IEEE 754 32-bit or 64-bit floating point data type.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR 32-bit or 64-bit floating
+ *     point token.
+ * @param value This is a pointer to the variable which is to be updated
+ *     with the decoded 64-bit floating point value.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully decoding the 64-bit floating point value and 'false'
+ *     otherwise.
+ */
+#if GMOS_CONFIG_CBOR_SUPPORT_FLOAT_VALUES
+#if GMOS_CONFIG_CBOR_SUPPORT_64_BIT_VALUES
+bool gmosFormatCborDecodeFloat64 (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, double* value);
+#endif
+#endif
+
+/**
+ * Checks for a CBOR text string at the specified parser token index
+ * position and compares it to a conventional 'C' null terminated
+ * character string.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR finite length text string.
+ * @param textString This is a pointer to the null terminated character
+ *     string which is to be matched to the CBOR encoded value.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully matching the string contents and 'false' otherwise.
+ */
+bool gmosFormatCborMatchCharString (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, const char* textString);
+
+/**
+ * Checks for a CBOR text string at the specified parser token index
+ * position and compares it to a string of the specified length.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR finite length text string.
+ * @param textString This is a pointer to the UTF-8 encoded string which
+ *     is to be compared to the CBOR encoded value.
+ * @param length This is the length of the text string which is to be
+ *     compared to the CBOR encoded value.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully matching the string contents and 'false' otherwise.
+ */
+bool gmosFormatCborMatchTextString (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, const char* textString, uint16_t length);
+
+/**
+ * Decodes a UTF-8 encoded text string, placing the results in a
+ * pre-allocated character array with null termination. The source must
+ * be a finite length CBOR text string.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR finite length text string.
+ * @param stringBuf This is the character array into which the CBOR text
+ *     string is to be copied as a null terminated C string. If the
+ *     source string is larger than this array it will be truncated
+ *     with null termination.
+ * @param stringBufLen This is the length of the allocated character
+ *     array into which the CBOR text string is to be copied.
+ * @param sourceLen This is a pointer to a variable which will be set
+ *     to the length of the original CBOR text string, which may be
+ *     larger than the length of the destination character array.
+ *     This may be set to a null reference if the caller does not need
+ *     to check the original source length.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully decoding the CBOR text string and 'false' otherwise.
+ */
+bool gmosFormatCborDecodeTextString (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, char* stringBuf, uint16_t stringBufLen,
+    uint16_t* sourceLen);
+
+/**
+ * Decodes a CBOR byte string, placing the results in a pre-allocated
+ * byte array. The source must be a finite length CBOR byte string.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR finite length byte string.
+ * @param byteBuf This is the byte array into which the CBOR byte string
+ *     is to be copied. If the source string is larger than this array
+ *     it will be truncated.
+ * @param byteBufLen This is the length of the allocated byte array into
+ *     which the CBOR byte string is to be copied.
+ * @param sourceLen This is a pointer to a variable which will be set
+ *     to the length of the original CBOR byte string, which may be
+ *     larger than the length of the destination byte array. This may be
+ *     set to a null reference if the caller does not need to check the
+ *     original source length.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully decoding the CBOR byte string and 'false' otherwise.
+ */
+bool gmosFormatCborDecodeByteString (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, uint8_t* byteBuf, uint16_t byteBufLen,
+    uint16_t* sourceLen);
+
+/**
+ * Decodes the CBOR descriptor for a fixed or indefinite length array
+ * and indicates the number of elements in the array. It should then be
+ * followed by the specified number of array data items.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR array.
+ * @param length This is a pointer to a variable which will be set
+ *     to the length of the encoded CBOR array.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully decoding the CBOR array and 'false' otherwise.
+ */
+bool gmosFormatCborDecodeArray (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, uint16_t* length);
+
+/**
+ * Decodes the CBOR descriptor for a fixed or indefinite length map
+ * and indicates the number of elements in the map. It should then be
+ * followed by the specified number of key/value data item pairs.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR map.
+ * @param length This is a pointer to a variable which will be set
+ *     to the length of the encoded CBOR map.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully decoding the CBOR map and 'false' otherwise.
+ */
+bool gmosFormatCborDecodeMap (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, uint16_t* length);
+
+/**
+ * Performs an integer key lookup on a fixed or indefinite length map,
+ * setting the associated value token index on success.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR map.
+ * @param key This is the key which is to be used during the map entry
+ *     lookup. For duplicate keys, the first instance of the duplicate
+ *     key will be matched.
+ * @param valueIndex This is a pointer to a variable which on success
+ *     will be set to the token index for the lookup value.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully finding the map entry and 'false' otherwise.
+ */
+bool gmosFormatCborLookupMapIntKey (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, gmosFormatCborMapIntKey_t key,
+    uint16_t* valueIndex);
+
+/**
+ * Performs a character string key lookup on a fixed or indefinite
+ * length map, using a conventional null terminated 'C' string as the
+ * key and setting the associated value token index on success.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR map.
+ * @param key This is the key which is to be used during the map entry
+ *     lookup. For duplicate keys, the first instance of the duplicate
+ *     key will be matched.
+ * @param valueIndex This is a pointer to a variable which on success
+ *     will be set to the token index for the lookup value.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully finding the map entry and 'false' otherwise.
+ */
+bool gmosFormatCborLookupMapCharKey (
+    gmosFormatCborParser_t* parser, uint16_t tokenIndex,
+    const char* key, uint16_t* valueIndex);
+
+/**
+ * Performs a text string key lookup on a fixed or indefinite length
+ * map, using a text string of the specified length as the key and
+ * setting the associated value token index on success.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR map.
+ * @param key This is the key which is to be used during the map entry
+ *     lookup. For duplicate keys, the first instance of the duplicate
+ *     key will be matched.
+ * @param keyLength This is the length of the map key string.
+ * @param valueIndex This is a pointer to a variable which on success
+ *     will be set to the token index for the lookup value.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully finding the map entry and 'false' otherwise.
+ */
+bool gmosFormatCborLookupMapTextKey (
+    gmosFormatCborParser_t* parser, uint16_t tokenIndex,
+    const char* key, uint16_t keyLength, uint16_t* valueIndex);
+
+/**
+ * Decodes the CBOR descriptor for a tag and indicates the tag number.
+ * It should then be followed by a single tag content value.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR tag.
+ * @param tagNumber This is a pointer to a variable which will be set
+ *     to the tag number.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully decoding the CBOR tag and 'false' otherwise.
+ */
+bool gmosFormatCborDecodeTag (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, gmosFormatCborTypeParam_t* tagNumber);
 
 #ifdef __cplusplus
 }

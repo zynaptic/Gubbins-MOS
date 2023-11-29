@@ -138,6 +138,15 @@ bool gmosFormatCborEncodeUndefined (gmosBuffer_t* buffer)
 }
 
 /*
+ * This encodes a CBOR break code using the simple value major type.
+ */
+bool gmosFormatCborEncodeBreakCode (gmosBuffer_t* buffer)
+{
+    uint8_t encoding = GMOS_FORMAT_CBOR_MAJOR_TYPE_SIMPLE | 31;
+    return gmosBufferAppend (buffer, &encoding, 1);
+}
+
+/*
  * This encodes a boolean value using the simple value major type.
  */
 bool gmosFormatCborEncodeBool (gmosBuffer_t* buffer, bool value)
@@ -368,8 +377,9 @@ bool gmosFormatCborEncodeIndefBreak (gmosBuffer_t* buffer)
 /*
  * This encodes the CBOR descriptor for a data tag.
  */
-bool gmosFormatCborEncodeTag (gmosBuffer_t* buffer, uint32_t tagId)
+bool gmosFormatCborEncodeTag (gmosBuffer_t* buffer,
+    gmosFormatCborTypeParam_t tagNumber)
 {
     return gmosFormatCborEncodeWithParameter (buffer,
-        GMOS_FORMAT_CBOR_MAJOR_TYPE_TAG, tagId);
+        GMOS_FORMAT_CBOR_MAJOR_TYPE_TAG, tagNumber);
 }
