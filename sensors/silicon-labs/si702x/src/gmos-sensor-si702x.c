@@ -391,7 +391,7 @@ static inline bool gmosSensorSi702xProcessHumidity (
     if (sensorData->sensorFeed != NULL) {
         processedOk = gmosSensorFeedWriteScalar (
             sensorData->sensorFeed, sensorData->sensorId,
-            value, GMOS_SENSOR_UNITS_REL_HUMIDITY, -3);
+            value, GMOS_SENSOR_UNITS_REL_HUMIDITY, -5);
     }
     return processedOk;
 }
@@ -818,8 +818,10 @@ void gmosSensorSi702xSetSensorConfig (gmosSensorSi702x_t* sensorData,
     sensorData->intervalTemp = tempInterval;
     sensorData->intervalHygro = hygroInterval;
 
-    // Resume the sensor task if it is suspended.
-    gmosSchedulerTaskResume (&(sensorData->sensorTask));
+    // Resume the sensor task if it is suspended in the idle state.
+    if (sensorData->sensorPhase == GMOS_SENSOR_SI702X_TASK_PHASE_IDLE) {
+        gmosSchedulerTaskResume (&(sensorData->sensorTask));
+    }
 }
 
 /*
@@ -840,6 +842,8 @@ void gmosSensorSi702xSetHeaterConfig (gmosSensorSi702x_t* sensorData,
     sensorData->heatingCooldown = heaterCooldown;
     sensorData->heatingLevel = heaterLevel;
 
-    // Resume the sensor task if it is suspended.
-    gmosSchedulerTaskResume (&(sensorData->sensorTask));
+    // Resume the sensor task if it is suspended in the idle state.
+    if (sensorData->sensorPhase == GMOS_SENSOR_SI702X_TASK_PHASE_IDLE) {
+        gmosSchedulerTaskResume (&(sensorData->sensorTask));
+    }
 }

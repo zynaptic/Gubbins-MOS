@@ -60,9 +60,16 @@ typedef enum {
     GMOS_SENSOR_UNITS_CELSIUS,
 
     // This indicates that a sensor measurement is a relative humidity
-    // measurement expressed as a percentage of the saturation vapour
-    // pressure.
-    GMOS_SENSOR_UNITS_REL_HUMIDITY
+    // measurement expressed as a fraction of the saturation vapour
+    // pressure. This may be expressed with a sensor scaling of 10^-2 to
+    // yield a percentage value.
+    GMOS_SENSOR_UNITS_REL_HUMIDITY,
+
+    // This indicates that a sensor measurement is a Carbon Dioxide
+    // concentration level expressed as a fraction of the sample gas
+    // by volume. This may be expressed with a sensor scaling of 10^-6
+    // to yield a parts per million value.
+    GMOS_SENSOR_UNITS_C02_LEVEL
 
 } gmosSensorUnits_t;
 
