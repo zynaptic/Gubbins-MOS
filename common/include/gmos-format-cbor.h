@@ -105,6 +105,27 @@ typedef int32_t  gmosFormatCborMapIntKey_t;
 #endif
 
 /**
+ * Defines the data structure used to encapsulate a single parsed CBOR
+ * message token.
+ */
+typedef struct gmosFormatCborToken_t {
+
+    // Cache the parsed type parameter value as a native data type.
+    gmosFormatCborTypeParam_t typeParam;
+
+    // Specify the offset of the associated data in the message buffer.
+    uint16_t dataOffset;
+
+    // Specify the total number of tokens required to represent the
+    // complete data item, including hierarchically nested tokens.
+    uint16_t tokenCount;
+
+    // Cache the data type specifier byte.
+    uint8_t typeSpecifier;
+
+} gmosFormatCborToken_t;
+
+/**
  * Defines the data structure used to implement CBOR message parsing.
  */
 typedef struct gmosFormatCborParser_t {
@@ -118,21 +139,13 @@ typedef struct gmosFormatCborParser_t {
 } gmosFormatCborParser_t;
 
 /**
- * Defines the data structure used to encapsulate a single parsed CBOR
- * message token.
+ * Provides a compile time initialisation macro for a CBOR parser
+ * instance. Assigning this macro value to a parser instance on
+ * declaration may be used to ensure that the parser data structure
+ * is in a valid state prior to subsequent processing.
  */
-typedef struct gmosFormatCborToken_t {
-
-    // Cache the parsed type parameter value as a native data type.
-    gmosFormatCborTypeParam_t typeParam;
-
-    // Specify the offset of the associated data in the message buffer.
-    uint16_t dataOffset;
-
-    // Cache the data type specifier byte.
-    uint8_t typeSpecifier;
-
-} gmosFormatCborToken_t;
+#define GMOS_FORMAT_CBOR_PARSER_INIT()                                 \
+    { GMOS_BUFFER_INIT(), GMOS_BUFFER_INIT() }
 
 /**
  * Encodes a CBOR null value and appends it to the specified GubbinsMOS
@@ -423,6 +436,27 @@ bool gmosFormatCborParserScan (gmosFormatCborParser_t* parser,
 void gmosFormatCborParserReset (gmosFormatCborParser_t* parser);
 
 /**
+ * Determines the number of CBOR tokens that make up a given CBOR data
+ * item. Complex CBOR data structures such as nested arrays and maps
+ * consist of multiple tokens, and this function may be used to
+ * determine the total number of tokens that make up the data structure.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the total number of tokens that make up the
+ *     associated CBOR data item.
+ * @param tokenCount This is a pointer to a variable that will be
+ *     updated with the total number of tokens that make up the
+ *     associated data item, including the token specified by the
+ *     token index parameter.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully determining the data item token count and 'false'
+ *     otherwise.
+ */
+bool gmosFormatCborDecodeTokenCount (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, uint16_t* tokenCount);
+
+/**
  * Checks for a CBOR null value at the specified parser token index
  * position.
  * @param parser This is a pointer to the parser instance that is to
@@ -677,6 +711,23 @@ bool gmosFormatCborDecodeByteString (gmosFormatCborParser_t* parser,
  */
 bool gmosFormatCborDecodeArray (gmosFormatCborParser_t* parser,
     uint16_t tokenIndex, uint16_t* length);
+
+/**
+ * Performs an integer index lookup on a fixed or indefinite length
+ * array, setting the associated value token index on success.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR array.
+ * @param arrayIndex This is the zero based array index value which is
+ *     to be used during the array entry lookup.
+ * @param valueIndex This is a pointer to a variable which on success
+ *     will be set to the token index for the indexed value.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully finding the array entry and 'false' otherwise.
+ */
+bool gmosFormatCborLookupArrayEntry (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, uint16_t arrayIndex, uint16_t* valueIndex);
 
 /**
  * Decodes the CBOR descriptor for a fixed or indefinite length map

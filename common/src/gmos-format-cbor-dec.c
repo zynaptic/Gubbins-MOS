@@ -138,6 +138,7 @@ static inline bool gmosFormatCborDecodeWithParameter (
 
     // Set the cached type specifier.
     token->typeSpecifier = firstByte;
+    token->tokenCount = 1;
     return true;
 
     // Fail on malformed message.
@@ -155,6 +156,7 @@ static inline uint16_t gmosFormatCborParserScanFixedArray (
 {
     uint_fast16_t newTokenOffset = 0;
     uint_fast16_t arraySize;
+    uint_fast16_t tokenLocation;
     uint_fast16_t i;
 
     // Check the scan data structure depth limit.
@@ -172,7 +174,8 @@ static inline uint16_t gmosFormatCborParserScanFixedArray (
         goto exit;
     }
 
-    // Append the fixed length array token to the token list.
+    // Append the token to the token list as a placeholder.
+    tokenLocation = gmosBufferGetSize (&(parser->tokenBuffer));
     if (!gmosBufferAppend (&(parser->tokenBuffer),
         (uint8_t*) token, sizeof (gmosFormatCborToken_t))) {
         goto exit;
@@ -186,6 +189,15 @@ static inline uint16_t gmosFormatCborParserScanFixedArray (
         if (newTokenOffset == 0) {
             goto exit;
         }
+    }
+
+    // Update the token count to reflect the number of enclosed tokens.
+    token->tokenCount =
+        (gmosBufferGetSize (&(parser->tokenBuffer)) - tokenLocation) /
+        sizeof (gmosFormatCborToken_t);
+    if (!gmosBufferWrite (&(parser->tokenBuffer), tokenLocation,
+        (uint8_t*) token, sizeof (gmosFormatCborToken_t))) {
+        newTokenOffset = 0;
     }
 exit :
     return newTokenOffset;
@@ -237,8 +249,12 @@ static inline uint16_t gmosFormatCborParserScanIndefArray (
         }
     }
 
-    // Update the start of array token with the detected array length.
+    // Update the start of array token with the detected array length
+    // and the number of enclosed tokens.
     token->typeParam = arraySize;
+    token->tokenCount =
+        (gmosBufferGetSize (&(parser->tokenBuffer)) - tokenLocation) /
+        sizeof (gmosFormatCborToken_t);
     if (!gmosBufferWrite (&(parser->tokenBuffer), tokenLocation,
         (uint8_t*) token, sizeof (gmosFormatCborToken_t))) {
         newTokenOffset = 0;
@@ -257,6 +273,7 @@ static inline uint16_t gmosFormatCborParserScanFixedMap (
 {
     uint_fast16_t newTokenOffset = 0;
     uint_fast16_t mapSize;
+    uint_fast16_t tokenLocation;
     uint_fast16_t i;
 
     // Check the scan data structure depth limit.
@@ -274,7 +291,8 @@ static inline uint16_t gmosFormatCborParserScanFixedMap (
         goto exit;
     }
 
-    // Append the fixed length map token to the token list.
+    // Append the token to the token list as a placeholder.
+    tokenLocation = gmosBufferGetSize (&(parser->tokenBuffer));
     if (!gmosBufferAppend (&(parser->tokenBuffer),
         (uint8_t*) token, sizeof (gmosFormatCborToken_t))) {
         goto exit;
@@ -289,6 +307,15 @@ static inline uint16_t gmosFormatCborParserScanFixedMap (
         if (newTokenOffset == 0) {
             goto exit;
         }
+    }
+
+    // Update the token count to reflect the number of enclosed tokens.
+    token->tokenCount =
+        (gmosBufferGetSize (&(parser->tokenBuffer)) - tokenLocation) /
+        sizeof (gmosFormatCborToken_t);
+    if (!gmosBufferWrite (&(parser->tokenBuffer), tokenLocation,
+        (uint8_t*) token, sizeof (gmosFormatCborToken_t))) {
+        newTokenOffset = 0;
     }
 exit :
     return newTokenOffset;
@@ -350,8 +377,12 @@ static inline uint16_t gmosFormatCborParserScanIndefMap (
         }
     }
 
-    // Update the start of map token with the detected map length.
+    // Update the start of map token with the detected map length and
+    // the total number of enclosed tokens.
     token->typeParam = mapSize;
+    token->tokenCount =
+        (gmosBufferGetSize (&(parser->tokenBuffer)) - tokenLocation) /
+        sizeof (gmosFormatCborToken_t);
     if (!gmosBufferWrite (&(parser->tokenBuffer), tokenLocation,
         (uint8_t*) token, sizeof (gmosFormatCborToken_t))) {
         newTokenOffset = 0;
@@ -387,6 +418,7 @@ static inline uint_fast16_t gmosFormatCborParserScanTag (
     uint_fast8_t scanDepth)
 {
     uint_fast16_t newTokenOffset = 0;
+    uint_fast16_t tokenLocation;
 
     // Check the scan data structure depth limit.
     if (scanDepth > 0) {
@@ -395,7 +427,8 @@ static inline uint_fast16_t gmosFormatCborParserScanTag (
         goto exit;
     }
 
-    // Append the tag token to the token list.
+    // Append the token to the token list as a placeholder.
+    tokenLocation = gmosBufferGetSize (&(parser->tokenBuffer));
     if (!gmosBufferAppend (&(parser->tokenBuffer),
         (uint8_t*) token, sizeof (gmosFormatCborToken_t))) {
         goto exit;
@@ -407,6 +440,14 @@ static inline uint_fast16_t gmosFormatCborParserScanTag (
     newTokenOffset = gmosFormatCborParserScanNextToken (
         parser, newTokenOffset, scanDepth, NULL);
 
+    // Update the token count to reflect the number of enclosed tokens.
+    token->tokenCount =
+        (gmosBufferGetSize (&(parser->tokenBuffer)) - tokenLocation) /
+        sizeof (gmosFormatCborToken_t);
+    if (!gmosBufferWrite (&(parser->tokenBuffer), tokenLocation,
+        (uint8_t*) token, sizeof (gmosFormatCborToken_t))) {
+        newTokenOffset = 0;
+    }
 exit :
     return newTokenOffset;
 }
@@ -542,6 +583,27 @@ void gmosFormatCborParserReset (gmosFormatCborParser_t* parser)
 {
     gmosBufferReset (&(parser->messageBuffer), 0);
     gmosBufferReset (&(parser->tokenBuffer), 0);
+}
+
+/*
+ * Determines the number of CBOR tokens that make up a given CBOR data
+ * item.
+ */
+bool gmosFormatCborDecodeTokenCount (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, uint16_t* tokenCount)
+{
+    bool tokenValid = false;
+    gmosFormatCborToken_t token;
+    uint_fast16_t tokenBufferOffset = tokenIndex * sizeof (token);
+
+    // Get the token descriptor at the specified offset and access the
+    // token count.
+    if (gmosBufferRead (&(parser->tokenBuffer), tokenBufferOffset,
+        (uint8_t*) &token, sizeof (token))) {
+        *tokenCount = token.tokenCount;
+        tokenValid = true;
+    }
+    return tokenValid;
 }
 
 /*
@@ -992,6 +1054,42 @@ bool gmosFormatCborDecodeArray (gmosFormatCborParser_t* parser,
 }
 
 /*
+ * Performs an integer index lookup on a fixed or indefinite length
+ * array, setting the associated value token index on success.
+ */
+bool gmosFormatCborLookupArrayEntry (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, uint16_t arrayIndex, uint16_t* valueIndex)
+{
+    bool matchOk = false;
+    uint16_t arrayLength;
+    uint16_t tokenCount;
+    uint_fast16_t i;
+
+    // Check that there is a valid array at the specified token index
+    // and that the index value is in range.
+    if ((gmosFormatCborDecodeArray (parser, tokenIndex, &arrayLength)) &&
+        (arrayIndex < arrayLength)) {
+        matchOk = true;
+        tokenIndex += 1;
+        for (i = 0; i < arrayIndex; i++) {
+            if (gmosFormatCborDecodeTokenCount (
+                parser, tokenIndex, &tokenCount)) {
+                tokenIndex += tokenCount;
+            } else {
+                matchOk = false;
+                break;
+            }
+        }
+    }
+
+    // Update the value index on successful completion.
+    if (matchOk) {
+        *valueIndex = tokenIndex;
+    }
+    return matchOk;
+}
+
+/*
  * Decodes the CBOR descriptor for a fixed or indefinite length map
  * and indicates the number of elements in the map.
  */
@@ -1026,18 +1124,25 @@ bool gmosFormatCborLookupMapIntKey (gmosFormatCborParser_t* parser,
 {
     bool matchOk = false;
     uint16_t mapLength;
+    uint16_t tokenCount;
     uint_fast16_t i;
     gmosFormatCborMapIntKey_t matchKey;
 
     // Check that there is a valid map at the specified token index and
     // then search for a matching key.
     if (gmosFormatCborDecodeMap (parser, tokenIndex, &mapLength)) {
+        tokenIndex += 1;
         for (i = 0; i < mapLength; i++) {
             if ((gmosFormatCborDecodeMapIntKey (
-                parser, tokenIndex + 1 + 2 * i, &matchKey)) &&
+                parser, tokenIndex, &matchKey)) &&
                 (key == matchKey)) {
-                *valueIndex = tokenIndex + 2 + 2 * i;
+                *valueIndex = tokenIndex + 1;
                 matchOk = true;
+                break;
+            } else if (gmosFormatCborDecodeTokenCount (
+                parser, tokenIndex + 1, &tokenCount)) {
+                tokenIndex += 1 + tokenCount;
+            } else {
                 break;
             }
         }
@@ -1080,17 +1185,24 @@ bool gmosFormatCborLookupMapTextKey (
 {
     bool matchOk = false;
     uint16_t mapLength;
+    uint16_t tokenCount;
     uint_fast16_t i;
 
     // Check that there is a valid map at the specified token index and
     // then search for a matching key.
     if ((keyLength <= GMOS_CONFIG_CBOR_MAX_STRING_SIZE) &&
         (gmosFormatCborDecodeMap (parser, tokenIndex, &mapLength))) {
+        tokenIndex += 1;
         for (i = 0; i < mapLength; i++) {
             if (gmosFormatCborMatchTextString (
-                parser, tokenIndex + 1 + 2 * i, key, keyLength)) {
-                *valueIndex = tokenIndex + 2 + 2 * i;
+                parser, tokenIndex, key, keyLength)) {
+                *valueIndex = tokenIndex + 1;
                 matchOk = true;
+                break;
+            } else if (gmosFormatCborDecodeTokenCount (
+                parser, tokenIndex + 1, &tokenCount)) {
+                tokenIndex += 1 + tokenCount;
+            } else {
                 break;
             }
         }
