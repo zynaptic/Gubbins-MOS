@@ -114,7 +114,7 @@ typedef struct gmosFormatCborToken_t {
     gmosFormatCborTypeParam_t typeParam;
 
     // Specify the offset of the associated data in the message buffer.
-    uint16_t dataOffset;
+    uint16_t baseOffset;
 
     // Specify the total number of tokens required to represent the
     // complete data item, including hierarchically nested tokens.
@@ -436,6 +436,20 @@ bool gmosFormatCborParserScan (gmosFormatCborParser_t* parser,
 void gmosFormatCborParserReset (gmosFormatCborParser_t* parser);
 
 /**
+ * Reads back the CBOR token at the specified parser token offset.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position from which the
+ *     CBOR parser token is to be read back.
+ * @param token This is a pointer to a parser token data structure that
+ *     will be populated with the token at the specified index position.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully reading the parser token and 'false' otherwise.
+ */
+bool gmosFormatCborDecodeToken (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, gmosFormatCborToken_t* token);
+
+/**
  * Determines the number of CBOR tokens that make up a given CBOR data
  * item. Complex CBOR data structures such as nested arrays and maps
  * consist of multiple tokens, and this function may be used to
@@ -455,6 +469,27 @@ void gmosFormatCborParserReset (gmosFormatCborParser_t* parser);
  */
 bool gmosFormatCborDecodeTokenCount (gmosFormatCborParser_t* parser,
     uint16_t tokenIndex, uint16_t* tokenCount);
+
+/**
+ * Determines the offset and length of the CBOR data encoding for a
+ * given CBOR data item in the source message buffer. This includes the
+ * source data for all nested elements in complex CBOR data structures.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the source data offset and length.
+ * @param sourceOffset This is a pointer to a variable that will be
+ *     updated with the offset of the CBOR data item in the source
+ *     message buffer.
+ * @param sourceLength This is a pointer to a variable that will be
+ *     updated with the length of the CBOR data item in the source
+ *     message buffer.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully determining the data item source data location and
+ *     'false' otherwise.
+ */
+bool gmosFormatCborDecodeTokenDataSource (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, uint16_t* sourceOffset, uint16_t* sourceLength);
 
 /**
  * Checks for a CBOR null value at the specified parser token index

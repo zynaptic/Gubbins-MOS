@@ -50,11 +50,32 @@ static uint_fast16_t gmosFormatCborParserScanNextToken (
 #endif
 
 /*
+ * This gets the data offset associated with a CBOR token. This is the
+ * first octet after the CBOR data type and parameter encoding.
+ */
+static uint_fast16_t gmosFormatCborGetDataOffset (
+    gmosFormatCborToken_t* token)
+{
+    uint8_t offsetIncrements [] = { 2, 3, 5, 9 };
+    uint_fast8_t additionalInfo;
+    uint_fast8_t offsetIncrement;
+
+    // Select the appropriate offset increment.
+    additionalInfo = token->typeSpecifier & 0x1F;
+    if (additionalInfo >= 24 && additionalInfo <= 27) {
+        offsetIncrement = offsetIncrements [additionalInfo - 24];
+    } else {
+        offsetIncrement = 1;
+    }
+    return token->baseOffset + offsetIncrement;
+}
+
+/*
  * This decodes the CBOR major type and associated parameter and stores
  * the result in the token data structure.
  */
 static inline bool gmosFormatCborDecodeWithParameter (
-    gmosBuffer_t* buffer, uint16_t bufferOffset,
+    gmosBuffer_t* buffer, uint_fast16_t bufferOffset,
     gmosFormatCborToken_t* token)
 {
     uint8_t firstByte;
@@ -71,7 +92,6 @@ static inline bool gmosFormatCborDecodeWithParameter (
     additionalInfo = firstByte & 0x1F;
     if (additionalInfo < 24) {
         token->typeParam = additionalInfo;
-        token->dataOffset = bufferOffset + 1;
     }
 
     // Use a single additional byte as the parameter.
@@ -80,7 +100,6 @@ static inline bool gmosFormatCborDecodeWithParameter (
             goto fail;
         }
         token->typeParam = dataBytes [0];
-        token->dataOffset = bufferOffset + 2;
     }
 
     // Use two additional bytes as the parameter.
@@ -91,7 +110,6 @@ static inline bool gmosFormatCborDecodeWithParameter (
         typeParam = dataBytes [0];
         typeParam = (typeParam << 8) + dataBytes [1];
         token->typeParam = typeParam;
-        token->dataOffset = bufferOffset + 3;
     }
 
     // Use four additional bytes as the parameter.
@@ -104,7 +122,6 @@ static inline bool gmosFormatCborDecodeWithParameter (
         typeParam = (typeParam << 8) + dataBytes [2];
         typeParam = (typeParam << 8) + dataBytes [3];
         token->typeParam = typeParam;
-        token->dataOffset = bufferOffset + 5;
     }
 
     // Use eight additional bytes as the parameter.
@@ -122,7 +139,6 @@ static inline bool gmosFormatCborDecodeWithParameter (
         typeParam = (typeParam << 8) + dataBytes [6];
         typeParam = (typeParam << 8) + dataBytes [7];
         token->typeParam = typeParam;
-        token->dataOffset = bufferOffset + 9;
 #else
         goto fail;
 #endif
@@ -131,13 +147,13 @@ static inline bool gmosFormatCborDecodeWithParameter (
     // Use no derived parameter value or fail on reserved settings.
     else if (additionalInfo == 31) {
         token->typeParam = 0;
-        token->dataOffset = bufferOffset + 1;
     } else {
         goto fail;
     }
 
-    // Set the cached type specifier.
+    // Set the cached type specifier and source buffer offset.
     token->typeSpecifier = firstByte;
+    token->baseOffset = bufferOffset;
     token->tokenCount = 1;
     return true;
 
@@ -150,7 +166,7 @@ fail :
  * This scans the contents of a fixed length array, returning the new
  * token offset on successful completion, or zero on failure.
  */
-static inline uint16_t gmosFormatCborParserScanFixedArray (
+static inline uint_fast16_t gmosFormatCborParserScanFixedArray (
     gmosFormatCborParser_t* parser, gmosFormatCborToken_t* token,
     uint_fast8_t scanDepth)
 {
@@ -182,7 +198,7 @@ static inline uint16_t gmosFormatCborParserScanFixedArray (
     }
 
     // The first array element is immediately after the array token.
-    newTokenOffset = token->dataOffset;
+    newTokenOffset = gmosFormatCborGetDataOffset (token);
     for (i = 0; i < arraySize; i++) {
         newTokenOffset = gmosFormatCborParserScanNextToken (
             parser, newTokenOffset, scanDepth, NULL);
@@ -207,7 +223,7 @@ exit :
  * This scans the contents of an indefinite length array, returning the
  * new token offset on successful completion or zero on failure.
  */
-static inline uint16_t gmosFormatCborParserScanIndefArray (
+static inline uint_fast16_t gmosFormatCborParserScanIndefArray (
     gmosFormatCborParser_t* parser, gmosFormatCborToken_t* token,
     uint_fast8_t scanDepth)
 {
@@ -232,7 +248,7 @@ static inline uint16_t gmosFormatCborParserScanIndefArray (
 
     // The first array element is immediately after the array token.
     // The break code is used to indicate the end of the array;
-    newTokenOffset = token->dataOffset;
+    newTokenOffset = gmosFormatCborGetDataOffset (token);
     arraySize = 0;
     while (true) {
         newTokenOffset = gmosFormatCborParserScanNextToken (
@@ -267,7 +283,7 @@ exit :
  * This scans the contents of a fixed length map, returning the new
  * token offset on successful completion, or zero on failure.
  */
-static inline uint16_t gmosFormatCborParserScanFixedMap (
+static inline uint_fast16_t gmosFormatCborParserScanFixedMap (
     gmosFormatCborParser_t* parser, gmosFormatCborToken_t* token,
     uint_fast8_t scanDepth)
 {
@@ -300,7 +316,7 @@ static inline uint16_t gmosFormatCborParserScanFixedMap (
 
     // The first map element is immediately after the map token and
     // each map element should consist of two tokens (key and value).
-    newTokenOffset = token->dataOffset;
+    newTokenOffset = gmosFormatCborGetDataOffset (token);
     for (i = 0; i < 2 * mapSize; i++) {
         newTokenOffset = gmosFormatCborParserScanNextToken (
             parser, newTokenOffset, scanDepth, NULL);
@@ -325,7 +341,7 @@ exit :
  * This scans the contents of an indefinite length map, returning the
  * new token offset on successful completion or zero on failure.
  */
-static inline uint16_t gmosFormatCborParserScanIndefMap (
+static inline uint_fast16_t gmosFormatCborParserScanIndefMap (
     gmosFormatCborParser_t* parser, gmosFormatCborToken_t* token,
     uint_fast8_t scanDepth)
 {
@@ -351,7 +367,7 @@ static inline uint16_t gmosFormatCborParserScanIndefMap (
     // The first map element is immediately after the map token and each
     // map element should consist of two tokens (key and value). The
     // break code is used to indicate the end of the map.
-    newTokenOffset = token->dataOffset;
+    newTokenOffset = gmosFormatCborGetDataOffset (token);
     mapSize = 0;
     while (true) {
 
@@ -399,7 +415,8 @@ exit :
 static inline uint_fast16_t gmosFormatCborParserScanFixedString (
     gmosFormatCborParser_t* parser, gmosFormatCborToken_t* token)
 {
-    uint_fast16_t newTokenOffset = token->dataOffset + token->typeParam;
+    uint_fast16_t newTokenOffset =
+        gmosFormatCborGetDataOffset (token) + token->typeParam;
     if (newTokenOffset > gmosBufferGetSize (&(parser->messageBuffer))) {
         newTokenOffset = 0;
     } else if (!gmosBufferAppend (&(parser->tokenBuffer),
@@ -436,7 +453,7 @@ static inline uint_fast16_t gmosFormatCborParserScanTag (
 
     // Process a single tagged data item. This follows immediately after
     // the tag number token.
-    newTokenOffset = token->dataOffset;
+    newTokenOffset = gmosFormatCborGetDataOffset (token);
     newTokenOffset = gmosFormatCborParserScanNextToken (
         parser, newTokenOffset, scanDepth, NULL);
 
@@ -513,7 +530,7 @@ static uint_fast16_t gmosFormatCborParserScanNextToken (
         case GMOS_FORMAT_CBOR_MAJOR_TYPE_INT_NEG :
             if (gmosBufferAppend (&(parser->tokenBuffer),
                 (uint8_t*) &token, sizeof (gmosFormatCborToken_t))) {
-                newTokenOffset = token.dataOffset;
+                newTokenOffset = gmosFormatCborGetDataOffset (&token);
             }
             break;
 
@@ -528,12 +545,12 @@ static uint_fast16_t gmosFormatCborParserScanNextToken (
         case GMOS_FORMAT_CBOR_MAJOR_TYPE_SIMPLE :
             if (token.typeSpecifier == 0xFF) {
                 if (breakDetect != NULL) {
-                    newTokenOffset = token.dataOffset;
+                    newTokenOffset = gmosFormatCborGetDataOffset (&token);
                     *breakDetect = true;
                 }
             } else if (gmosBufferAppend (&(parser->tokenBuffer),
                 (uint8_t*) &token, sizeof (gmosFormatCborToken_t))) {
-                newTokenOffset = token.dataOffset;
+                newTokenOffset = gmosFormatCborGetDataOffset (&token);
             }
             break;
         default :
@@ -586,6 +603,18 @@ void gmosFormatCborParserReset (gmosFormatCborParser_t* parser)
 }
 
 /*
+ * Reads back the CBOR token at the specified parser token offset.
+ */
+bool gmosFormatCborDecodeToken (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, gmosFormatCborToken_t* token)
+{
+    uint_fast16_t tokenBufferOffset =
+        tokenIndex * sizeof (gmosFormatCborToken_t);
+    return gmosBufferRead (&(parser->tokenBuffer), tokenBufferOffset,
+        (uint8_t*) token, sizeof (gmosFormatCborToken_t));
+}
+
+/*
  * Determines the number of CBOR tokens that make up a given CBOR data
  * item.
  */
@@ -603,6 +632,48 @@ bool gmosFormatCborDecodeTokenCount (gmosFormatCborParser_t* parser,
         *tokenCount = token.tokenCount;
         tokenValid = true;
     }
+    return tokenValid;
+}
+
+/*
+ * Determines the offset and length of the CBOR data encoding for a
+ * given CBOR data item in the source message buffer. This includes the
+ * source data for all nested elements in complex CBOR data structures.
+ */
+bool gmosFormatCborDecodeTokenDataSource (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, uint16_t* sourceOffset, uint16_t* sourceLength)
+{
+    bool tokenValid = false;
+    gmosFormatCborToken_t startToken;
+    gmosFormatCborToken_t endToken;
+    uint_fast16_t tokenBufferOffset = tokenIndex * sizeof (startToken);
+    uint_fast16_t tokenBufferSize =
+        gmosBufferGetSize (&(parser->tokenBuffer));
+
+    // Get the token descriptor at the specified offset and access the
+    // token base offset.
+    if (!gmosBufferRead (&(parser->tokenBuffer), tokenBufferOffset,
+        (uint8_t*) &startToken, sizeof (startToken))) {
+        goto out;
+    }
+    *sourceOffset = startToken.baseOffset;
+
+    // For the final token, use the end of the message buffer to
+    // determine the source data length.
+    tokenBufferOffset += startToken.tokenCount * sizeof (startToken);
+    if (tokenBufferOffset == tokenBufferSize) {
+        *sourceLength = gmosBufferGetSize (&(parser->messageBuffer)) -
+            startToken.baseOffset;
+        tokenValid = true;
+    }
+
+    // Read the end token descriptor if available.
+    else if (gmosBufferRead (&(parser->tokenBuffer), tokenBufferOffset,
+        (uint8_t*) &endToken, sizeof (endToken))) {
+        *sourceLength = endToken.baseOffset - startToken.baseOffset;
+        tokenValid = true;
+    }
+out :
     return tokenValid;
 }
 
@@ -932,7 +1003,8 @@ bool gmosFormatCborMatchTextString (gmosFormatCborParser_t* parser,
             blockSize = length - matchOffset;
         }
         if (!gmosBufferRead (&(parser->messageBuffer),
-            token.dataOffset + matchOffset, blockData, blockSize)) {
+            gmosFormatCborGetDataOffset (&token) + matchOffset,
+            blockData, blockSize)) {
             matchOk = false;
         } else {
             for (i = 0; i < blockSize; i++) {
@@ -977,7 +1049,8 @@ bool gmosFormatCborDecodeTextString (gmosFormatCborParser_t* parser,
             // Attempt to read the string data from the buffer and add
             // null termination.
             if (gmosBufferRead (&(parser->messageBuffer),
-                token.dataOffset, (uint8_t*) stringBuf, copySize)) {
+                gmosFormatCborGetDataOffset (&token),
+                (uint8_t*) stringBuf, copySize)) {
                 stringBuf [copySize] = '\0';
                 if (sourceLen != NULL) {
                     *sourceLen = token.typeParam;
@@ -1017,7 +1090,7 @@ bool gmosFormatCborDecodeByteString (gmosFormatCborParser_t* parser,
 
             // Attempt to read the string data from the buffer.
             if (gmosBufferRead (&(parser->messageBuffer),
-                token.dataOffset, byteBuf, copySize)) {
+                gmosFormatCborGetDataOffset (&token), byteBuf, copySize)) {
                 if (sourceLen != NULL) {
                     *sourceLen = token.typeParam;
                 }
