@@ -78,12 +78,6 @@ static gmosDriverIicStatus_t gmosDriverIicPalConvStatus (
             iicStatus = GMOS_DRIVER_IIC_STATUS_DRIVER_ERROR;
             break;
     }
-    if ((sdkStatus != i2cTransferInProgress) &&
-        (sdkStatus != i2cTransferDone)) {
-        GMOS_LOG_FMT (LOG_VERBOSE,
-            "Mapped EFR32 I2C status 0x%08X to GubbinsMOS status %d.",
-            sdkStatus, iicStatus);
-    }
     return iicStatus;
 }
 

@@ -232,4 +232,9 @@
  */
 #define GMOS_CONFIG_EEPROM_PLATFORM_LIBRARY true
 
+/*
+ * There is no dedicated hardware RTC support on the EFR32.
+ */
+#define GMOS_CONFIG_RTC_SOFTWARE_EMULATION true
+
 #endif // GMOS_PAL_CONFIG_H

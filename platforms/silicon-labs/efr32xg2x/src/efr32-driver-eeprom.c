@@ -235,6 +235,9 @@ bool gmosDriverEepromInit (gmosDriverEeprom_t* eeprom,
     // Set up the main EEPROM instance using the default NVM3 instance.
     eeprom->platformNvm = nvm3_defaultHandle;
     mainInstance = eeprom;
+    GMOS_LOG_FMT (LOG_INFO,
+        "NVM3 main EEPROM data size %d, max item size %d.",
+        nvm3_defaultInit->nvmSize, nvm3_defaultInit->maxObjectSize);
 
     // Start the EEPROM driver task.
     eeprom->eepromState = GMOS_DRIVER_EEPROM_STATE_IDLE;

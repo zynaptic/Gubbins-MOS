@@ -33,7 +33,7 @@
 typedef enum {
     GMOS_PAL_IIC_BUS_ID_I2C0,
     GMOS_PAL_IIC_BUS_ID_I2C1
-} gmosPalSpiBusId_t;
+} gmosPalIicBusId_t;
 
 /**
  * Defines the platform specific IIC interface hardware configuration
