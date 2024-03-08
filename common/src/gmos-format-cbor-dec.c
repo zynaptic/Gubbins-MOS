@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2024 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include <float.h>
+#include <math.h>
 
 #include "gmos-config.h"
 #include "gmos-platform.h"
@@ -902,6 +904,71 @@ bool gmosFormatCborDecodeFloat32 (gmosFormatCborParser_t* parser,
 #endif
 
 /*
+ * Decodes a CBOR numeric value at the specified parser token index
+ * position, converting it to a 32-bit floating point data type.
+ */
+#if GMOS_CONFIG_CBOR_SUPPORT_FLOAT_VALUES
+bool gmosFormatCborDecodeNumeric32 (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, float* value)
+{
+    bool tokenValid = false;
+    gmosFormatCborToken_t token;
+    uint_fast16_t tokenBufferOffset = tokenIndex * sizeof (token);
+
+    // Use a union rather than type punning to process the raw
+    // representation of the floating point value.
+    union { float value; uint32_t bits; } data32;
+#if GMOS_CONFIG_CBOR_SUPPORT_64_BIT_VALUES
+    union { double value; uint64_t bits; } data64;
+#endif
+
+    // Get the token descriptor at the specified offset and select the
+    // appropriate numeric value decoder.
+    if (gmosBufferRead (&(parser->tokenBuffer), tokenBufferOffset,
+        (uint8_t*) &token, sizeof (token))) {
+
+        // Decode positive integer values.
+        if ((token.typeSpecifier & 0xE0) ==
+            GMOS_FORMAT_CBOR_MAJOR_TYPE_INT_POS) {
+            *value = (float) token.typeParam;
+            tokenValid = true;
+        }
+
+        // Decode negative integer values.
+        else if ((token.typeSpecifier & 0xE0) ==
+            GMOS_FORMAT_CBOR_MAJOR_TYPE_INT_NEG) {
+            *value = -(float) token.typeParam;
+            tokenValid = true;
+        }
+
+        // Decode 32-bit floating point values.
+        else if (token.typeSpecifier ==
+            (GMOS_FORMAT_CBOR_MAJOR_TYPE_SIMPLE | 26)) {
+            data32.bits = (uint32_t) token.typeParam;
+            if (isfinite (data32.value)) {
+                *value = data32.value;
+                tokenValid = true;
+            }
+        }
+
+        // Decode 64-bit floating point values.
+#if GMOS_CONFIG_CBOR_SUPPORT_64_BIT_VALUES
+        else if (token.typeSpecifier ==
+            (GMOS_FORMAT_CBOR_MAJOR_TYPE_SIMPLE | 27)) {
+            data64.bits = (uint64_t) token.typeParam;
+            if ((isfinite (data64.value)) &&
+                (data64.value <= FLT_MAX) && (data64.value >= FLT_MIN)) {
+                *value = (float) data64.value;
+                tokenValid = true;
+            }
+        }
+#endif
+    }
+    return tokenValid;
+}
+#endif
+
+/*
  * Decodes a CBOR 64 bit floating point value at the specified parser
  * token index position. The encoded value must be in a valid format
  * for the IEEE 754 64 bit floating point data type.
@@ -936,6 +1003,68 @@ bool gmosFormatCborDecodeFloat64 (gmosFormatCborParser_t* parser,
             if (gmosFormatCborDecodeFloat32 (
                 parser, tokenIndex, &value32)) {
                 *value = (double) value32;
+                tokenValid = true;
+            }
+        }
+    }
+    return tokenValid;
+}
+#endif
+#endif
+
+/*
+ * Decodes a CBOR numeric value at the specified parser token index
+ * position, converting it to a 64-bit floating point data type.
+ */
+#if GMOS_CONFIG_CBOR_SUPPORT_FLOAT_VALUES
+#if GMOS_CONFIG_CBOR_SUPPORT_64_BIT_VALUES
+bool gmosFormatCborDecodeNumeric64 (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, double* value)
+{
+    bool tokenValid = false;
+    gmosFormatCborToken_t token;
+    uint_fast16_t tokenBufferOffset = tokenIndex * sizeof (token);
+
+    // Use a union rather than type punning to process the raw
+    // representation of the floating point value.
+    union { float value; uint32_t bits; } data32;
+    union { double value; uint64_t bits; } data64;
+
+    // Get the token descriptor at the specified offset and select the
+    // appropriate numeric value decoder.
+    if (gmosBufferRead (&(parser->tokenBuffer), tokenBufferOffset,
+        (uint8_t*) &token, sizeof (token))) {
+
+        // Decode positive integer values.
+        if ((token.typeSpecifier & 0xE0) ==
+            GMOS_FORMAT_CBOR_MAJOR_TYPE_INT_POS) {
+            *value = (double) token.typeParam;
+            tokenValid = true;
+        }
+
+        // Decode negative integer values.
+        else if ((token.typeSpecifier & 0xE0) ==
+            GMOS_FORMAT_CBOR_MAJOR_TYPE_INT_NEG) {
+            *value = -(double) token.typeParam;
+            tokenValid = true;
+        }
+
+        // Decode 32-bit floating point values.
+        else if (token.typeSpecifier ==
+            (GMOS_FORMAT_CBOR_MAJOR_TYPE_SIMPLE | 26)) {
+            data32.bits = (uint32_t) token.typeParam;
+            if (isfinite (data32.value)) {
+                *value = (double) data32.value;
+                tokenValid = true;
+            }
+        }
+
+        // Decode 64-bit floating point values.
+        else if (token.typeSpecifier ==
+            (GMOS_FORMAT_CBOR_MAJOR_TYPE_SIMPLE | 27)) {
+            data64.bits = (uint64_t) token.typeParam;
+            if (isfinite (data64.value)) {
+                *value = data64.value;
                 tokenValid = true;
             }
         }

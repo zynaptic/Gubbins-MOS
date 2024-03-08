@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2024 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -627,6 +627,27 @@ bool gmosFormatCborDecodeFloat32 (gmosFormatCborParser_t* parser,
 #endif
 
 /**
+ * Decodes a CBOR numeric value at the specified parser token index
+ * position, converting it to a 32-bit floating point data type. The
+ * encoded value must be in a valid format for an integer or IEEE 754
+ * 32-bit floating point data type, or a 64-bit floating point data type
+ * if 64-bit values are also supported.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR numeric value token.
+ * @param value This is a pointer to the variable which is to be updated
+ *     with the decoded 32-bit floating point value.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully decoding the 32-bit floating point value and 'false'
+ *     otherwise.
+ */
+#if GMOS_CONFIG_CBOR_SUPPORT_FLOAT_VALUES
+bool gmosFormatCborDecodeNumeric32 (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, float* value);
+#endif
+
+/**
  * Decodes a CBOR 64-bit floating point value at the specified parser
  * token index position. The encoded value must be in a valid format
  * for the IEEE 754 32-bit or 64-bit floating point data type.
@@ -644,6 +665,28 @@ bool gmosFormatCborDecodeFloat32 (gmosFormatCborParser_t* parser,
 #if GMOS_CONFIG_CBOR_SUPPORT_FLOAT_VALUES
 #if GMOS_CONFIG_CBOR_SUPPORT_64_BIT_VALUES
 bool gmosFormatCborDecodeFloat64 (gmosFormatCborParser_t* parser,
+    uint16_t tokenIndex, double* value);
+#endif
+#endif
+
+/**
+ * Decodes a CBOR numeric value at the specified parser token index
+ * position, converting it to a 64-bit floating point data type. The
+ * encoded value must be in a valid format for an integer or IEEE 754
+ * 32-bit or 64-bit floating point data type.
+ * @param parser This is a pointer to the parser instance that is to
+ *     be accessed.
+ * @param tokenIndex This is the token index position which is to be
+ *     checked for the presence of a CBOR numeric value token.
+ * @param value This is a pointer to the variable which is to be updated
+ *     with the decoded 64-bit floating point value.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully decoding the 64-bit floating point value and 'false'
+ *     otherwise.
+ */
+#if GMOS_CONFIG_CBOR_SUPPORT_FLOAT_VALUES
+#if GMOS_CONFIG_CBOR_SUPPORT_64_BIT_VALUES
+bool gmosFormatCborDecodeNumeric64 (gmosFormatCborParser_t* parser,
     uint16_t tokenIndex, double* value);
 #endif
 #endif
