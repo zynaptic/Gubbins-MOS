@@ -3,7 +3,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2023 Zynaptic Limited
+# Copyright 2023-2024 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -225,6 +225,27 @@ SECTIONS
     . = ALIGN(4);
     __bss_end__ = .;
   } > RAM AT > RAM
+
+  __ramfuncs_start__ = .;
+
+  __vma_ramfuncs_start__ = .;
+  __lma_ramfuncs_start__ = __etext + SIZEOF(.data);
+
+  __text_application_ram_offset__ = . - __vma_ramfuncs_start__;
+  text_application_ram . : AT(__lma_ramfuncs_start__ + __text_application_ram_offset__)
+  {
+    . = ALIGN(4);
+    __text_application_ram_start__ = .;
+    *(text_application_ram)
+    . = ALIGN(4);
+    __text_application_ram_end__ = .;
+  } > RAM
+
+  . = ALIGN(4);
+  __vma_ramfuncs_end__ = .;
+  __lma_ramfuncs_end__ = __lma_ramfuncs_start__ + __text_application_ram_offset__ + SIZEOF(text_application_ram);
+
+  __ramfuncs_end__ = .;
 
   .heap (COPY):
   {

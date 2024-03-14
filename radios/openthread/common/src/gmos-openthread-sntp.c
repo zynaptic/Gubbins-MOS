@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2024 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -41,7 +41,11 @@
 #define GMOS_OPENTHREAD_SNTP_SYNC_INTERVAL 300
 
 // Specify the NTP synchronisation retry interval to use.
-#define GMOS_OPENTHREAD_SNTP_RETRY_INTERVAL 30
+// TODO: This has been observed to get stuck in a failure loop with a
+// 'service busy' error code. The retry interval has been increased as
+// an interim measure, but retries really need to be reimplemented with
+// exponential backoff.
+#define GMOS_OPENTHREAD_SNTP_RETRY_INTERVAL 60
 
 /*
  * Specify the state space for the OpenThread SNTP client state machine.
@@ -68,7 +72,7 @@ static inline void gmosOpenThreadSntpClientTimeSync (
     gmosOpenThreadSntpClient_t* sntpClient, uint64_t ntpTime)
 {
     GMOS_LOG_FMT (LOG_VERBOSE,
-        "OpenThread :  SNTP Sync to epoch %d, time %d",
+        "OpenThread : SNTP Sync to epoch %d, time %d",
         (uint32_t) (ntpTime >> 32), (uint32_t) ntpTime);
     sntpClient->lastNtpTime = (uint32_t) ntpTime;
     sntpClient->lastNtpTimestamp = gmosPalGetTimer ();

@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2023 Zynaptic Limited
+# Copyright 2023-2024 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,10 +41,10 @@ endif
 ARCH_NAME = cortex-m33
 
 # Specify the location of the toolchain directory. By default this
-# assumes the Silicon Labs Simplicity V5 toolchain has been installed
-# in the user's home directory.
+# assumes the Silicon Labs recommended ARM toolchain located in the /opt
+# directory.
 ifndef ARM_GCC_TOOLCHAIN_DIR
-ARM_GCC_TOOLCHAIN_DIR = ${HOME}/SimplicityStudio_v5/developer/toolchains/gnu_arm/10.3_2021.10/
+ARM_GCC_TOOLCHAIN_DIR = /opt/arm-gnu-toolchain-12.2.rel1-x86_64-arm-none-eabi/
 endif
 
 # Specify the location of the Silicon Labs Gecko SDK directory. By

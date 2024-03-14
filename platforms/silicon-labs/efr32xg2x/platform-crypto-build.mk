@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2023 Zynaptic Limited
+# Copyright 2023-2024 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,6 +48,7 @@ PLATFORM_CRYPTO_OBJ_FILE_NAMES = \
 	crypto-sl_se_manager_entropy.o \
 	crypto-sl_se_manager_cipher.o \
 	crypto-sl_se_manager_hash.o \
+	crypto-sl_se_manager_signature.o \
 	crypto-sl_se_manager_key_handling.o \
 	crypto-sl_se_manager_key_derivation.o \
 	crypto-sl_psa_its_nvm3.o \
@@ -74,6 +75,7 @@ PLATFORM_CRYPTO_OBJ_FILE_NAMES = \
 	crypto-mbedtls-platform_util.o \
 	crypto-mbedtls-debug.o \
 	crypto-mbedtls-bignum.o \
+	crypto-mbedtls-bignum_core.o \
 	crypto-mbedtls-constant_time.o \
 	crypto-mbedtls-entropy.o \
 	crypto-mbedtls-md.o \
@@ -102,15 +104,17 @@ PLATFORM_CRYPTO_OBJ_FILE_NAMES = \
 	crypto-mbedtls-ssl_tls12_client.o \
 	crypto-mbedtls-ssl_ciphersuites.o \
 	crypto-mbedtls-ssl_debug_helpers_generated.o \
+	crypto-mbedtls-psa_util.o \
 	crypto-mbedtls-psa_crypto.o \
 	crypto-mbedtls-psa_crypto_cipher.o \
 	crypto-mbedtls-psa_crypto_hash.o \
 	crypto-mbedtls-psa_crypto_mac.o \
+	crypto-mbedtls-psa_crypto_aead.o \
 	crypto-mbedtls-psa_crypto_ecp.o \
 	crypto-mbedtls-psa_crypto_client.o \
 	crypto-mbedtls-psa_crypto_storage.o \
 	crypto-mbedtls-psa_crypto_slot_management.o \
-	crypto-mbedtls-psa_crypto_driver_wrappers.o
+	crypto-mbedtls-psa_crypto_driver_wrappers_no_static.o
 
 # Specify the object files that need to be built. The local build
 # directory should already be defined.

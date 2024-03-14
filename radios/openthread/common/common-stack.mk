@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2023 Zynaptic Limited
+# Copyright 2023-2024 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ OPENTHREAD_OBJ_FILE_NAMES += \
 # Add the OpenThread common components to the build. Exclude the
 # extention example file which really shouldn't be in this directory.
 OPENTHREAD_COMMON_FILE_NAMES = \
-	$(shell cd ${OPENTHREAD_IMPORT_PATH}/src/core/common; ls *.cpp | grep -v ^extension_example.cpp)
+	$(shell cd ${OPENTHREAD_IMPORT_PATH}/src/core/common; ls *.cpp)
 OPENTHREAD_OBJ_FILE_NAMES += \
 	$(addprefix ot_core_common_, $(OPENTHREAD_COMMON_FILE_NAMES:.cpp=.o))
 
@@ -59,6 +59,10 @@ OPENTHREAD_UTILITY_FILE_NAMES = \
 	$(shell cd ${OPENTHREAD_IMPORT_PATH}/src/core/utils; ls *.cpp)
 OPENTHREAD_OBJ_FILE_NAMES += \
 	$(addprefix ot_core_utils_, $(OPENTHREAD_UTILITY_FILE_NAMES:.cpp=.o))
+
+# Add the OpenThread instance component to the build.
+OPENTHREAD_OBJ_FILE_NAMES += \
+	ot_core_instance_instance.o
 
 # Add the OpenThread CLI support to the build.
 OPENTHREAD_CLI_FILE_NAMES = \
@@ -149,6 +153,10 @@ ${LOCAL_DIR}/ot_core_common_%.o : ${OPENTHREAD_IMPORT_PATH}/src/core/common/%.cp
 
 # Build rule for core OpenThread utility components.
 ${LOCAL_DIR}/ot_core_utils_%.o : ${OPENTHREAD_IMPORT_PATH}/src/core/utils/%.cpp | ${LOCAL_DIR}
+	${CC} ${CPPFLAGS} ${OTFLAGS} ${addprefix -I, ${OPENTHREAD_HEADER_DIRS}} -o $@ $<
+
+# Build rule for core OpenThread instance components.
+${LOCAL_DIR}/ot_core_instance_%.o : ${OPENTHREAD_IMPORT_PATH}/src/core/instance/%.cpp | ${LOCAL_DIR}
 	${CC} ${CPPFLAGS} ${OTFLAGS} ${addprefix -I, ${OPENTHREAD_HEADER_DIRS}} -o $@ $<
 
 # Build rule for OpenThread CLI components.

@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2023 Zynaptic Limited
+# Copyright 2023-2024 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -51,6 +51,7 @@ OPENTHREAD_HEADER_DIRS = \
 	${OPENTHREAD_EFR32_PLATFORM_DIR}/platform-abstraction/efr32 \
 	${OPENTHREAD_EFR32_PLATFORM_DIR}/platform-abstraction/include \
 	${GMOS_GECKO_SDK_DIR}/util/third_party/mbedtls/include \
+	${GMOS_GECKO_SDK_DIR}/util/third_party/mbedtls/library \
 	${GMOS_GECKO_SDK_DIR}/platform/service/device_init/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/se_manager/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/sl_psa_driver/inc \

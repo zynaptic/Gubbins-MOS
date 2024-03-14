@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2024 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -207,4 +207,67 @@ void gmosPalFree (void* memPtr)
 float gmosPalGetCoreTempFloat (void)
 {
     return EMU_TemperatureGet ();
+}
+
+/*
+ * Provide standard library stubs to avoid linker warnings.
+ */
+int _close (int fd)
+{
+    (void) fd;
+    return -1;
+}
+
+int _fstat (int fd, void* st)
+{
+    (void) fd;
+    (void) st;
+    return -1;
+}
+
+int _isatty (int fd)
+{
+    (void) fd;
+    return -1;
+}
+
+int _lseek (int fd, int ptr, int dir)
+{
+    (void) fd;
+    (void) ptr;
+    (void) dir;
+    return 0;
+}
+
+void _exit (int status)
+{
+    (void) status;
+}
+
+void _kill (int pid, int sig)
+{
+    (void) pid;
+    (void) sig;
+    return;
+}
+
+int _getpid (void)
+{
+    return -1;
+}
+
+int _read (int fd, char *buf, int count)
+{
+    (void) fd;
+    (void) buf;
+    (void) count;
+    return -1;
+}
+
+int _write (int fd, char *buf, int count)
+{
+    (void) fd;
+    (void) buf;
+    (void) count;
+    return -1;
 }
