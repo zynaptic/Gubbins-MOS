@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2021 Zynaptic Limited
+ * Copyright 2020-2024 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -135,6 +135,26 @@ uint32_t gmosEventAssignBits (gmosEvent_t* event, uint32_t bitValues)
     gmosPalMutexLock ();
     eventBits = event->eventBits;
     event->eventBits = bitValues;
+    gmosEventAppendToQueue (event);
+    gmosPalMutexUnlock ();
+    return eventBits;
+}
+
+/*
+ * Assigns a masked set of event bits, as specified by the bit values
+ * and the associated bit mask.
+ */
+uint32_t gmosEventAssignMaskedBits (gmosEvent_t* event,
+    uint32_t bitMask, uint32_t bitValues)
+{
+    uint32_t eventBits = 0;
+
+    // Set the event bits with interrupts disabled and then add the
+    // event to the pending queue.
+    gmosPalMutexLock ();
+    eventBits = event->eventBits;
+    event->eventBits &= ~bitMask;
+    event->eventBits |= bitValues & bitMask;
     gmosEventAppendToQueue (event);
     gmosPalMutexUnlock ();
     return eventBits;

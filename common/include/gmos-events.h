@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2024 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -121,6 +121,24 @@ bool gmosEventTestAnyBits (gmosEvent_t* event, uint32_t bitMask);
  * @return Returns the state of the event bits prior to modification.
  */
 uint32_t gmosEventAssignBits (gmosEvent_t* event, uint32_t bitValues);
+
+/**
+ * Assigns a masked set of event bits, as specified by the bit values
+ * and the associated bit mask. For each bit in the bit mask that is set
+ * to '1', the corresponding event bit will be set to the bit value at
+ * the same position in the bit values parameter. Assigning masked event
+ * bits will always queue the consumer task for subsequent event
+ * processing.
+ * @param event This is the event state data structure for which the
+ *     specified event bits are being modified.
+ * @param bitMask This is a bit vector which is used to select the bits
+ *     that are to be assigned to a new value.
+ * @param bitValues This is a bit vector specifying the new values of
+ *     all the event bits.
+ * @return Returns the state of the event bits prior to modification.
+ */
+uint32_t gmosEventAssignMaskedBits (gmosEvent_t* event,
+    uint32_t bitMask, uint32_t bitValues);
 
 /**
  * Sets one or more event bits, as specified by the bit mask. For each

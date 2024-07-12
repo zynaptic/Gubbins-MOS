@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2022 Zynaptic Limited
+ * Copyright 2020-2024 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -35,6 +35,7 @@
 #define TASK_STATE_READY        0x03
 #define TASK_STATE_ACTIVE       0x04
 #define TASK_STATE_SUSPENDED    0x05
+#define TASK_STATE_BUSY_WAIT    0x06
 
 // Specifies the start of the scheduled task list.
 static gmosTaskState_t* scheduledTasks = NULL;
@@ -229,7 +230,8 @@ uint32_t gmosSchedulerStep (void)
     // Process waiting event consumer tasks, marking them ready to run.
     queuedTask = gmosEventGetNextConsumer ();
     while (queuedTask != NULL) {
-        if (queuedTask->taskState != TASK_STATE_READY) {
+        if ((queuedTask->taskState != TASK_STATE_READY) &&
+            (queuedTask->taskState != TASK_STATE_BUSY_WAIT)) {
             gmosSchedulerRemoveTask (queuedTask);
             gmosSchedulerMakeTaskReady (queuedTask);
         }
@@ -301,6 +303,28 @@ void gmosSchedulerTaskResume (gmosTaskState_t* resumedTask)
         gmosSchedulerRemoveTask (resumedTask);
         gmosSchedulerMakeTaskReady (resumedTask);
     }
+}
+
+/*
+ * Places the current task in a busy wait state, which allows other
+ * scheduled tasks to execute while holding the state of the current
+ * task on the call stack.
+ */
+void gmosSchedulerTaskBusyWait (void)
+{
+    gmosTaskState_t* idleTask;
+
+    // Set the current task to busy waiting.
+    currentTask->taskState = TASK_STATE_BUSY_WAIT;
+    idleTask = currentTask;
+    currentTask = NULL;
+
+    // Perform a single scheduler processing step.
+    gmosSchedulerStep ();
+
+    // Set the busy waiting task to active.
+    currentTask = idleTask;
+    currentTask->taskState = TASK_STATE_ACTIVE;
 }
 
 /*

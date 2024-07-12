@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020 Zynaptic Limited
+ * Copyright 2020-2024 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -227,6 +227,18 @@ void gmosSchedulerTaskStart (gmosTaskState_t* newTask);
  *     that is to be resumed.
  */
 void gmosSchedulerTaskResume (gmosTaskState_t* resumedTask);
+
+/**
+ * Places the current task in a busy wait state, which allows other
+ * scheduled tasks to execute while holding the state of the current
+ * task on the call stack.  This should be used with care as it can
+ * cause potential resource starvation, synchronisation and deadlock
+ * issues. The main use for this function is to support third party
+ * libraries which assume the use of a blocking I/O model, such as the
+ * LittleFS file system. Note that the device can not enter its low
+ * power state while busy waiting.
+ */
+void gmosSchedulerTaskBusyWait (void);
 
 /**
  * Requests that the scheduler avoids powering down the device. This
