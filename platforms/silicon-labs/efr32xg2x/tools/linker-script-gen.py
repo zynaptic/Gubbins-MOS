@@ -45,6 +45,16 @@ def parseCommandLine():
         help="the name of the target device",
     )
     parser.add_argument(
+        "--no_bootloader",
+        action="store_true",
+        help="use direct programming without bootloader",
+    )
+    parser.add_argument(
+        "--spi_bootloader",
+        action="store_true",
+        help="use external SPI flash for bootloader images",
+    )
+    parser.add_argument(
         "--output", default=None, help="the name of the generated output file"
     )
     args = parser.parse_args()
@@ -62,6 +72,18 @@ deviceParameterTable = {
         "FLASH_PAGE_SIZE": 8 * 1024,
         "RAM_MEMORY_SIZE": 256 * 1024,
         "NVM3_PAGE_ALLOCATION": 5,
+        "BOOTLOADER_APP_OFFSET": 0x08006000,
+        "BOOTLOADER_IMAGE_OFFSET": 0x80C0000,
+    },
+    "MGM240PB22VNA": {
+        "TARGET_DEVICE": "MGM240PB22VNA",
+        "FLASH_MEMORY_BASE": 0x08000000,
+        "FLASH_MEMORY_SIZE": 1536 * 1024,
+        "FLASH_PAGE_SIZE": 8 * 1024,
+        "RAM_MEMORY_SIZE": 256 * 1024,
+        "NVM3_PAGE_ALLOCATION": 5,
+        "BOOTLOADER_APP_OFFSET": 0x08006000,
+        "BOOTLOADER_IMAGE_OFFSET": 0x80C0000,
     },
 }
 
@@ -309,8 +331,6 @@ def main(params, out):
     # The reserved flash area is used for the NVM3 EEPROM emulation,
     # with the final page being reserved for permanent token and key
     # storage.
-    # TODO: This will need to be updated to support bootloader based
-    # images.
     flashMemoryTop = (
         deviceParams["FLASH_MEMORY_BASE"] + deviceParams["FLASH_MEMORY_SIZE"]
     )
@@ -318,8 +338,23 @@ def main(params, out):
         1 + deviceParams["NVM3_PAGE_ALLOCATION"]
     )
     flashNvmBase = flashMemoryTop - flashNvmSize
-    flashImageSize = deviceParams["FLASH_MEMORY_SIZE"] - flashNvmSize
-    flashImageBase = deviceParams["FLASH_MEMORY_BASE"]
+
+    # The application image top address is the start of the bootloader
+    # image storage area if an internal storage application bootloader
+    # is being used. Otherwise it is the start of the NVM3 memory area.
+    if params.no_bootloader or params.spi_bootloader:
+        flashImageTop = flashNvmBase
+    else:
+        flashImageTop = deviceParams["BOOTLOADER_IMAGE_OFFSET"]
+
+    # The application image base address is the end of the bootloader
+    # block for normal use or the start of flash memory if no bootloader
+    # is being used.
+    if params.no_bootloader:
+        flashImageBase = deviceParams["FLASH_MEMORY_BASE"]
+    else:
+        flashImageBase = deviceParams["BOOTLOADER_APP_OFFSET"]
+    flashImageSize = flashImageTop - flashImageBase
 
     deviceParams["FLASH_IMAGE_SIZE"] = flashImageSize
     deviceParams["FLASH_IMAGE_BASE"] = flashImageBase

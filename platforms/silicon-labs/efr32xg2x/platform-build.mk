@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2023 Zynaptic Limited
+# Copyright 2023-2024 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,6 +53,7 @@ PLATFORM_OBJ_FILE_NAMES = \
 	efr32-driver-spi.o \
 	efr32-driver-iic.o \
 	efr32-driver-eeprom.o \
+	efr32-driver-flash.o \
 	sdk-em_system.o \
 	sdk-em_core.o \
 	sdk-em_emu.o \

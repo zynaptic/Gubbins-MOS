@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2024 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@
 /*
  * This file implements a GubbinsMOS EEPROM driver wrapper for the
  * platform specific EFR32xG2x NVM3 non-volatile memory library. It
- * only supports the single default NVM3 area a the top of flash
+ * only supports the single default NVM3 area at the top of flash
  * memory.
  */
 

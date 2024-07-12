@@ -28,14 +28,16 @@ ifndef GMOS_TARGET_DEVICE_FAMILY
 GMOS_TARGET_DEVICE_FAMILY = EFR32MG24
 endif
 
-# The lower case family name is used in some of the SDK file names.
-GMOS_TARGET_DEVICE_FAMILY_LC := $(shell echo $(GMOS_TARGET_DEVICE_FAMILY) | tr A-Z a-z)
-
 # Specifies the target device variant to use. By default this is the
 # device used on the xG24 +20dBm Pro development kit (xG24-PK6010A).
 ifndef GMOS_TARGET_DEVICE_VARIANT
 GMOS_TARGET_DEVICE_VARIANT = EFR32MG24B220F1536IM48
 endif
+
+# The lower case family and variant names are used in some of the SDK
+# file names.
+GMOS_TARGET_DEVICE_FAMILY_LC := $(shell echo $(GMOS_TARGET_DEVICE_FAMILY) | tr A-Z a-z)
+GMOS_TARGET_DEVICE_VARIANT_LC := $(shell echo $(GMOS_TARGET_DEVICE_VARIANT) | tr A-Z a-z)
 
 # All EFR32xG2x devices use the Cortex-M33 core.
 ARCH_NAME = cortex-m33

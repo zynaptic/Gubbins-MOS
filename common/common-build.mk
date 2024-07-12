@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2020 Zynaptic Limited
+# Copyright 2020-2024 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -44,6 +44,7 @@ COMMON_OBJ_FILE_NAMES = \
 	gmos-driver-rtc-sw.o \
 	gmos-driver-lcd.o \
 	gmos-driver-touch.o \
+	gmos-driver-flash.o \
 	gmos-driver-eeprom.o \
 	gmos-driver-eeprom-sw.o
 
