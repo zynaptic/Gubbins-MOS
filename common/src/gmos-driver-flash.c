@@ -166,6 +166,13 @@ bool gmosDriverFlashWrite (gmosDriverFlash_t* flash,
         started = true;
     }
 
+    // Check the write enable status.
+    else if (flash->writeEnable == 0) {
+        eventBits = GMOS_DRIVER_FLASH_EVENT_COMPLETION_FLAG |
+            GMOS_DRIVER_FLASH_STATUS_WRITE_LOCKED;
+        started = true;
+    }
+
     // Issue the platform abstraction layer write request.
     else {
         started = flash->palWrite (flash, writeAddr, writeData, writeSize);
@@ -211,6 +218,13 @@ bool gmosDriverFlashErase (gmosDriverFlash_t* flash,
         started = true;
     }
 
+    // Check the write enable status.
+    else if (flash->writeEnable == 0) {
+        eventBits = GMOS_DRIVER_FLASH_EVENT_COMPLETION_FLAG |
+            GMOS_DRIVER_FLASH_STATUS_WRITE_LOCKED;
+        started = true;
+    }
+
     // Issue the platform abstraction layer erase request.
     else {
         started = flash->palErase (flash, eraseAddr);
@@ -244,6 +258,13 @@ bool gmosDriverFlashEraseAll (gmosDriverFlash_t* flash)
     // Wait until the flash memory is ready for access.
     else if (flash->flashState != GMOS_DRIVER_FLASH_STATE_IDLE) {
         started = false;
+    }
+
+    // Check the write enable status.
+    else if (flash->writeEnable == 0) {
+        eventBits = GMOS_DRIVER_FLASH_EVENT_COMPLETION_FLAG |
+            GMOS_DRIVER_FLASH_STATUS_WRITE_LOCKED;
+        started = true;
     }
 
     // Issue the platform abstraction layer erase request.

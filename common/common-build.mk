@@ -45,6 +45,7 @@ COMMON_OBJ_FILE_NAMES = \
 	gmos-driver-lcd.o \
 	gmos-driver-touch.o \
 	gmos-driver-flash.o \
+	gmos-driver-flash-sfdp.o \
 	gmos-driver-eeprom.o \
 	gmos-driver-eeprom-sw.o
 
