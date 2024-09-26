@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2022 Zynaptic Limited
+# Copyright 2022-2024 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,6 +41,7 @@ WIZNET_OBJ_FILE_NAMES = \
 	gmos-tcpip-stack.o \
 	gmos-tcpip-dhcp.o \
 	gmos-tcpip-dns.o \
+	gmos-tcpip-links.o \
 	wiznet-driver-core.o \
 	wiznet-driver-socket.o \
 	wiznet-driver-socket-udp.o \

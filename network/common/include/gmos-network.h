@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022 Zynaptic Limited
+ * Copyright 2022-2024 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -69,5 +69,32 @@ typedef enum {
     GMOS_NETWORK_STATUS_UNSUPPORTED,
 
 } gmosNetworkStatus_t;
+
+/**
+ * This enumeration specifies the set of general purpose network status
+ * notification codes that may be forwarded by GubbinsMOS network
+ * services via status notification callbacks.
+ */
+typedef enum {
+
+    // Indicates that a network connection has been established.
+    GMOS_NETWORK_NOTIFY_CONNECTED,
+
+    // Indicates that a network connection has been terminated.
+    GMOS_NETWORK_NOTIFY_DISCONNECTED
+
+} gmosNetworkNotify_t;
+
+/**
+ * Specifies the function prototype to be used for general purpose
+ * network status notification callbacks.
+ * @param context This is an opaque pointer which references the
+ *     implementation specific network context data that was specified
+ *     when registering the callback handler.
+ * @param notification This is the network status notification that is
+ *     being sent via the callback.
+ */
+typedef void (*gmosNetworkNotifyHandler_t) (
+    void* context, gmosNetworkNotify_t notification);
 
 #endif // GMOS_NETWORK_H

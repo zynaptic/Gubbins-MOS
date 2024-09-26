@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022 Zynaptic Limited
+ * Copyright 2022-2024 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@
 #include "gmos-platform.h"
 #include "gmos-mempool.h"
 #include "gmos-streams.h"
+#include "gmos-driver-gpio.h"
 #include "gmos-driver-spi.h"
 #include "gmos-driver-tcpip.h"
 #include "wiznet-driver-tcpip.h"
@@ -370,8 +371,9 @@ bool gmosNalTcpipWiznetSpiInit (gmosDriverTcpip_t* tcpipStack)
     // Initialise the SPI device, with the worker task as the SPI device
     // event consumer.
     if (!gmosDriverSpiDeviceInit (spiDevice, spiWorkerTask,
-        nalConfig->spiChipSelectPin, WIZNET_SPI_CLOCK_FREQUENCY,
-        WIZNET_SPI_CLOCK_MODE)) {
+        nalConfig->spiChipSelectPin,
+        GMOS_DRIVER_SPI_CHIP_SELECT_OPTION_ACTIVE_LOW,
+        WIZNET_SPI_CLOCK_FREQUENCY, WIZNET_SPI_CLOCK_MODE)) {
         return false;
     }
 

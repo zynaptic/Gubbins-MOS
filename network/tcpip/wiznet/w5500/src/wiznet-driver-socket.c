@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022 Zynaptic Limited
+ * Copyright 2022-2024 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -284,7 +284,7 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketProcessTickCommon (
 
         // Set the local source port for all sockets.
         case WIZNET_SOCKET_STATE_TCP_SET_PORT :
-            isTcpSocket = true;
+            isTcpSocket = true; // Fallthrough.
         case WIZNET_SOCKET_STATE_UDP_SET_PORT :
             if (gmosNalTcpipSocketSetPort (socket)) {
                 nextState = isTcpSocket ?
@@ -295,7 +295,7 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketProcessTickCommon (
 
         // Send the command to open the socket on the W5500.
         case WIZNET_SOCKET_STATE_TCP_SET_OPEN :
-            isTcpSocket = true;
+            isTcpSocket = true; // Fallthrough.
         case WIZNET_SOCKET_STATE_UDP_SET_OPEN :
             if (gmosNalTcpipSocketSetOpen (socket, isTcpSocket)) {
                 nextState = isTcpSocket ?
@@ -306,7 +306,7 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketProcessTickCommon (
 
         // Issue a read request for the socket status register.
         case WIZNET_SOCKET_STATE_TCP_OPEN_STATUS_READ :
-            isTcpSocket = true;
+            isTcpSocket = true; // Fallthrough.
         case WIZNET_SOCKET_STATE_UDP_OPEN_STATUS_READ :
             if (gmosNalTcpipSocketStatusRead (socket)) {
                 nextState = isTcpSocket ?
@@ -325,7 +325,7 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketProcessTickCommon (
 
         // Set the required interrupt enable flags.
         case WIZNET_SOCKET_STATE_TCP_INTERRUPT_ENABLE :
-            isTcpSocket = true;
+            isTcpSocket = true; // Fallthrough.
         case WIZNET_SOCKET_STATE_UDP_INTERRUPT_ENABLE :
             if (gmosNalTcpipSocketInterruptEnable (
                 socket, isTcpSocket, true)) {
@@ -404,7 +404,7 @@ static inline void gmosNalTcpipSocketProcessResponseCommon (
         // Implement status register check after opening a new socket.
         // Retry the status request if required.
         case WIZNET_SOCKET_STATE_TCP_OPEN_STATUS_CHECK :
-            isTcpSocket = true;
+            isTcpSocket = true; // Fallthrough.
         case WIZNET_SOCKET_STATE_UDP_OPEN_STATUS_CHECK :
             expectedStatus = isTcpSocket ?
                 WIZNET_SPI_ADAPTOR_SOCKET_STATUS_INIT_TCP :

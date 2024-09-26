@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022 Zynaptic Limited
+ * Copyright 2022-2024 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include "gmos-buffers.h"
+#include "gmos-driver-spi.h"
 #include "gmos-driver-tcpip.h"
 #include "wiznet-driver-config.h"
 
@@ -170,7 +171,7 @@ typedef struct wiznetSpiAdaptorCmd_t {
 #define WIZNET_SPI_CLOCK_FREQUENCY 32000
 
 // Specify the SPI interface clock mode to use.
-#define WIZNET_SPI_CLOCK_MODE 0
+#define WIZNET_SPI_CLOCK_MODE GMOS_DRIVER_SPI_CLOCK_MODE_0
 
 // Specify the size of the SPI adaptor streams as an integer number
 // of SPI commands.
