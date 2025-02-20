@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2023-2024 Zynaptic Limited
+# Copyright 2023-2025 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -57,12 +57,30 @@ GMOS_GECKO_SDK_DIR = ${HOME}/SimplicityStudio/SDKs/gecko_sdk
 endif
 
 # Specify device specific SDK file locations.
-GMOS_TARGET_DEVICE_FAMILY_DIR := \
+GMOS_TARGET_DEVICE_FAMILY_DIR = \
 	${GMOS_GECKO_SDK_DIR}/platform/Device/SiliconLabs/${GMOS_TARGET_DEVICE_FAMILY}
 
 # Specify that the platform layer provides the PSA cryptography library
-# and provide the path to the API header directory.
-GMOS_PLATFORM_PSA_CRYPTO_API_DIR = ${GMOS_GECKO_SDK_DIR}/util/third_party/mbedtls/include
+# and specify the path to the required API header directories, including
+# platform specific hardware support directories.
+GMOS_PLATFORM_PSA_CRYPTO_API_DIRS = \
+	${GMOS_GECKO_SDK_DIR}/platform/common/inc \
+	${GMOS_GECKO_SDK_DIR}/platform/emlib/inc \
+	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/se_manager/inc \
+	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/sl_psa_driver/inc \
+	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/inc \
+	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/config \
+	${GMOS_GECKO_SDK_DIR}/platform/CMSIS/Core/Include \
+	${GMOS_TARGET_DEVICE_FAMILY_DIR}/Include
+
+# Specify that the platform layer provides the MbedTLS protocol library
+# and specify the path to the API header directory.
+GMOS_PLATFORM_MBEDTLS_API_DIRS = \
+	${GMOS_GECKO_SDK_DIR}/util/third_party/mbedtls/include
+
+# Specify that the platform layer provides a common MbedTLS
+# configuration file.
+GMOS_PLATFORM_MBEDTLS_CONFIG_FILE = efr32-crypto-config.h
 
 # Specify the various standard command line tools to use.
 CC = $(ARM_GCC_TOOLCHAIN_DIR)/bin/arm-none-eabi-gcc

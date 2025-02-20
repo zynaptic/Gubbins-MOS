@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023-2024 Zynaptic Limited
+ * Copyright 2023-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,9 +24,9 @@
 #ifndef EFR32_CRYPTO_CONFIG_H
 #define EFR32_CRYPTO_CONFIG_H
 
-// The device definition file is required for setting the NVRAM driver
-// memory locations.
-#include "em_device.h"
+// Allow application configuration options to override the default
+// settings.
+#include "gmos-config.h"
 
 // Provide entropy source using platform specific hardware.
 #define MBEDTLS_ENTROPY_C
@@ -50,9 +50,6 @@
 #define MBEDTLS_PSA_CRYPTO_C
 #define MBEDTLS_PSA_CRYPTO_STORAGE_C
 #define MBEDTLS_PSA_CRYPTO_DRIVERS
-#define MBEDTLS_PSA_CRYPTO_CONFIG
-#define MBEDTLS_PSA_CRYPTO_CONFIG_FILE "efr32-crypto-config-psa.h"
-#include "mbedtls/config_psa.h"
 
 // Enable PAKE support.
 #define MBEDTLS_ECP_C
@@ -75,6 +72,9 @@
 #define MBEDTLS_PLATFORM_MEMORY
 #define MBEDTLS_PLATFORM_CALLOC_MACRO gmosPalCalloc
 #define MBEDTLS_PLATFORM_FREE_MACRO   gmosPalFree
+
+// Infer PSA settings from legacy MbedTLS options.
+#include "mbedtls/config_psa.h"
 
 // Include the platform specific configuration settings for PSA hardware
 // acceleration.

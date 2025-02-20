@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2023-2024 Zynaptic Limited
+# Copyright 2023-2025 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,6 +25,8 @@
 # List all the header directories that are required to build the
 # platform cryptography library source code.
 PLATFORM_CRYPTO_HEADER_DIRS = \
+	${GMOS_APP_DIR}/include \
+	${GMOS_GIT_DIR}/common/include \
 	${TARGET_PLATFORM_DIR}/include \
 	${GMOS_GECKO_SDK_DIR}/util/third_party/mbedtls/include \
 	${GMOS_GECKO_SDK_DIR}/util/third_party/mbedtls/library \
@@ -32,7 +34,6 @@ PLATFORM_CRYPTO_HEADER_DIRS = \
 	${GMOS_GECKO_SDK_DIR}/platform/emlib/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/emdrv/common/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/emdrv/nvm3/inc \
-	${GMOS_GECKO_SDK_DIR}/platform/emdrv/nvm3/config/s2 \
 	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/se_manager/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/sl_psa_driver/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/inc \
@@ -82,8 +83,10 @@ PLATFORM_CRYPTO_OBJ_FILE_NAMES = \
 	crypto-mbedtls-cipher.o \
 	crypto-mbedtls-cipher_wrap.o \
 	crypto-mbedtls-sha256.o \
+	crypto-mbedtls-sha512.o \
 	crypto-mbedtls-aes.o \
 	crypto-mbedtls-ccm.o \
+	crypto-mbedtls-gcm.o \
 	crypto-mbedtls-cmac.o \
 	crypto-mbedtls-hmac_drbg.o \
 	crypto-mbedtls-ecp.o \
@@ -94,7 +97,15 @@ PLATFORM_CRYPTO_OBJ_FILE_NAMES = \
 	crypto-mbedtls-pk.o \
 	crypto-mbedtls-pk_wrap.o \
 	crypto-mbedtls-pkparse.o \
+	crypto-mbedtls-pkwrite.o \
 	crypto-mbedtls-oid.o \
+	crypto-mbedtls-pem.o \
+	crypto-mbedtls-base64.o \
+	crypto-mbedtls-x509.o \
+	crypto-mbedtls-x509_crt.o \
+	crypto-mbedtls-x509_csr.o \
+	crypto-mbedtls-x509_create.o \
+	crypto-mbedtls-x509write_csr.o \
 	crypto-mbedtls-asn1parse.o \
 	crypto-mbedtls-asn1write.o \
 	crypto-mbedtls-ctr_drbg.o \
@@ -108,6 +119,7 @@ PLATFORM_CRYPTO_OBJ_FILE_NAMES = \
 	crypto-mbedtls-psa_crypto.o \
 	crypto-mbedtls-psa_crypto_cipher.o \
 	crypto-mbedtls-psa_crypto_hash.o \
+	crypto-mbedtls-psa_crypto_pake.o \
 	crypto-mbedtls-psa_crypto_mac.o \
 	crypto-mbedtls-psa_crypto_aead.o \
 	crypto-mbedtls-psa_crypto_ecp.o \
@@ -125,10 +137,10 @@ PLATFORM_CRYPTO_OBJ_FILES = ${addprefix ${LOCAL_DIR}/, ${PLATFORM_CRYPTO_OBJ_FIL
 
 # Run the C compiler on the SDK platform security files.
 ${LOCAL_DIR}/crypto-%.o : ${GMOS_GECKO_SDK_DIR}/platform/security/*/*/src/%.c | ${LOCAL_DIR}
-	${CC} ${CFLAGS} -DMBEDTLS_CONFIG_FILE='"efr32-crypto-config.h"' \
+	${CC} ${CFLAGS} -DMBEDTLS_CONFIG_FILE='"${GMOS_PLATFORM_MBEDTLS_CONFIG_FILE}"' \
 	${addprefix -I, ${PLATFORM_CRYPTO_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the MBedTLS source files.
 ${LOCAL_DIR}/crypto-mbedtls-%.o : ${GMOS_GECKO_SDK_DIR}/util/third_party/mbedtls/library/%.c | ${LOCAL_DIR}
-	${CC} ${CFLAGS} -DMBEDTLS_CONFIG_FILE='"efr32-crypto-config.h"' \
+	${CC} ${CFLAGS} -DMBEDTLS_CONFIG_FILE='"${GMOS_PLATFORM_MBEDTLS_CONFIG_FILE}"' \
 	${addprefix -I, ${PLATFORM_CRYPTO_HEADER_DIRS}} -o $@ $<
