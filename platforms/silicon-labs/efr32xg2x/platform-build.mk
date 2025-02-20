@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2023-2024 Zynaptic Limited
+# Copyright 2023-2025 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -35,7 +35,6 @@ PLATFORM_HEADER_DIRS = \
 	${GMOS_GECKO_SDK_DIR}/platform/emdrv/spidrv/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/emdrv/dmadrv/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/emdrv/nvm3/inc \
-	${GMOS_GECKO_SDK_DIR}/platform/emdrv/nvm3/config/s2 \
 	${GMOS_GECKO_SDK_DIR}/platform/service/mpu/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/service/sleeptimer/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/CMSIS/Core/Include \

@@ -3,7 +3,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2023-2024 Zynaptic Limited
+# Copyright 2023-2025 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ deviceParameterTable = {
         "FLASH_MEMORY_SIZE": 1536 * 1024,
         "FLASH_PAGE_SIZE": 8 * 1024,
         "RAM_MEMORY_SIZE": 256 * 1024,
-        "NVM3_PAGE_ALLOCATION": 5,
+        "NVM3_PAGE_ALLOCATION": 12,
         "BOOTLOADER_APP_OFFSET": 0x08006000,
         "BOOTLOADER_IMAGE_OFFSET": 0x80C0000,
     },
@@ -81,7 +81,7 @@ deviceParameterTable = {
         "FLASH_MEMORY_SIZE": 1536 * 1024,
         "FLASH_PAGE_SIZE": 8 * 1024,
         "RAM_MEMORY_SIZE": 256 * 1024,
-        "NVM3_PAGE_ALLOCATION": 5,
+        "NVM3_PAGE_ALLOCATION": 12,
         "BOOTLOADER_APP_OFFSET": 0x08006000,
         "BOOTLOADER_IMAGE_OFFSET": 0x80C0000,
     },
