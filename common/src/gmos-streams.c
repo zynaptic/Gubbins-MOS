@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2023 Zynaptic Limited
+ * Copyright 2020-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,6 +73,19 @@ void gmosStreamInit (gmosStream_t* stream,
     stream->consumerTask = consumerTask;
     stream->segmentList = NULL;
     stream->maxSize = maxStreamSize;
+    stream->size = 0;
+}
+
+/*
+ * Resets a GubbinsMOS byte stream, discarding all the contents of the
+ * stream and releasing all allocated memory.
+ */
+void gmosStreamReset (gmosStream_t* stream)
+{
+    if (stream->segmentList != NULL) {
+        gmosMempoolFreeSegments (stream->segmentList);
+        stream->segmentList = NULL;
+    }
     stream->size = 0;
 }
 

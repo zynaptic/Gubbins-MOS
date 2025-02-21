@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2023 Zynaptic Limited
+ * Copyright 2020-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -532,33 +532,42 @@ void gmosBufferMove (gmosBuffer_t* source, gmosBuffer_t* destination)
 }
 
 /*
- * Implements a buffer copy operation, replicating the contents of a
- * source buffer in a destination buffer.
+ * Implements the common buffer copy operation after setting up or
+ * checking the required copy section parameters.
  */
-bool gmosBufferCopy (gmosBuffer_t* source, gmosBuffer_t* destination)
+static bool gmosBufferCopyCommon (gmosBuffer_t* source,
+    gmosBuffer_t* destination, uint16_t copyOffset, uint16_t copySize)
 {
     uint_fast16_t segmentCount;
+    uint_fast16_t targetOffset;
     gmosMempoolSegment_t* segmentList;
     gmosMempoolSegment_t* sourceSegment;
     gmosMempoolSegment_t* targetSegment;
 
     // Ensure that the destination buffer is empty. This is sufficient
-    // to copy an empty source buffer.
+    // to copy an empty source buffer section.
     gmosBufferDiscardContents (destination);
-    if (source->bufferSize == 0) {
+    if (copySize == 0) {
         return true;
     }
 
     // Allocate the required number of destination buffer segments.
-    segmentCount = 1 + (source->bufferOffset + source->bufferSize - 1) /
+    segmentCount = 1 + (source->bufferOffset + copyOffset + copySize - 1) /
         GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE;
     segmentList = gmosMempoolAllocSegments (segmentCount);
     if (segmentList == NULL) {
         return false;
     }
 
-    // Copy the contents of each buffer segment in turn.
+    // Skip source segments that are not required for the segment copy.
+    targetOffset = source->bufferOffset + copyOffset;
     sourceSegment = source->segmentList;
+    while (targetOffset >= GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE) {
+        targetOffset -= GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE;
+        sourceSegment = sourceSegment->nextSegment;
+    }
+
+    // Copy the contents of each remaining buffer segment in turn.
     targetSegment = segmentList;
     while ((sourceSegment != NULL) && (targetSegment != NULL)) {
         BUFFER_COPY (targetSegment->data.bytes,
@@ -569,9 +578,37 @@ bool gmosBufferCopy (gmosBuffer_t* source, gmosBuffer_t* destination)
 
     // Update the destination buffer state.
     destination->segmentList = segmentList;
-    destination->bufferSize = source->bufferSize;
-    destination->bufferOffset = source->bufferOffset;
+    destination->bufferSize = copySize;
+    destination->bufferOffset = targetOffset;
     return true;
+}
+
+/*
+ * Implements a buffer copy operation, replicating the contents of a
+ * source buffer in a destination buffer.
+ */
+bool gmosBufferCopy (gmosBuffer_t* source, gmosBuffer_t* destination)
+{
+    return gmosBufferCopyCommon (
+        source, destination, 0, source->bufferSize);
+}
+
+/*
+ * Implements a buffer section copy operation, replicating the contents
+ * of a section of a source buffer in a destination buffer.
+ */
+bool gmosBufferCopySection (gmosBuffer_t* source,
+    gmosBuffer_t* destination, uint16_t copyOffset, uint16_t copySize)
+{
+    bool copyOk = false;
+
+    // Check for out of range copy section parameters before initiating
+    // the copy operation.
+    if (copyOffset + copySize <= source->bufferSize) {
+        copyOk = gmosBufferCopyCommon (
+            source, destination, copyOffset, copySize);
+    }
+    return copyOk;
 }
 
 /*
@@ -628,8 +665,27 @@ static inline void gmosBufferConcatenateIntoB (
 bool gmosBufferConcatenate (gmosBuffer_t* sourceA,
     gmosBuffer_t* sourceB, gmosBuffer_t* destination)
 {
+    // Reset the destination buffer if both source buffers are empty.
+    if ((sourceA->bufferSize == 0) && (sourceB->bufferSize == 0)) {
+        gmosBufferReset (destination, 0);
+    }
+
+    // Select source B if source A is empty.
+    else if (sourceA->bufferSize == 0) {
+        if (destination != sourceB) {
+            gmosBufferMove (sourceB, destination);
+        }
+    }
+
+    // Select source A if source B is empty.
+    else if (sourceB->bufferSize == 0) {
+        if (destination != sourceA) {
+            gmosBufferMove (sourceA, destination);
+        }
+    }
+
     // Perform concatenation when source A is the largest buffer.
-    if (sourceA->bufferSize >= sourceB->bufferSize) {
+    else if (sourceA->bufferSize >= sourceB->bufferSize) {
         gmosBufferConcatenateIntoA (sourceA, sourceB);
         if (destination != sourceA) {
             gmosBufferMove (sourceA, destination);

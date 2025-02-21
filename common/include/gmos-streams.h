@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2023 Zynaptic Limited
+ * Copyright 2020-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -144,6 +144,14 @@ static inline bool _id_ ## _read (                                     \
  */
 void gmosStreamInit (gmosStream_t* stream,
     gmosTaskState_t* consumerTask, uint16_t maxStreamSize);
+
+/**
+ * Resets a GubbinsMOS byte stream, discarding all the contents of the
+ * stream and releasing all allocated memory.
+ * @param stream This is the stream state data structure that is to
+ *     be reset.
+ */
+void gmosStreamReset (gmosStream_t* stream);
 
 /**
  * Dynamically set the consumer task associated with a given stream,
