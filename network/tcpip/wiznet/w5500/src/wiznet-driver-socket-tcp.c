@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022 Zynaptic Limited
+ * Copyright 2022-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -86,9 +86,13 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketProcessTcpActive (
     uint8_t intFlags = socket->interruptFlags;
 
     // Check for the socket close request flag or the remote disconnect
-    // request interrupt.
-    if ((intFlags & (WIZNET_SPI_ADAPTOR_SOCKET_INT_DISCON |
-        WIZNET_SPI_ADAPTOR_SOCKET_FLAG_CLOSE_REQ)) != 0) {
+    // request interrupt. On a remote disconnection make sure that any
+    // pending data is processed first.
+    if (((intFlags & WIZNET_SPI_ADAPTOR_SOCKET_INT_DISCON) != 0) &&
+        ((intFlags & WIZNET_SPI_ADAPTOR_SOCKET_INT_RECV) == 0)) {
+        *nextState = WIZNET_SOCKET_TCP_STATE_CLOSE;
+    } else if (
+        (intFlags & WIZNET_SPI_ADAPTOR_SOCKET_FLAG_CLOSE_REQ) != 0) {
         *nextState = WIZNET_SOCKET_TCP_STATE_DISCONNECT;
     }
 
@@ -158,6 +162,16 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketTcpConnectInterruptCheck (
         interruptHandled = true;
     }
 
+    // Check for the socket close request flag which indicates that the
+    // connection was closed by the remote end.
+    else if ((intFlags & WIZNET_SPI_ADAPTOR_SOCKET_INT_DISCON) != 0) {
+        *nextState = WIZNET_SOCKET_TCP_STATE_CLOSE;
+        GMOS_LOG_FMT (LOG_DEBUG,
+            "WIZnet TCP/IP : Socket %d TCP closed during connection.",
+        socket->socketId);
+        interruptHandled = true;
+    }
+
     // After completing the TCP handshake, start polling for transmit
     // or receive data.
     else if ((intFlags & WIZNET_SPI_ADAPTOR_SOCKET_INT_CON) != 0) {
@@ -170,11 +184,12 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketTcpConnectInterruptCheck (
         interruptHandled = true;
     }
 
-    // Clear both interrupt conditions after processing.
+    // Clear all handled interrupt conditions after processing.
     if (interruptHandled) {
         socket->interruptClear |=
             WIZNET_SPI_ADAPTOR_SOCKET_INT_TIMEOUT |
-            WIZNET_SPI_ADAPTOR_SOCKET_INT_CON;
+            WIZNET_SPI_ADAPTOR_SOCKET_INT_CON |
+            WIZNET_SPI_ADAPTOR_SOCKET_INT_DISCON;
         return GMOS_TASK_RUN_IMMEDIATE;
     } else {
         return GMOS_TASK_SUSPEND;
@@ -195,16 +210,22 @@ static inline bool gmosNalTcpipSocketTcpRxDataBufRead (
     uint16_t bufferSize;
     uint16_t maxTransferSize;
 
-    // Determine the maximum possible transfer size. This leaves at
-    // least four memory pool segments free for other processing.
-    maxTransferSize = gmosMempoolSegmentsAvailable () - 4;
-    maxTransferSize *= GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE;
-
-    // Attempt to allocate data storage for the read data buffer.
+    // Determine the amount of data storage for the read data buffer.
     bufferSize = socket->data.active.limitPtr - socket->data.active.dataPtr;
-    if (maxTransferSize < bufferSize) {
-        bufferSize = maxTransferSize;
+
+    // When using a fixed memory pool, leave at leat 4 memory pool
+    // segments available for other processing. Wait for memory pool
+    // capacity to be released if this is not possible.
+    if (!GMOS_CONFIG_MEMPOOL_USE_HEAP) {
+        maxTransferSize = gmosMempoolSegmentsAvailable () - 4;
+        maxTransferSize *= GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE;
+        if (maxTransferSize < bufferSize) {
+            return false;
+        }
     }
+
+    // Allocate sufficient buffer memory to receive all the data from
+    // the WIZnet buffer.
     gmosBufferInit (readDataBuffer);
     if (!gmosBufferResize (readDataBuffer, bufferSize)) {
         return false;
@@ -532,7 +553,7 @@ gmosTaskStatus_t gmosNalTcpipSocketProcessTickTcp (
         // Issue the appropriate TCP socket close request and start the
         // common socket cleanup process.
         case WIZNET_SOCKET_TCP_STATE_CLOSE :
-            isConnected = false;
+            isConnected = false;             // Intentional fallthrough.
         case WIZNET_SOCKET_TCP_STATE_DISCONNECT :
             closeCommand = isConnected ?
                 WIZNET_SPI_ADAPTOR_SOCKET_COMMAND_DISCONNECT :

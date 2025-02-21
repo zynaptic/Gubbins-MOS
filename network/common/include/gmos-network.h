@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022-2024 Zynaptic Limited
+ * Copyright 2022-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,6 +67,20 @@ typedef enum {
     // example, attempting to open an IPv6 socket when using a TCP/IP
     // stack that only supports IPv4.
     GMOS_NETWORK_STATUS_UNSUPPORTED,
+
+    // Indicates that a network data loss has occurred, usually as the
+    // result of running out of local buffer memory.
+    GMOS_NETWORK_STATUS_DATA_LOSS,
+
+    // Indicates that a network protocol error has occurred. Usually
+    // this will not be recoverable and indicates that a connection
+    // needs to be restarted.
+    GMOS_NETWORK_STATUS_PROTOCOL_ERROR,
+
+    // Indicates that a network interface driver fault has occurred.
+    // Usually this will not be recoverable and indicates that an
+    // unexpected network hardware or driver failure has occurred.
+    GMOS_NETWORK_STATUS_DRIVER_FAILURE
 
 } gmosNetworkStatus_t;
 

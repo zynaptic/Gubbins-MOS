@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022 Zynaptic Limited
+ * Copyright 2022-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -73,7 +73,7 @@
 #define GMOS_TCPIP_DHCP_MIN_RESTART_INTERVAL 150
 
 /*
- * Specify the prriority levels for the primary and secondary DNS
+ * Specify the priority levels for the primary and secondary DNS
  * servers.
  */
 #define GMOS_TCPIP_DHCP_DNS1_PRIORITY 32

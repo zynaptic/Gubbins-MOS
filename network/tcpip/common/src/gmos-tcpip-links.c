@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2024 Zynaptic Limited
+ * Copyright 2024-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -317,6 +317,11 @@ static gmosNetworkStatus_t gmosTcpipLinkMonitor (
     // This request is not valid if the link has not been configured.
     else if (tcpipLink->linkState == GMOS_TCPIP_LINK_STATE_INITIALISED) {
         status = GMOS_NETWORK_STATUS_NOT_VALID;
+    }
+
+    // Indicate a failure condition for the network link.
+    else if (tcpipLink->linkState == GMOS_TCPIP_LINK_STATE_FAILURE) {
+        status = GMOS_NETWORK_STATUS_DRIVER_FAILURE;
     }
 
     // Remaining states are transitional states and the client should

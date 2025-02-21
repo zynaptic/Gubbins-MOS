@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022 Zynaptic Limited
+ * Copyright 2022-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@
 #include "gmos-config.h"
 #include "gmos-platform.h"
 #include "gmos-scheduler.h"
+#include "gmos-driver-gpio.h"
 #include "gmos-driver-tcpip.h"
 #include "gmos-tcpip-stack.h"
 #include "wiznet-driver-config.h"

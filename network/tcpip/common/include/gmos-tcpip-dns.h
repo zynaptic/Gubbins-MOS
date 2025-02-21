@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022 Zynaptic Limited
+ * Copyright 2022-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -50,7 +50,7 @@ typedef struct gmosTcpipDnsServerInfo_t {
     // Specify the server priority level.
     uint8_t priority;
 
-    // Deremine if the server is reachable on an IPv6 address.
+    // Determine if the server is reachable on an IPv6 address.
 #if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
     uint8_t addressIsIpv6;
 #endif
