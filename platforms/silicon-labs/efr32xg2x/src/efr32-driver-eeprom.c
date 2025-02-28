@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023-2024 Zynaptic Limited
+ * Copyright 2023-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -52,16 +52,13 @@ typedef enum {
 static gmosDriverEeprom_t* mainInstance = NULL;
 
 /*
- * Map NVM status codes to the common EEPROM API status codes.
+ * Map NVM error codes to the common EEPROM API error codes.
  */
-static gmosDriverEepromStatus_t gmosDriverEepromMapStatus (
+static gmosDriverEepromStatus_t gmosDriverEepromMapError (
     Ecode_t nvmStatus)
 {
     gmosDriverEepromStatus_t eepromStatus;
     switch (nvmStatus) {
-        case ECODE_NVM3_OK :
-            eepromStatus = GMOS_DRIVER_EEPROM_STATUS_SUCCESS;
-            break;
         case ECODE_NVM3_ERR_STORAGE_FULL :
             eepromStatus = GMOS_DRIVER_EEPROM_STATUS_OUT_OF_MEMORY;
             break;
@@ -78,6 +75,21 @@ static gmosDriverEepromStatus_t gmosDriverEepromMapStatus (
         default :
             eepromStatus = GMOS_DRIVER_EEPROM_STATUS_FATAL_ERROR;
             break;
+    }
+    return eepromStatus;
+}
+
+/*
+ * Implement inline status code mapping.
+ */
+static inline gmosDriverEepromStatus_t gmosDriverEepromMapStatus (
+    Ecode_t nvmStatus)
+{
+    gmosDriverEepromStatus_t eepromStatus;
+    if (nvmStatus == ECODE_NVM3_OK) {
+        eepromStatus = GMOS_DRIVER_EEPROM_STATUS_SUCCESS;
+    } else {
+        eepromStatus = gmosDriverEepromMapError (nvmStatus);
     }
     return eepromStatus;
 }
@@ -361,6 +373,34 @@ gmosDriverEepromStatus_t gmosDriverEepromRecordRead (
     // Issue the partial read request to the NVM3 library.
     nvmStatus = nvm3_readPartialData (eeprom->platformNvm,
         eeprom->recordTag, readData, readOffset, readSize);
+    return gmosDriverEepromMapStatus (nvmStatus);
+}
+
+/*
+ * Reads all the data from an EEPROM data record, storing it in the
+ * specified read data byte array.
+ */
+gmosDriverEepromStatus_t gmosDriverEepromRecordReadAll (
+    gmosDriverEeprom_t* eeprom, gmosDriverEepromTag_t recordTag,
+    uint8_t* readData, uint16_t readMaxSize, uint16_t* readSize)
+{
+    Ecode_t nvmStatus;
+    gmosDriverEepromStatus_t eepromStatus;
+
+    // Check the current record status and populate the common record
+    // fields.
+    eepromStatus = gmosDriverEepromRecordCheck (eeprom, recordTag);
+    if (eepromStatus != GMOS_DRIVER_EEPROM_STATUS_TAG_EXISTS) {
+        return eepromStatus;
+    } else if (readMaxSize < eeprom->recordSize) {
+        return GMOS_DRIVER_EEPROM_STATUS_INVALID_LENGTH;
+    } else if (readSize != NULL) {
+        *readSize = eeprom->recordSize;
+    }
+
+    // Issue the full read request to the NVM3 library.
+    nvmStatus = nvm3_readData (eeprom->platformNvm,
+        eeprom->recordTag, readData, eeprom->recordSize);
     return gmosDriverEepromMapStatus (nvmStatus);
 }
 

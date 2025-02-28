@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2023 Zynaptic Limited
+ * Copyright 2020-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -320,6 +320,28 @@ gmosDriverEepromStatus_t gmosDriverEepromRecordWrite (
 gmosDriverEepromStatus_t gmosDriverEepromRecordRead (
     gmosDriverEeprom_t* eeprom, gmosDriverEepromTag_t recordTag,
     uint8_t* readData, uint16_t readOffset, uint16_t readSize);
+
+/**
+ * Reads all the data from an EEPROM data record, storing it in the
+ * specified read data byte array.
+ * @param eeprom This is a pointer to the EEPROM driver data structure
+ *     for the EEPROM being accessed.
+ * @param recordTag This is the unique tag which is used to identify the
+ *     EEPROM record which is to be read back.
+ * @param readData This is a pointer to the read data array which is to
+ *     be populated with the data read back from the EEPROM.
+ * @param readMaxSize This specifies the size of the target read data
+ *     array. It must be large enough to hold the entire EEPROM record.
+ * @param readSize This is a pointer to a read data size variable which
+ *     will be populated with the EEPROM record size on successful
+ *     completion.
+ * @return Returns the status of the read request. There is no delay
+ *     when reading from the EEPROM, so the read data array will be
+ *     updated prior to returning a successful status value.
+ */
+gmosDriverEepromStatus_t gmosDriverEepromRecordReadAll (
+    gmosDriverEeprom_t* eeprom, gmosDriverEepromTag_t recordTag,
+    uint8_t* readData, uint16_t readMaxSize, uint16_t* readSize);
 
 /**
  * Initialises the EEPROM driver platform abstraction layer. This will
