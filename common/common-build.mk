@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2020-2024 Zynaptic Limited
+# Copyright 2020-2025 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +26,8 @@
 COMMON_HEADER_DIRS = \
 	${GMOS_APP_DIR}/include \
 	${TARGET_PLATFORM_DIR}/include \
-	${GMOS_GIT_DIR}/common/include
+	${GMOS_GIT_DIR}/common/include \
+	${GMOS_GIT_DIR}/imports/littlefs
 
 # List all the common object files that need to be built.
 COMMON_OBJ_FILE_NAMES = \
@@ -46,6 +47,7 @@ COMMON_OBJ_FILE_NAMES = \
 	gmos-driver-touch.o \
 	gmos-driver-flash.o \
 	gmos-driver-flash-sfdp.o \
+	gmos-driver-littlefs.o \
 	gmos-driver-eeprom.o \
 	gmos-driver-eeprom-sw.o
 

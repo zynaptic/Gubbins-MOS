@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2023 Zynaptic Limited
+ * Copyright 2020-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -240,6 +240,15 @@
  */
 #ifndef GMOS_CONFIG_EEPROM_SOFTWARE_EMULATION
 #define GMOS_CONFIG_EEPROM_SOFTWARE_EMULATION false
+#endif
+
+/**
+ * This configuration option is used to enable compilation of the
+ * LittleFS flash memory file system. The current implementation
+ * requires platform support for dynamic memory allocation.
+ */
+#ifndef GMOS_CONFIG_LITTLEFS_ENABLE
+#define GMOS_CONFIG_LITTLEFS_ENABLE false
 #endif
 
 /**

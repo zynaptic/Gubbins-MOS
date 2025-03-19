@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2024 Zynaptic Limited
+ * Copyright 2024-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -48,7 +48,7 @@
  * be issued on startup.
  */
 #define GMOS_DRIVER_FLASH_SFDP_SST26XX_RESET_COMMANDS { \
-    0x01, 0x66, 0x01, 0x99, 0x88, 0x01, 0x06, 0x01, 0x89, 0x88, 0x00 }
+    0x01, 0x66, 0x01, 0x99, 0x88, 0x01, 0x06, 0x01, 0x98, 0x88, 0x00 }
 
 /**
  * Defines the generic SFDP flash memory configuration settings data

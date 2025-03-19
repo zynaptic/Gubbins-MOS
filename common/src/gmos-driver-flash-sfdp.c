@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2024 Zynaptic Limited
+ * Copyright 2024-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -1276,7 +1276,6 @@ static inline gmosTaskStatus_t gmosDriverFlashSfdpTaskFn (
 
         // Suspend processing in the idle state.
         case GMOS_SPI_FLASH_TASK_PHASE_IDLE :
-            GMOS_LOG (LOG_ERROR, "SPI Flash SFDP Driver Idle.");
             flash->flashState = GMOS_DRIVER_FLASH_STATE_IDLE;
             taskStatus = GMOS_TASK_SUSPEND;
             break;
