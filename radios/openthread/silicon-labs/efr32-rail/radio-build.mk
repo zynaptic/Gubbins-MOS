@@ -35,11 +35,28 @@ OPENTHREAD_TARGET_PATH = openthread/silicon-labs/efr32-rail
 OPENTHREAD_TARGET_SRC_DIR = ${GMOS_GIT_DIR}/radios/${OPENTHREAD_TARGET_PATH}
 OPENTHREAD_EFR32_PLATFORM_DIR = ${GMOS_GECKO_SDK_DIR}/protocol/openthread
 
-# Add the path to the precompiled RAIL library.
-LDFLAGS += -L${GMOS_GECKO_SDK_DIR}/platform/radio/rail_lib/autogen/librail_release
+# Select the target specific RAIL libraries for EFR32MG24 SoC devices.
+# Custom PA curve configurations need to be compiled for the standalone
+# devices.
+ifeq (${GMOS_TARGET_DEVICE_FAMILY}, EFR32MG24)
+TSLIBS = rail_efr32xg24_gcc_release
+TSFILES = sdk-pa_curves_efr32.o
+endif
 
-# Add the precompiled RAIL library to the link stage.
-LDLIBS += rail_efr32xg24_gcc_release
+# Select the target specific RAIL libraries for MGM24 modules. Standard
+# FCC/CA compliant PA curve configurations need to be used from the SDK
+# libraries.
+ifeq (${GMOS_TARGET_DEVICE_FAMILY}, MGM24)
+TSLIBS = \
+	rail_module_efr32xg24_gcc_release \
+	rail_config_${GMOS_TARGET_DEVICE_VARIANT_LC}_gcc
+endif
+
+# Add the precompiled RAIL libraries to the link stage.
+LDLIBS += ${TSLIBS}
+
+# Add the path to the precompiled RAIL libraries.
+LDFLAGS += -L${GMOS_BUILD_DIR}/radios/${OPENTHREAD_TARGET_PATH}/lib
 
 # List all the header directories that are required to build the
 # platform independent OpenThread components.
@@ -70,6 +87,7 @@ OPENTHREAD_TARGET_HEADER_DIRS = \
 	${OPENTHREAD_EFR32_PLATFORM_DIR}/config \
 	${OPENTHREAD_IMPORT_PATH}/include \
 	${OPENTHREAD_IMPORT_PATH}/src/core \
+	${OPENTHREAD_IMPORT_PATH}/src/include \
 	${OPENTHREAD_IMPORT_PATH}/examples/platforms \
 	${GMOS_GECKO_SDK_DIR}/platform/emdrv/common/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/emdrv/nvm3/inc \
@@ -79,6 +97,7 @@ OPENTHREAD_TARGET_HEADER_DIRS = \
 	${GMOS_GECKO_SDK_DIR}/platform/radio/rail_lib/chip/efr32/efr32xg2x \
 	${GMOS_GECKO_SDK_DIR}/platform/radio/rail_lib/protocol/ieee802154 \
 	${GMOS_GECKO_SDK_DIR}/platform/radio/rail_lib/plugin/pa-conversions \
+	${GMOS_GECKO_SDK_DIR}/platform/radio/rail_lib/plugin/rail_util_ieee802154 \
 	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/se_manager/inc \
 	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/se_manager/src \
 	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/sl_psa_driver/inc \
@@ -101,12 +120,13 @@ OPENTHREAD_TARGET_OBJ_FILE_NAMES = \
 	ot-efr32-mac_frame.o \
 	ot-efr32-flash.o \
 	ot-efr32-soft_source_match_table.o \
+	ot-efr32-sl_rcp_gp_interface.o \
 	ot-efr32-ieee802154-packet-utils.o \
 	sdk-pa_conversions_efr32.o \
-	sdk-pa_curves_efr32.o \
 	sdk-sli_protocol_crypto_radioaes.o \
 	sdk-sli_radioaes_management.o \
-	sdk-plugin-security_manager.o
+	sdk-plugin-security_manager.o \
+	${TSFILES}
 
 # Specify the local build directory.
 LOCAL_DIR = ${GMOS_BUILD_DIR}/radios/${OPENTHREAD_TARGET_PATH}
@@ -121,6 +141,9 @@ OPENTHREAD_TARGET_OBJ_FILE_NAMES += ${OPENTHREAD_OBJ_FILE_NAMES}
 
 # Specify the object files that need to be built.
 OPENTHREAD_TARGET_OBJ_FILES = ${addprefix ${LOCAL_DIR}/, ${OPENTHREAD_TARGET_OBJ_FILE_NAMES}}
+
+# Specify the library files that need to be copied.
+OPENTHREAD_TARGET_LIB_FILES = ${addsuffix .a, ${addprefix ${LOCAL_DIR}/lib/lib, ${TSLIBS}}}
 
 # Import generated dependency information if available.
 -include $(OPENTHREAD_TARGET_OBJ_FILES:.o=.d)
@@ -161,10 +184,16 @@ ${LOCAL_DIR}/sdk-plugin-%.o : ${GMOS_GECKO_SDK_DIR}/util/plugin/*/%.c | ${LOCAL_
 	${CC} ${CFLAGS} -DMBEDTLS_CONFIG_FILE='"efr32-crypto-config.h"' \
 	${addprefix -I, ${OPENTHREAD_TARGET_HEADER_DIRS}} -o $@ $<
 
+# Copy the required RAIL target libraries to the build directory.
+${LOCAL_DIR}/lib/lib%.a : ${GMOS_GECKO_SDK_DIR}/platform/radio/rail_lib/autogen/librail_release/lib%.a | ${LOCAL_DIR}/lib
+	cp $< $@
+
 # Timestamp the local build object files.
-${LOCAL_DIR}/timestamp : ${OPENTHREAD_TARGET_OBJ_FILES}
+${LOCAL_DIR}/timestamp : ${OPENTHREAD_TARGET_OBJ_FILES} ${OPENTHREAD_TARGET_LIB_FILES}
 	touch $@
 
-# Create the local build directory.
+# Create the local build and library directories.
 ${LOCAL_DIR} :
+	mkdir -p $@
+${LOCAL_DIR}/lib :
 	mkdir -p $@

@@ -32,7 +32,8 @@ OPENTHREAD_HEADER_DIRS += \
 	${OPENTHREAD_TARGET_SRC_DIR}/include \
 	${OPENTHREAD_IMPORT_PATH}/include \
 	${OPENTHREAD_IMPORT_PATH}/src \
-	${OPENTHREAD_IMPORT_PATH}/src/core
+	${OPENTHREAD_IMPORT_PATH}/src/core \
+	${OPENTHREAD_IMPORT_PATH}/src/include
 
 # List all the common component object files that need to be built.
 OPENTHREAD_OBJ_FILE_NAMES = \
