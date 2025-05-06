@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023-2024 Zynaptic Limited
+ * Copyright 2023-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,6 +46,18 @@
 // an interim measure, but retries really need to be reimplemented with
 // exponential backoff.
 #define GMOS_OPENTHREAD_SNTP_RETRY_INTERVAL 60
+
+// Specify the initial SD-DNS request backoff delay as an integer number
+// of seconds.
+#define GMOS_OPENTHREAD_SNTP_SDDNS_BACKOFF_INIT 8
+
+// Specify the maximum SD-DNS backoff delay. This must be an integer
+// number of seconds less than 255.
+#define GMOS_OPENTHREAD_SNTP_SDDNS_BACKOFF_MAX 150
+
+// Specify the exponential SD-DNS backoff delay multiplier. The actual
+// value used is N/256.
+#define GMOS_OPENTHREAD_SNTP_SDDNS_BACKOFF_MULT 352
 
 /*
  * Specify the state space for the OpenThread SNTP client state machine.
@@ -152,7 +164,7 @@ static void gmosOpenThreadSntpClientSdDnsCallback (otError otStatus,
     // Attempt a retry if the request was not successful.
     else {
         GMOS_LOG_FMT (LOG_DEBUG,
-            "OpenThread : SD-DNS browse callback failure status %d.",
+            "OpenThread : SD-DNS NTP browse callback failure status %d.",
             otStatus);
         sntpClient->sntpClientState =
             GMOS_OPENTHREAD_SNTP_CLIENT_STATE_SDDNS_RETRY;
@@ -180,10 +192,45 @@ static inline bool gmosOpenThreadSntpClientSdDnsBrowse (
     // Attempt a retry if the request was not successful.
     if (otStatus != OT_ERROR_NONE) {
         GMOS_LOG_FMT (LOG_DEBUG,
-            "OpenThread : SD-DNS browse request failure status %d",
+            "OpenThread : SD-DNS NTP browse request failure status %d.",
             otStatus);
     }
     return (otStatus == OT_ERROR_NONE) ? true : false;
+}
+
+/*
+ * Calculate the SD-DNS request backoff delay.
+ */
+static inline gmosTaskStatus_t gmosOpenThreadSntpClientSdDnsBackoff (
+    gmosOpenThreadSntpClient_t* sntpClient)
+{
+    uint32_t backoffDelay;
+    uint32_t nextDelay;
+
+    // Calculate the current backoff delay as the number of timer ticks.
+    GMOS_LOG_FMT (LOG_VERBOSE,
+        "OpenThread : SD-DNS NTP retry backoff delay %ds.",
+        sntpClient->sdDnsBackoffDelay);
+    backoffDelay = GMOS_MS_TO_TICKS (
+        ((uint32_t) sntpClient->sdDnsBackoffDelay) * 1000);
+
+    // Update the backoff delay for the next retry.
+    nextDelay = ((((uint32_t) sntpClient->sdDnsBackoffDelay) *
+        GMOS_OPENTHREAD_SNTP_SDDNS_BACKOFF_MULT) / 256);
+    if (nextDelay <= GMOS_OPENTHREAD_SNTP_SDDNS_BACKOFF_MAX) {
+        sntpClient->sdDnsBackoffDelay = (uint8_t) nextDelay;
+    }
+
+    // Randomise the backoff delay when it reaches the maximum value.
+    else {
+        uint8_t randomDelay = 0;
+        while ((randomDelay < GMOS_OPENTHREAD_SNTP_SDDNS_BACKOFF_INIT) ||
+            (randomDelay > GMOS_OPENTHREAD_SNTP_SDDNS_BACKOFF_MAX)) {
+            gmosPalGetRandomBytes (&randomDelay, 1);
+        }
+        sntpClient->sdDnsBackoffDelay = randomDelay;
+    }
+    return GMOS_TASK_RUN_LATER (backoffDelay);
 }
 
 /*
@@ -275,6 +322,8 @@ static inline gmosTaskStatus_t gmosOpenThreadSntpClientActionSelect (
     // is stale.
     delay = (int32_t) (sntpClient->sdDnsTimeout - currentTime);
     if (delay <= 0) {
+        sntpClient->sdDnsBackoffDelay =
+            GMOS_OPENTHREAD_SNTP_SDDNS_BACKOFF_INIT;
         *nextState = GMOS_OPENTHREAD_SNTP_CLIENT_STATE_SDDNS_BROWSE;
         return GMOS_TASK_RUN_IMMEDIATE;
     }
@@ -332,7 +381,7 @@ static inline gmosTaskStatus_t gmosOpenThreadSntpClientTaskFn (
         // Retry the SD-DNS request after a short delay.
         case GMOS_OPENTHREAD_SNTP_CLIENT_STATE_SDDNS_RETRY :
             nextState = GMOS_OPENTHREAD_SNTP_CLIENT_STATE_SDDNS_BROWSE;
-            taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (8000));
+            taskStatus = gmosOpenThreadSntpClientSdDnsBackoff (sntpClient);
             break;
 
         // Send the SNTP synchronisation request to the NTP server.

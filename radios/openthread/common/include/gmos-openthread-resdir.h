@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -92,6 +92,9 @@ typedef struct gmosOpenThreadResDirClient_t {
     // This is the current state of the OpenThread CoRE resource
     // directory client state machine.
     uint8_t resDirClientState;
+
+    // This specifies the current backoff delay for SD-DNS requests.
+    uint8_t sdDnsBackoffDelay;
 
 } gmosOpenThreadResDirClient_t;
 

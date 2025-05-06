@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,7 +46,19 @@
 
 // Specify the resource directory entry lifetime to be used as an
 // integer value and option string representation.
-#define GMOS_OPENTHREAD_RESDIR_ENTRY_LIFETIME 120
+#define GMOS_OPENTHREAD_RESDIR_ENTRY_LIFETIME 300
+
+// Specify the initial SD-DNS request backoff delay as an integer number
+// of seconds.
+#define GMOS_OPENTHREAD_RESDIR_SDDNS_BACKOFF_INIT 8
+
+// Specify the maximum SD-DNS backoff delay. This must be an integer
+// number of seconds less than 255.
+#define GMOS_OPENTHREAD_RESDIR_SDDNS_BACKOFF_MAX 150
+
+// Specify the exponential SD-DNS backoff delay multiplier. The actual
+// value used is N/256.
+#define GMOS_OPENTHREAD_RESDIR_SDDNS_BACKOFF_MULT 352
 
 /*
  * Specify the state space for the OpenThread CoRE resource directory
@@ -170,13 +182,13 @@ static void gmosOpenThreadResDirClientSdDnsCallback (otError otStatus,
             addrBytes [12], addrBytes [13], addrBytes [14], addrBytes [15],
             serviceInfo.mPort);
         GMOS_LOG_FMT (LOG_VERBOSE,
-            "OpenThread : SD-DNS service TTL %ds.", serviceInfo.mTtl);
+            "OpenThread : SD-DNS CoRE-RD service TTL %ds.", serviceInfo.mTtl);
     }
 
     // Attempt a retry if the request was not successful.
     else {
         GMOS_LOG_FMT (LOG_DEBUG,
-            "OpenThread : SD-DNS browse callback failure status %d.",
+            "OpenThread : SD-DNS CoRE-RD browse callback failure status %d.",
             otStatus);
         resDirClient->resDirClientState =
             GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_SDDNS_RETRY;
@@ -205,10 +217,45 @@ static inline bool gmosOpenThreadResDirClientSdDnsBrowse (
     // Attempt a retry if the request was not successful.
     if (otStatus != OT_ERROR_NONE) {
         GMOS_LOG_FMT (LOG_DEBUG,
-            "OpenThread : SD-DNS browse request failure status %d",
+            "OpenThread : SD-DNS CoRE-RD browse request failure status %d.",
             otStatus);
     }
     return (otStatus == OT_ERROR_NONE) ? true : false;
+}
+
+/*
+ * Calculate the SD-DNS request backoff delay.
+ */
+static inline gmosTaskStatus_t gmosOpenThreadResDirClientSdDnsBackoff (
+    gmosOpenThreadResDirClient_t* resDirClient)
+{
+    uint32_t backoffDelay;
+    uint32_t nextDelay;
+
+    // Calculate the current backoff delay as the number of timer ticks.
+    GMOS_LOG_FMT (LOG_VERBOSE,
+        "OpenThread : SD-DNS CoRE-RD retry backoff delay %ds.",
+        resDirClient->sdDnsBackoffDelay);
+    backoffDelay = GMOS_MS_TO_TICKS (
+        ((uint32_t) resDirClient->sdDnsBackoffDelay) * 1000);
+
+    // Update the backoff delay for the next retry.
+    nextDelay = ((((uint32_t) resDirClient->sdDnsBackoffDelay) *
+        GMOS_OPENTHREAD_RESDIR_SDDNS_BACKOFF_MULT) / 256);
+    if (nextDelay <= GMOS_OPENTHREAD_RESDIR_SDDNS_BACKOFF_MAX) {
+        resDirClient->sdDnsBackoffDelay = (uint8_t) nextDelay;
+    }
+
+    // Randomise the backoff delay when it reaches the maximum value.
+    else {
+        uint8_t randomDelay = 0;
+        while ((randomDelay < GMOS_OPENTHREAD_RESDIR_SDDNS_BACKOFF_INIT) ||
+            (randomDelay > GMOS_OPENTHREAD_RESDIR_SDDNS_BACKOFF_MAX)) {
+            gmosPalGetRandomBytes (&randomDelay, 1);
+        }
+        resDirClient->sdDnsBackoffDelay = randomDelay;
+    }
+    return GMOS_TASK_RUN_LATER (backoffDelay);
 }
 
 /*
@@ -731,6 +778,8 @@ static inline gmosTaskStatus_t gmosOpenThreadResDirClientActionSelect (
     // is stale.
     delay = (int32_t) (resDirClient->sdDnsTimeout - currentTime);
     if (delay <= 0) {
+        resDirClient->sdDnsBackoffDelay =
+            GMOS_OPENTHREAD_RESDIR_SDDNS_BACKOFF_INIT;
         *nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_SDDNS_BROWSE;
         return GMOS_TASK_RUN_IMMEDIATE;
     }
@@ -828,7 +877,7 @@ static inline gmosTaskStatus_t gmosOpenThreadResDirClientTaskFn (
         // Retry the SD-DNS request after a short delay.
         case GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_SDDNS_RETRY :
             nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_SDDNS_BROWSE;
-            taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (8000));
+            taskStatus = gmosOpenThreadResDirClientSdDnsBackoff (resDirClient);
             break;
 
         // Send the CoRE-RD discovery request to the resource directory.
@@ -847,9 +896,10 @@ static inline gmosTaskStatus_t gmosOpenThreadResDirClientTaskFn (
             taskStatus = GMOS_TASK_SUSPEND;
             break;
 
-        // Retry the CoRE-RD discovery request after a short delay.
+        // Retry the CoRE-RD discovery request after a short delay. Fall
+        // back to DNS discovery if the DNS entry has expired.
         case GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_DISC_RETRY :
-            nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_DISC_SEND;
+            nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_IDLE;
             taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (8000));
             break;
 
