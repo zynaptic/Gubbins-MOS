@@ -61,6 +61,9 @@ typedef struct gmosZigbeeZclEndpointLocal_t {
     // This is the initiating endpoint for the current command.
     uint8_t peerEndpointId;
 
+    // This is the ZCL frame ID for the current command.
+    uint8_t zclFrameId;
+
     // This is the ZCL sequence number for the current command.
     uint8_t zclSequence;
 
