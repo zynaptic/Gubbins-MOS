@@ -36,8 +36,12 @@ endif
 
 # The lower case family and variant names are used in some of the SDK
 # file names.
-GMOS_TARGET_DEVICE_FAMILY_LC := $(shell echo $(GMOS_TARGET_DEVICE_FAMILY) | tr A-Z a-z)
-GMOS_TARGET_DEVICE_VARIANT_LC := $(shell echo $(GMOS_TARGET_DEVICE_VARIANT) | tr A-Z a-z)
+GMOS_TARGET_DEVICE_FAMILY_LC := \
+	$(shell echo $(GMOS_TARGET_DEVICE_FAMILY) | tr A-Z a-z)
+GMOS_TARGET_DEVICE_FAMILY_XLC := \
+	$(shell echo $(GMOS_TARGET_DEVICE_FAMILY_LC) | sed -r "s/32[mb]g/32xg/")
+GMOS_TARGET_DEVICE_VARIANT_LC := \
+	$(shell echo $(GMOS_TARGET_DEVICE_VARIANT) | tr A-Z a-z)
 
 # All EFR32xG2x devices use the Cortex-M33 core.
 ARCH_NAME = cortex-m33
@@ -49,34 +53,34 @@ ifndef ARM_GCC_TOOLCHAIN_DIR
 ARM_GCC_TOOLCHAIN_DIR = /opt/arm-gnu-toolchain-12.2.rel1-x86_64-arm-none-eabi/
 endif
 
-# Specify the location of the Silicon Labs Gecko SDK directory. By
+# Specify the location of the Silicon Labs Simplicity SDK directory. By
 # default this assumes it has been downloaded to the Simplicity Studio
 # working directory.
-ifndef GMOS_GECKO_SDK_DIR
-GMOS_GECKO_SDK_DIR = ${HOME}/SimplicityStudio/SDKs/gecko_sdk
+ifndef GMOS_SIMPLICITY_SDK_DIR
+GMOS_SIMPLICITY_SDK_DIR = ${HOME}/SimplicityStudio/SDKs/simplicity_sdk
 endif
 
 # Specify device specific SDK file locations.
 GMOS_TARGET_DEVICE_FAMILY_DIR = \
-	${GMOS_GECKO_SDK_DIR}/platform/Device/SiliconLabs/${GMOS_TARGET_DEVICE_FAMILY}
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/Device/SiliconLabs/${GMOS_TARGET_DEVICE_FAMILY}
 
 # Specify that the platform layer provides the PSA cryptography library
 # and specify the path to the required API header directories, including
 # platform specific hardware support directories.
 GMOS_PLATFORM_PSA_CRYPTO_API_DIRS = \
-	${GMOS_GECKO_SDK_DIR}/platform/common/inc \
-	${GMOS_GECKO_SDK_DIR}/platform/emlib/inc \
-	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/se_manager/inc \
-	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/sl_psa_driver/inc \
-	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/inc \
-	${GMOS_GECKO_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/config \
-	${GMOS_GECKO_SDK_DIR}/platform/CMSIS/Core/Include \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/common/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/emlib/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/se_manager/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_psa_driver/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/config \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/CMSIS/Core/Include \
 	${GMOS_TARGET_DEVICE_FAMILY_DIR}/Include
 
 # Specify that the platform layer provides the MbedTLS protocol library
 # and specify the path to the API header directory.
 GMOS_PLATFORM_MBEDTLS_API_DIRS = \
-	${GMOS_GECKO_SDK_DIR}/util/third_party/mbedtls/include
+	${GMOS_SIMPLICITY_SDK_DIR}/util/third_party/mbedtls/include
 
 # Specify that the platform layer provides a common MbedTLS
 # configuration file.
@@ -135,7 +139,6 @@ LDFLAGS += -mfpu=fpv5-sp-d16
 LDFLAGS += -mfloat-abi=hard
 LDFLAGS += --specs=nano.specs
 LDFLAGS += -T${GMOS_BUILD_DIR}/platform/target.ld
-LDFLAGS += -L${GMOS_GECKO_SDK_DIR}/platform/emdrv/nvm3/lib
 
 # Required linker library names.
 LDLIBS += gcc
@@ -143,4 +146,3 @@ LDLIBS += c
 LDLIBS += m
 LDLIBS += nosys
 LDLIBS += supc++
-LDLIBS += nvm3_CM33_gcc

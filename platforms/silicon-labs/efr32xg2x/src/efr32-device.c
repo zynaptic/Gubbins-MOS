@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@
 #include "gmos-mempool.h"
 #include "gmos-scheduler.h"
 #include "efr32-device.h"
+#include "em_core.h"
 #include "em_chip.h"
 #include "em_emu.h"
 #include "em_cmu.h"

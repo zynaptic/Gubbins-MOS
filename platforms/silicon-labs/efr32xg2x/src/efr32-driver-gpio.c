@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,8 +28,10 @@
 #include "gmos-config.h"
 #include "gmos-driver-gpio.h"
 #include "efr32-driver-gpio.h"
+#include "em_core.h"
 #include "em_cmu.h"
 #include "em_gpio.h"
+#include "sl_interrupt_manager.h"
 
 // This is the set of GPIO open drain configuration flags.
 static uint16_t gmosDriverGpioOpenDrainFlags [4];
@@ -447,13 +449,13 @@ void gmosPalGpioInit (void)
     GPIO_IntDisable (0xFFF);
 
     // Enable top level GPIO interrupts in the NVIC.
-    if (CORE_NvicIRQDisabled(GPIO_ODD_IRQn)) {
-        NVIC_ClearPendingIRQ(GPIO_ODD_IRQn);
-        NVIC_EnableIRQ(GPIO_ODD_IRQn);
+    if (sl_interrupt_manager_is_irq_disabled (GPIO_ODD_IRQn)) {
+        NVIC_ClearPendingIRQ (GPIO_ODD_IRQn);
+        NVIC_EnableIRQ (GPIO_ODD_IRQn);
     }
-    if (CORE_NvicIRQDisabled(GPIO_EVEN_IRQn)) {
-        NVIC_ClearPendingIRQ(GPIO_EVEN_IRQn);
-        NVIC_EnableIRQ(GPIO_EVEN_IRQn);
+    if (sl_interrupt_manager_is_irq_disabled (GPIO_EVEN_IRQn)) {
+        NVIC_ClearPendingIRQ (GPIO_EVEN_IRQn);
+        NVIC_EnableIRQ (GPIO_EVEN_IRQn);
     }
 }
 

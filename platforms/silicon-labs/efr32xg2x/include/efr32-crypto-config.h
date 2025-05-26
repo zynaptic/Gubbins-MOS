@@ -90,9 +90,6 @@
 #define MBEDTLS_PLATFORM_CALLOC_MACRO gmosPalCalloc
 #define MBEDTLS_PLATFORM_FREE_MACRO   gmosPalFree
 
-// Infer PSA settings from legacy MbedTLS options.
-#include "mbedtls/config_psa.h"
-
 // Include the platform specific configuration settings for PSA hardware
 // acceleration.
 #include "sli_mbedtls_omnipresent.h"

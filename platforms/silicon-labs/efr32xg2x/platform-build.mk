@@ -28,16 +28,25 @@ PLATFORM_HEADER_DIRS = \
 	${GMOS_GIT_DIR}/common/include \
 	${GMOS_GIT_DIR}/imports/printf \
 	${TARGET_PLATFORM_DIR}/include \
-	${GMOS_GECKO_SDK_DIR}/platform/common/inc \
-	${GMOS_GECKO_SDK_DIR}/platform/emlib/inc \
-	${GMOS_GECKO_SDK_DIR}/platform/peripheral/inc \
-	${GMOS_GECKO_SDK_DIR}/platform/emdrv/common/inc \
-	${GMOS_GECKO_SDK_DIR}/platform/emdrv/spidrv/inc \
-	${GMOS_GECKO_SDK_DIR}/platform/emdrv/dmadrv/inc \
-	${GMOS_GECKO_SDK_DIR}/platform/emdrv/nvm3/inc \
-	${GMOS_GECKO_SDK_DIR}/platform/service/mpu/inc \
-	${GMOS_GECKO_SDK_DIR}/platform/service/sleeptimer/inc \
-	${GMOS_GECKO_SDK_DIR}/platform/CMSIS/Core/Include \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/common/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/common/config \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/emlib/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/common/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/spidrv/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/dmadrv/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/dmadrv/inc/s2_signals \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/nvm3/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/nvm3/config \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/peripheral/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/driver/gpio/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/mpu/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/sleeptimer/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/device_manager/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/interrupt_manager/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/interrupt_manager/config \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/clock_manager/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/se_manager/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/CMSIS/Core/Include \
 	${GMOS_TARGET_DEVICE_FAMILY_DIR}/Include
 
 # List all the platform object files that need to be built.
@@ -64,17 +73,26 @@ PLATFORM_OBJ_FILE_NAMES = \
 	sdk-em_usart.o \
 	sdk-em_eusart.o \
 	sdk-em_i2c.o \
-	sdk-em_se.o \
 	sdk-em_msc.o \
 	sdk-em_prs.o \
-	sdk-peripheral_sysrtc.o \
 	sdk-dmadrv.o \
 	sdk-spidrv.o \
 	sdk-nvm3_default_common_linker.o \
+	sdk-nvm3.o \
+	sdk-nvm3_object.o \
+	sdk-nvm3_utils.o \
+	sdk-nvm3_page.o \
+	sdk-nvm3_cache.o \
 	sdk-nvm3_lock.o \
 	sdk-nvm3_hal_flash.o \
 	sdk-sl_mpu.o \
-	sdk-sl_malloc.o \
+	sdk-sl_core_cortexm.o \
+	sdk-sl_device_clock_${GMOS_TARGET_DEVICE_FAMILY_XLC}.o \
+	sdk-sl_device_peripheral_hal_${GMOS_TARGET_DEVICE_FAMILY_XLC}.o \
+	sdk-sl_interrupt_manager_cortexm.o \
+	sdk-sl_clock_manager.o \
+	sdk-sl_clock_manager_hal_s2.o \
+	sdk-sl_hal_sysrtc.o \
 	sdk-sl_sleeptimer.o \
 	sdk-sl_sleeptimer_hal_burtc.o \
 	sdk-sl_sleeptimer_hal_sysrtc.o \
@@ -112,15 +130,15 @@ ${LOCAL_DIR}/sdk-%.o : ${GMOS_TARGET_DEVICE_FAMILY_DIR}/Source/%.c | ${LOCAL_DIR
 	${CC} ${CFLAGS} ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the SDK device library specific files.
-${LOCAL_DIR}/sdk-%.o : ${GMOS_GECKO_SDK_DIR}/platform/*/src/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/*/src/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the SDK service library specific files.
-${LOCAL_DIR}/sdk-%.o : ${GMOS_GECKO_SDK_DIR}/platform/*/*/src/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/*/*/*/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the Silicon Labs core utilities files.
-${LOCAL_DIR}/sdk-%.o : ${GMOS_GECKO_SDK_DIR}/util/silicon_labs/*/*/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/util/silicon_labs/*/*/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
 
 # Include the makefile fragment for building the platform specific
