@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,6 +23,8 @@
 
 #ifndef EFR32_DRIVER_GPIO_H
 #define EFR32_DRIVER_GPIO_H
+
+#include <stdbool.h>
 
 // These constants define the EFR32 GPIO bank encoding used when
 // configuring GPIO pins.
@@ -48,6 +50,6 @@
 /**
  * Initialises the GPIO platform abstraction layer on startup.
  */
-void gmosPalGpioInit (void);
+bool gmosPalGpioInit (void);
 
 #endif // EFR32_DRIVER_GPIO_H

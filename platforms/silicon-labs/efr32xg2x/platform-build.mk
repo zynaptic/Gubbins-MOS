@@ -90,6 +90,8 @@ PLATFORM_OBJ_FILE_NAMES = \
 	sdk-sl_device_clock_${GMOS_TARGET_DEVICE_FAMILY_XLC}.o \
 	sdk-sl_device_peripheral_hal_${GMOS_TARGET_DEVICE_FAMILY_XLC}.o \
 	sdk-sl_interrupt_manager_cortexm.o \
+	sdk-sl_gpio.o \
+	sdk-sl_hal_gpio.o \
 	sdk-sl_clock_manager.o \
 	sdk-sl_clock_manager_hal_s2.o \
 	sdk-sl_hal_sysrtc.o \
