@@ -37,6 +37,12 @@
 #define GMOS_ZIGBEE_INVALID_PAN_ID           0xFFFF
 #define GMOS_ZIGBEE_NULL_NODE_ID             0xFFFF
 
+// This key is the ZigBee Alliance standard link key that may be used
+// for unsecured device joining.
+#define GMOS_ZIGBEE_INTEROPERABILITY_LINK_KEY {                        \
+    0x5A, 0x69, 0x67, 0x42, 0x65, 0x65, 0x41, 0x6C,                    \
+    0x6C, 0x69, 0x61, 0x6E, 0x63, 0x65, 0x30, 0x39 }
+
 /**
  * Specify the set of Zigbee status codes supported by all GubbinsMOS
  * Zigbee implementations.
@@ -44,35 +50,35 @@
 typedef enum {
 
     // The Zigbee operation was successful.
-    GMOS_ZIGBEE_STATUS_SUCCESS          = 0x00,
+    GMOS_ZIGBEE_STATUS_SUCCESS,
 
     // Indicates that a fatal error condition has been encountered.
-    GMOS_ZIGBEE_STATUS_FATAL_ERROR      = 0x01,
+    GMOS_ZIGBEE_STATUS_FATAL_ERROR,
 
     // Indicates that the Zigbee request contained an invalid parameter.
-    GMOS_ZIGBEE_STATUS_INVALID_ARGUMENT = 0x02,
+    GMOS_ZIGBEE_STATUS_INVALID_ARGUMENT,
 
     // The Zigbee operation could not be completed at this time and
     // should be retried later.
-    GMOS_ZIGBEE_STATUS_RETRY            = 0x03,
+    GMOS_ZIGBEE_STATUS_RETRY,
 
-    // Specifies that no valid binding table entry could be found for
-    // the specified binding table parameters.
-    GMOS_ZIGBEE_STATUS_NO_VALID_BINDING = 0x6C,
+    // Specifies that no valid table entry could be found for the
+    // specified request parameters.
+    GMOS_ZIGBEE_STATUS_NOT_FOUND,
 
     // Indicates that the Zigbee request was invalid, given the current
     // stack status.
-    GMOS_ZIGBEE_STATUS_INVALID_CALL     = 0x70,
+    GMOS_ZIGBEE_STATUS_INVALID_CALL,
 
     // Indicates that a Zigbee message is too long to fit in a MAC
     // layer frame.
-    GMOS_ZIGBEE_STATUS_MESSAGE_TOO_LONG = 0x74,
+    GMOS_ZIGBEE_STATUS_MESSAGE_TOO_LONG,
 
     // Indicates that a device is a member of a Zigbee network.
-    GMOS_ZIGBEE_STATUS_NETWORK_UP       = 0x90,
+    GMOS_ZIGBEE_STATUS_NETWORK_UP,
 
     // Indicates that a device is not a member of a Zigbee network.
-    GMOS_ZIGBEE_STATUS_NETWORK_DOWN     = 0x91
+    GMOS_ZIGBEE_STATUS_NETWORK_DOWN
 
 } gmosZigbeeStatus_t;
 
@@ -131,12 +137,6 @@ typedef enum {
  * Specify the set of supported Zigbee device joining modes.
  */
 typedef enum {
-
-    // Enable device joining using a link key that is provided by the
-    // trust centre. This does not require out of band device
-    // configuration but can allow a potential attacker to intercept
-    // key information during the joining process.
-    GMOS_ZIGBEE_JOINING_MODE_UNKNOWN_LINK_KEY,
 
     // Enable device joining using a preassigned link key which has
     // been provided to the joining device using an out of band
@@ -372,8 +372,8 @@ gmosZigbeeStatus_t gmosZigbeeFormNetwork (gmosZigbeeStack_t* zigbeeStack,
  *     so this will be a subset of the mask value 0x07FFF800.
  * @param deviceLinkKey This is a pointer to a byte array that contains
  *     the device link key to be used when joining the network. Setting
- *     this value to NULL indicates that the link key will be provided
- *     by the network trust centre in unsecured joining mode.
+ *     this value to NULL indicates that the standard Zigbee Alliance
+ *     link key should be used to establish the initial connection.
  * @param extendedPanId This is a pointer to a byte array that contains
  *     the extended PAN ID of the network to be joined. Setting this
  *     value to NULL indicates that any available network can be joined.

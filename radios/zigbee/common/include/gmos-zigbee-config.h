@@ -42,6 +42,18 @@
 #define GMOS_ZIGBEE_MOBILE_CHILD_NODE 5
 
 /**
+ * Specify whether the Zigbee node should be configured as a
+ * concentrator with source routing support.
+ */
+#ifndef GMOS_CONFIG_ZIGBEE_CONCENTRATOR_NODE
+#if (GMOS_CONFIG_ZIGBEE_NODE_TYPE == GMOS_ZIGBEE_COORDINATOR_NODE)
+#define GMOS_CONFIG_ZIGBEE_CONCENTRATOR_NODE true
+#else
+#define GMOS_CONFIG_ZIGBEE_CONCENTRATOR_NODE false
+#endif
+#endif
+
+/**
  * Specify the default radio transmit power level expressed in dBm.
  */
 #ifndef GMOS_CONFIG_ZIGBEE_DEFAULT_TX_POWER
