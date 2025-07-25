@@ -32,6 +32,7 @@
 #include "gmos-zigbee-stack.h"
 #include "gmos-zigbee-aps.h"
 #include "gmos-zigbee-endpoint.h"
+#include "gmos-zigbee-concentrator.h"
 #include "gmos-zigbee-zdo-common.h"
 #include "gmos-zigbee-zdo-server.h"
 
@@ -522,6 +523,7 @@ static inline void processEndDeviceAnnouncement (
     gmosZigbeeStack_t* zigbeeStack, gmosZigbeeApsFrame_t* rxApsFrame)
 {
     uint8_t requestPayload [12];
+    uint8_t* nodeEui64;
     uint_fast16_t nodeId;
     uint_fast8_t i;
     uint_fast8_t maxHandlers =
@@ -538,6 +540,7 @@ static inline void processEndDeviceAnnouncement (
     // Parse the 16-bit node ID.
     nodeId = (uint_fast16_t) requestPayload [1];
     nodeId |= ((uint_fast16_t) requestPayload [2]) << 8;
+    nodeEui64 = &(requestPayload [3]);
     GMOS_LOG_FMT (LOG_VERBOSE,
         "ZDO received device announcement for node ID %04X.", nodeId);
 
@@ -548,9 +551,15 @@ static inline void processEndDeviceAnnouncement (
         devAnnceCallbackData =
             zigbeeStack->zdoDevAnnceCallbackData [i];
         if (devAnnceHandler != NULL) {
-            devAnnceHandler (zigbeeStack, devAnnceCallbackData, nodeId,
-                &(requestPayload [3]), requestPayload [11]);
+            devAnnceHandler (zigbeeStack, devAnnceCallbackData,
+                nodeId, nodeEui64, requestPayload [11]);
         }
+    }
+
+    // Add the device to the concentrator tables if required.
+    if (GMOS_CONFIG_ZIGBEE_CONCENTRATOR_NODE) {
+        gmosZigbeeConcentratorStoreAddress (
+            zigbeeStack, nodeId, nodeEui64);
     }
 }
 

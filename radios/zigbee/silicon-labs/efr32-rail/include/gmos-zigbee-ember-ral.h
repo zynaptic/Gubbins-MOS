@@ -26,7 +26,9 @@
 #define GMOS_ZIGBEE_EMBER_RAL_H
 
 #include <stdint.h>
+#include <stdbool.h>
 #include "gmos-scheduler.h"
+#include "gmos-hashmap.h"
 #include "gmos-zigbee-config.h"
 
 /**
@@ -104,6 +106,10 @@ typedef enum {
     ZIGBEE_STACK_STATE_JOINING_RETRY_BACKOFF,
     ZIGBEE_STACK_STATE_JOINING_JOIN_NETWORK_REQ,
     ZIGBEE_STACK_STATE_JOINING_JOIN_NETWORK_CHECK,
+    ZIGBEE_STACK_STATE_JOINING_KEY_UPDATE_REQ,
+    ZIGBEE_STACK_STATE_JOINING_KEY_UPDATE_CHECK,
+    ZIGBEE_STACK_STATE_JOINING_LEAVE_NETWORK_REQ,
+    ZIGBEE_STACK_STATE_JOINING_LEAVE_NETWORK_CHECK,
     ZIGBEE_STACK_STATE_JOINING_JOIN_NETWORK_DONE
 } zigbeeStackStateJoining_t;
 
@@ -117,6 +123,12 @@ typedef struct gmosZigbeeRalState_t {
 
     // Allocate memory for the EmberZNet stack tick task.
     gmosTaskState_t emberTickTask;
+
+    // Allocate node information tables for concentrator nodes.
+    #if GMOS_CONFIG_ZIGBEE_CONCENTRATOR_NODE
+    gmosHashMap_t nodeInfoTable;
+    gmosHashMap_t nodeAddrTable;
+    #endif
 
     // Specify the current EmberZNet stack core operating phase.
     uint8_t zigbeeStackPhase;
@@ -142,6 +154,7 @@ typedef struct gmosZigbeeRalState_t {
             uint8_t bestMatch;
             uint8_t extPanIdMatch;
             uint8_t randomBytes [GMOS_ZIGBEE_EXTENDED_PAN_ID_SIZE];
+            uint8_t joiningKey [GMOS_ZIGBEE_ENCRYPTION_KEY_SIZE];
         } join;
         #endif
 
@@ -227,7 +240,9 @@ gmosTaskStatus_t gmosZigbeeRalCoordinatorTick (
  * that are configured as network concentrators.
  * @param zigbeeStack This is the Zigbee stack data structure that
  *     represents the EmberZNet stack interface being processed.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successful initialisation and 'false' otherwise.
  */
-void gmosZigbeeRalConcentratorInit (gmosZigbeeStack_t* zigbeeStack);
+bool gmosZigbeeRalConcentratorInit (gmosZigbeeStack_t* zigbeeStack);
 
 #endif // GMOS_ZIGBEE_EMBER_RAL_H

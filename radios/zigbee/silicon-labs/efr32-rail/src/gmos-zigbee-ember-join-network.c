@@ -189,17 +189,14 @@ void sl_zigbee_scan_complete_handler (
             } else {
                 state = ZIGBEE_STACK_STATE_JOINING_JOIN_NETWORK_REQ;
             }
-            ralData->zigbeeStackState = state;
-            gmosSchedulerTaskResume (&(ralData->emberWorkerTask));
-        }
-
-        // Log scan errors if required.
-        else {
+        } else {
             GMOS_LOG_FMT (LOG_DEBUG,
                 "EmberZNet active scan failed (channel %d, status 0x%04X).",
                 channel, slStatus);
         }
     }
+    ralData->zigbeeStackState = state;
+    gmosSchedulerTaskResume (&(ralData->emberWorkerTask));
 }
 
 /*
@@ -219,16 +216,72 @@ void sl_zigbee_stack_status_handler (sl_status_t slStatus)
         (state == ZIGBEE_STACK_STATE_JOINING_JOIN_NETWORK_CHECK)) {
         if (slStatus == SL_STATUS_NETWORK_UP) {
             zigbeeStack->currentNodeId = sl_zigbee_get_node_id ();
-            state = ZIGBEE_STACK_STATE_JOINING_JOIN_NETWORK_DONE;
+            if (GMOS_CONFIG_ZIGBEE_UPDATE_LINK_KEY_ON_JOINING) {
+                state = ZIGBEE_STACK_STATE_JOINING_KEY_UPDATE_REQ;
+            } else {
+                state = ZIGBEE_STACK_STATE_JOINING_JOIN_NETWORK_DONE;
+            }
         } else {
             GMOS_LOG_FMT (LOG_DEBUG,
                 "EmberZNet joining failed with status 0x%04X.",
                 slStatus);
             state = ZIGBEE_STACK_STATE_JOINING_RETRY_BACKOFF;
         }
-        ralData->zigbeeStackState = state;
-        gmosSchedulerTaskResume (&(ralData->emberWorkerTask));
     }
+
+    // Process status notifications while waiting for the network
+    // leaving process to complete.
+    if ((GMOS_CONFIG_ZIGBEE_UPDATE_LINK_KEY_ON_JOINING) &&
+        (phase == ZIGBEE_STACK_PHASE_JOINING) &&
+        (state == ZIGBEE_STACK_STATE_JOINING_LEAVE_NETWORK_CHECK)) {
+        if (slStatus == SL_STATUS_NETWORK_DOWN) {
+            state = ZIGBEE_STACK_STATE_JOINING_RETRY_BACKOFF;
+        } else {
+            GMOS_LOG_FMT (LOG_DEBUG,
+                "EmberZNet leaving failed with status 0x%04X.",
+                slStatus);
+            state = ZIGBEE_STACK_STATE_JOINING_RETRY_BACKOFF;
+        }
+    }
+    ralData->zigbeeStackState = state;
+    gmosSchedulerTaskResume (&(ralData->emberWorkerTask));
+}
+
+/*
+ * Implement stack status handler for receiving link key establishment
+ * status notifications.
+ */
+void sl_zigbee_zigbee_key_establishment_handler (
+    sl_802154_long_addr_t partner, sl_zigbee_key_status_t keyStatus)
+{
+    (void) partner;
+    gmosZigbeeStack_t* zigbeeStack = gmosZigbeeRalEmberStackInstance;
+    gmosZigbeeRalState_t* ralData = zigbeeStack->ralData;
+    zigbeeStackPhase_t phase = ralData->zigbeeStackPhase;
+    zigbeeStackStateJoining_t state = ralData->zigbeeStackState;
+
+    // Process status notifications while waiting for the link key
+    // establishment process to complete.
+    if ((phase == ZIGBEE_STACK_PHASE_JOINING) &&
+        (state == ZIGBEE_STACK_STATE_JOINING_KEY_UPDATE_CHECK)) {
+
+        // Check for successful link key verification.
+        if (keyStatus == SL_ZIGBEE_VERIFY_LINK_KEY_SUCCESS) {
+            state = ZIGBEE_STACK_STATE_JOINING_JOIN_NETWORK_DONE;
+        }
+
+        // Link key establishment is an intermediate state. All other
+        // status values are taken to indicate failure.
+        else if ((keyStatus != SL_ZIGBEE_KEY_STATUS_NONE) &&
+            (keyStatus != SL_ZIGBEE_TRUST_CENTER_LINK_KEY_ESTABLISHED)) {
+            GMOS_LOG_FMT (LOG_DEBUG,
+                "EmberZNet key establishment failed with status 0x%02X.",
+                keyStatus);
+            state = ZIGBEE_STACK_STATE_JOINING_LEAVE_NETWORK_REQ;
+        }
+    }
+    ralData->zigbeeStackState = state;
+    gmosSchedulerTaskResume (&(ralData->emberWorkerTask));
 }
 
 /*
@@ -237,10 +290,40 @@ void sl_zigbee_stack_status_handler (sl_status_t slStatus)
 static inline bool gmosZigbeeRalEmberJoinNetworkRequest (
     gmosZigbeeStack_t* zigbeeStack)
 {
+    gmosZigbeeRalState_t* ralData = zigbeeStack->ralData;
     sl_status_t slStatus;
     sl_zigbee_node_type_t nodeType;
     sl_zigbee_network_parameters_t netParams;
+    sl_zigbee_initial_security_state_t initSecurity = { 0 };
+    sl_zigbee_extended_security_bitmask_t extBitmask;
     uint_fast8_t i;
+
+    // Copy over the initial link key value.
+    for (i = 0; i < SL_ZIGBEE_ENCRYPTION_KEY_SIZE; i++) {
+        initSecurity.preconfiguredKey.contents [i] =
+            ralData->phase.join.joiningKey [i];
+    }
+
+    // Set the initial security state.
+    initSecurity.bitmask =
+        SL_ZIGBEE_STANDARD_SECURITY_MODE |
+        SL_ZIGBEE_HAVE_PRECONFIGURED_KEY |
+        SL_ZIGBEE_REQUIRE_ENCRYPTED_KEY |
+        SL_ZIGBEE_NO_FRAME_COUNTER_RESET;
+    extBitmask =
+        SL_ZIGBEE_EXT_NO_FRAME_COUNTER_RESET;
+
+    // Attempt to set the network security parameters.
+    slStatus = sl_zigbee_set_initial_security_state (&initSecurity);
+    if (slStatus == SL_STATUS_OK) {
+        slStatus = sl_zigbee_set_extended_security_bitmask (extBitmask);
+    }
+    if (slStatus != SL_STATUS_OK) {
+        GMOS_LOG_FMT (LOG_DEBUG,
+            "EmberZNet security setup failed with status 0x%04X.",
+            slStatus);
+        goto out;
+    }
 
     // Populate the network information data structure.
     netParams.panId = zigbeeStack->currentPanId;
@@ -271,7 +354,41 @@ static inline bool gmosZigbeeRalEmberJoinNetworkRequest (
     // Initiate device joining.
     slStatus = sl_zigbee_join_network (nodeType, &netParams);
     GMOS_LOG_FMT (LOG_VERBOSE,
-        "EmberZNet initiated device joining with status 0x%04X.", slStatus);
+        "EmberZNet initiated device joining with status 0x%04X.",
+        slStatus);
+out:
+    return (slStatus == SL_STATUS_OK) ? true : false;
+}
+
+/*
+ * Send the link key update request.
+ */
+static inline bool gmosZigbeeRalEmberLinkKeyRequest (void)
+{
+    sl_status_t slStatus;
+
+    // Initiate the key request with up to 3 retry attempts for each
+    // phase of the handshake.
+    slStatus = sl_zigbee_update_tc_link_key (3);
+    GMOS_LOG_FMT (LOG_VERBOSE,
+        "EmberZNet initiated key establishment with status 0x%04X.",
+        slStatus);
+    return (slStatus == SL_STATUS_OK) ? true : false;
+}
+
+/*
+ * Send the network leave request.
+ */
+static inline bool gmosZigbeeRalEmberLeaveNetworkRequest (void)
+{
+    sl_status_t slStatus;
+
+    // Initiate a network leave request.
+    slStatus = sl_zigbee_leave_network (
+        SL_ZIGBEE_LEAVE_NWK_WITH_NO_OPTION);
+    GMOS_LOG_FMT (LOG_VERBOSE,
+        "EmberZNet initiated network leave with status 0x%04X.",
+        slStatus);
     return (slStatus == SL_STATUS_OK) ? true : false;
 }
 
@@ -354,6 +471,41 @@ gmosTaskStatus_t gmosZigbeeRalEmberJoinNetworkPhase (
             taskStatus = GMOS_TASK_SUSPEND;
             break;
 
+        // Initiate the Zigbee 3.0 link key update process.
+#if GMOS_CONFIG_ZIGBEE_UPDATE_LINK_KEY_ON_JOINING
+        case ZIGBEE_STACK_STATE_JOINING_KEY_UPDATE_REQ :
+            if (gmosZigbeeRalEmberLinkKeyRequest ()) {
+                nextState = ZIGBEE_STACK_STATE_JOINING_KEY_UPDATE_CHECK;
+                taskStatus = GMOS_TASK_SUSPEND;
+            } else {
+                nextState = ZIGBEE_STACK_STATE_JOINING_LEAVE_NETWORK_REQ;
+            }
+            break;
+#endif
+
+        // Initiate a network leave request on failure to update the
+        // device link key.
+#if GMOS_CONFIG_ZIGBEE_UPDATE_LINK_KEY_ON_JOINING
+        case ZIGBEE_STACK_STATE_JOINING_LEAVE_NETWORK_REQ :
+            if (gmosZigbeeRalEmberLeaveNetworkRequest ()) {
+                nextState = ZIGBEE_STACK_STATE_JOINING_LEAVE_NETWORK_CHECK;
+                taskStatus = GMOS_TASK_SUSPEND;
+            } else {
+               nextState = ZIGBEE_STACK_STATE_JOINING_RETRY_BACKOFF;
+            }
+            break;
+#endif
+
+        // Wait for the key establishment handler to indicate link key
+        // verification complete and the network leave request to
+        // complete.
+#if GMOS_CONFIG_ZIGBEE_UPDATE_LINK_KEY_ON_JOINING
+        case ZIGBEE_STACK_STATE_JOINING_KEY_UPDATE_CHECK :
+        case ZIGBEE_STACK_STATE_JOINING_LEAVE_NETWORK_CHECK :
+            taskStatus = GMOS_TASK_SUSPEND;
+            break;
+#endif
+
         // Enter the network active phase on joining complete.
         case ZIGBEE_STACK_STATE_JOINING_JOIN_NETWORK_DONE :
             nextPhase = ZIGBEE_STACK_PHASE_ACTIVE;
@@ -383,33 +535,35 @@ gmosZigbeeStatus_t gmosZigbeeJoinNetwork (
 {
     gmosZigbeeRalState_t* ralData = zigbeeStack->ralData;
     uint_fast8_t i;
-    sl_zigbee_initial_security_state_t initSecurity = { 0 };
-    sl_zigbee_extended_security_bitmask_t extBitmask;
-    sl_status_t slStatus;
     uint8_t defaultKey [SL_ZIGBEE_ENCRYPTION_KEY_SIZE] =
         GMOS_ZIGBEE_INTEROPERABILITY_LINK_KEY;
     uint8_t* linkKeyPtr;
+    gmosZigbeeStatus_t status = GMOS_ZIGBEE_STATUS_SUCCESS;
 
     // This call is not supported for coordinator nodes.
     if (GMOS_CONFIG_ZIGBEE_NODE_TYPE == GMOS_ZIGBEE_COORDINATOR_NODE) {
-        return GMOS_ZIGBEE_STATUS_INVALID_CALL;
+        status = GMOS_ZIGBEE_STATUS_INVALID_CALL;
+        goto out;
     }
 
     // Indicate that the network is already active.
     if (ralData->zigbeeStackPhase == ZIGBEE_STACK_PHASE_ACTIVE) {
-        return GMOS_ZIGBEE_STATUS_NETWORK_UP;
+        status = GMOS_ZIGBEE_STATUS_NETWORK_UP;
+        goto out;
     }
 
     // Indicate that network joining is already in progress.
     if ((ralData->zigbeeStackPhase != ZIGBEE_STACK_PHASE_JOINING) ||
         (ralData->zigbeeStackState != ZIGBEE_STACK_STATE_JOINING_IDLE)) {
-        return GMOS_ZIGBEE_STATUS_INVALID_CALL;
+        status = GMOS_ZIGBEE_STATUS_INVALID_CALL;
+        goto out;
     }
 
     // Check for valid channel mask.
     channelMask &= GMOS_ZIGBEE_CHANNEL_MASK;
     if (channelMask == 0) {
-        return GMOS_ZIGBEE_STATUS_INVALID_ARGUMENT;
+        status = GMOS_ZIGBEE_STATUS_INVALID_ARGUMENT;
+        goto out;
     }
     zigbeeStack->channelMask = channelMask;
 
@@ -421,7 +575,8 @@ gmosZigbeeStatus_t gmosZigbeeJoinNetwork (
                 zigbeeStack->extendedPanId [i] = extendedPanId [i];
             }
         } else {
-            return GMOS_ZIGBEE_STATUS_INVALID_ARGUMENT;
+            status = GMOS_ZIGBEE_STATUS_INVALID_ARGUMENT;
+            goto out;
         }
     } else {
         ralData->phase.join.extPanIdMatch = false;
@@ -430,38 +585,19 @@ gmosZigbeeStatus_t gmosZigbeeJoinNetwork (
         }
     }
 
-    // Select the initial link key to be used during joining. This may
-    // be a preconfigured key or the default Zigbee Alliance link key.
+    // Select the initial link key to be used during joining. This
+    // may be a preconfigured key or the default Zigbee Alliance
+    // interoperability key.
     linkKeyPtr = (deviceLinkKey != NULL) ? deviceLinkKey : defaultKey;
     for (i = 0; i < SL_ZIGBEE_ENCRYPTION_KEY_SIZE; i++) {
-        initSecurity.preconfiguredKey.contents [i] = *(linkKeyPtr++);
-    }
-
-    // Set the common network security options.
-    initSecurity.bitmask =
-        SL_ZIGBEE_STANDARD_SECURITY_MODE |
-        SL_ZIGBEE_HAVE_PRECONFIGURED_KEY |
-        SL_ZIGBEE_REQUIRE_ENCRYPTED_KEY |
-        SL_ZIGBEE_NO_FRAME_COUNTER_RESET;
-    extBitmask =
-        SL_ZIGBEE_EXT_NO_FRAME_COUNTER_RESET;
-
-    // Attempt to set the network security parameters.
-    slStatus = sl_zigbee_set_initial_security_state (&initSecurity);
-    if (slStatus == SL_STATUS_OK) {
-        slStatus = sl_zigbee_set_extended_security_bitmask (extBitmask);
-    }
-    if (slStatus != SL_STATUS_OK) {
-        GMOS_LOG_FMT (LOG_DEBUG,
-            "EmberZNet security setup failed with status 0x%04X.",
-            slStatus);
-        return GMOS_ZIGBEE_STATUS_FATAL_ERROR;
+        ralData->phase.join.joiningKey [i] = *(linkKeyPtr++);
     }
 
     // Start the network joining process.
     ralData->zigbeeStackState = ZIGBEE_STACK_STATE_JOINING_START;
     gmosSchedulerTaskResume (&(ralData->emberWorkerTask));
-    return GMOS_ZIGBEE_STATUS_SUCCESS;
+out:
+    return status;
 }
 
 #endif // GMOS_CONFIG_ZIGBEE_NODE_TYPE

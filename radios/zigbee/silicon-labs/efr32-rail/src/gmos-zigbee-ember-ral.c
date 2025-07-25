@@ -112,10 +112,12 @@ bool gmosZigbeeRalInit (gmosZigbeeStack_t* zigbeeStack)
     gmosZigbeeRalState_t* ralData = zigbeeStack->ralData;
     sl_status_t slStatus;
     psa_status_t psaStatus;
+    bool initOk = true;
 
     // Only a single EmberZNet stack instance may be used per device.
     if (gmosZigbeeRalEmberStackInstance != NULL) {
-        return false;
+        initOk = false;
+        goto out;
     } else {
         gmosZigbeeRalEmberStackInstance = zigbeeStack;
     }
@@ -126,7 +128,8 @@ bool gmosZigbeeRalInit (gmosZigbeeStack_t* zigbeeStack)
     // library is also initialised elsewhere.
     psaStatus = psa_crypto_init ();
     if (psaStatus != PSA_SUCCESS) {
-        return false;
+        initOk = false;
+        goto out;
     }
 
     // Set up the RAIL power amplifier curves.
@@ -144,12 +147,16 @@ bool gmosZigbeeRalInit (gmosZigbeeStack_t* zigbeeStack)
     GMOS_LOG_FMT (LOG_INFO,
         "EmberZNet initialised with status %d.", slStatus);
     if (slStatus != SL_STATUS_OK) {
-        return false;
+        initOk = false;
+        goto out;
     }
 
     // Initialise the concentrator if required.
     if (GMOS_CONFIG_ZIGBEE_CONCENTRATOR_NODE == true) {
-        gmosZigbeeRalConcentratorInit (zigbeeStack);
+        if (!gmosZigbeeRalConcentratorInit (zigbeeStack)) {
+            initOk = false;
+            goto out;
+        }
     }
 
     // Initialise the EmberZNet core task state machine.
@@ -164,5 +171,6 @@ bool gmosZigbeeRalInit (gmosZigbeeStack_t* zigbeeStack)
     gmosZigbeeEmberStackWorker_start (&(ralData->emberWorkerTask),
         zigbeeStack, "EmberZNet Worker");
 
-    return true;
+out:
+    return initOk;
 }

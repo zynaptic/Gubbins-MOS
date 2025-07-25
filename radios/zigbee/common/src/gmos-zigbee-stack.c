@@ -26,17 +26,26 @@
 #include "gmos-config.h"
 #include "gmos-platform.h"
 #include "gmos-zigbee-stack.h"
+#include "gmos-zigbee-concentrator.h"
 
 /*
  * Initialise the Zigbee stack on startup.
  */
 bool gmosZigbeeStackInit (gmosZigbeeStack_t* zigbeeStack)
 {
+    bool initOk = true;
+
     // Initialise the common stack data.
     zigbeeStack->networkState = GMOS_ZIGBEE_NETWORK_STATE_INITIALISING;
 
+    // Initialise the concentrator device tables if required.
+    if (GMOS_CONFIG_ZIGBEE_CONCENTRATOR_NODE) {
+        initOk = initOk && gmosZigbeeConcentratorInit (zigbeeStack);
+    }
+
     // Initialise the platform specific Zigbee RAL.
-    return gmosZigbeeRalInit (zigbeeStack);
+    initOk = initOk && gmosZigbeeRalInit (zigbeeStack);
+    return initOk;
 }
 
 /*

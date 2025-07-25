@@ -61,6 +61,14 @@
 #endif
 
 /**
+ * Specify that device joining should use the standard Zigbee 3.0
+ * device joining handshake with link key replacement.
+ */
+#ifndef GMOS_CONFIG_ZIGBEE_UPDATE_LINK_KEY_ON_JOINING
+#define GMOS_CONFIG_ZIGBEE_UPDATE_LINK_KEY_ON_JOINING true
+#endif
+
+/**
  * Specify the number of candidate channels to use during the network
  * formation active network scan process.
  */

@@ -27,6 +27,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
+#include "gmos-hashmap.h"
 #include "gmos-zigbee-config.h"
 
 // Specify some common Zigbee protocol constants.
@@ -207,6 +208,13 @@ typedef struct gmosZigbeeStack_t {
     // This is a pointer to the associated Zigbee ZDO client instance.
     gmosZigbeeZdoClient_t* zdoClient;
 
+    // These are the local tables used to store source routing and
+    // device information for concentrator nodes.
+#if GMOS_CONFIG_ZIGBEE_CONCENTRATOR_NODE
+    gmosHashMap_t nodeInfoTable;
+    gmosHashMap_t nodeAddrTable;
+#endif
+
     // Store the callback handlers for APS transaction completion.
     void* apsTxMsgCallbacks
         [GMOS_CONFIG_ZIGBEE_APS_TRANSMIT_MAX_REQUESTS];
@@ -276,6 +284,7 @@ typedef struct gmosZigbeeStack_t {
     .currentChannelId        = 0,                                      \
     .extendedPanId           = { 0 },                                  \
     .apsTxMsgTags            = { 0 }}
+
 
 /**
  * Initialises a Zigbee stack on startup.
@@ -408,13 +417,22 @@ gmosZigbeeStatus_t gmosZigbeeLeaveNetwork (
  *     the coordinator to control device joining.
  * @param joiningTimeout This timeout specifies the number of seconds
  *     after which the joining mode will revert to the default policy.
+ * @param joinerKey This is the temporary link key that is to be used
+ *     during the joining process. Any device which joins using the
+ *     temporary link key should request a permanent link key using the
+ *     standard Zigbee 3.0 link key request handshake. A null reference
+ *     indicates that no temporary link key should be used.
+ * @param joinerEui64 This is the optional joining device EUI64 that is
+ *     associated with the temporary link key. A null reference may be
+ *     used to indicate that any joining device can use the temporary
+ *     link key.
  * @return Returns a Zigbee network status value which will be set to
  *     'GMOS_ZIGBEE_STATUS_SUCCESS' on successfully starting the network
  *     joining process and the appropriate status code on failure.
  */
 gmosZigbeeStatus_t gmosZigbeeSetJoiningMode (
     gmosZigbeeStack_t* zigbeeStack, gmosZigbeeJoiningMode_t joiningMode,
-    uint32_t joiningTimeout);
+    uint32_t joiningTimeout, uint8_t* joinerKey, uint8_t* joinerEui64);
 
 /**
  * Gets the current device joining mode in use by the Zigbee network.
