@@ -36,6 +36,7 @@ ZIGBEE_OBJ_FILE_NAMES = \
 	gmos-zigbee-stack.o \
 	gmos-zigbee-aps.o \
 	gmos-zigbee-endpoint.o \
+	gmos-zigbee-concentrator.o \
 	gmos-zigbee-zdo-common.o \
 	gmos-zigbee-zdo-client.o \
 	gmos-zigbee-zdo-server.o \
