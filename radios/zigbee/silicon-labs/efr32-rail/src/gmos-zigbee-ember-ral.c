@@ -145,7 +145,7 @@ bool gmosZigbeeRalInit (gmosZigbeeStack_t* zigbeeStack)
     // Initialise the EmberZNet stack.
     slStatus = sl_zigbee_init ();
     GMOS_LOG_FMT (LOG_INFO,
-        "EmberZNet initialised with status %d.", slStatus);
+        "EmberZNet initialised stack with status 0x%04X.", slStatus);
     if (slStatus != SL_STATUS_OK) {
         initOk = false;
         goto out;

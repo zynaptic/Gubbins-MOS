@@ -145,4 +145,13 @@
 #define GMOS_CONFIG_ZIGBEE_ZCL_LOCAL_COMMAND_QUEUE_LENGTH 2
 #endif
 
+/**
+ * Specify whether the coordinator trust centre should use a common link
+ * key for all devices in the network or whether it should generate
+ * device specific hashed link keys.
+ */
+#ifndef GMOS_CONFIG_ZIGBEE_COORDINATOR_USES_HASHED_LINK_KEYS
+#define GMOS_CONFIG_ZIGBEE_COORDINATOR_USES_HASHED_LINK_KEYS true
+#endif
+
 #endif // GMOS_ZIGBEE_CONFIG_H

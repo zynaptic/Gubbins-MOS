@@ -36,6 +36,15 @@
 #endif
 
 /**
+ * Specifies the nominal interval at which the concentrator will
+ * broadcast many to one route requests to the network, expressed as
+ * an integer number of seconds.
+ */
+#ifndef GMOS_CONFIG_ZIGBEE_SOURCE_ROUTE_MTORR_INTERVAL
+#define GMOS_CONFIG_ZIGBEE_SOURCE_ROUTE_MTORR_INTERVAL 60
+#endif
+
+/**
  * Initialises Zigbee concentrator support on startup.
  * @param zigbeeStack This is the Zigbee stack instance for the
  *     concentrator node.

@@ -122,19 +122,6 @@ typedef enum {
 } gmosZigbeeNetworkState_t;
 
 /**
- * Specify the set of supported Zigbee network security modes.
- */
-typedef enum {
-
-    // The Zigbee network supports the use of a common link key.
-    GMOS_ZIGBEE_SECURITY_MODE_COMMON_LINK_KEY,
-
-    // The Zigbee network supports the use of hashed link keys.
-    GMOS_ZIGBEE_SECURITY_MODE_HASHED_LINK_KEYS
-
-} gmosZigbeeSecurityMode_t;
-
-/**
  * Specify the set of supported Zigbee device joining modes.
  */
 typedef enum {
@@ -143,6 +130,11 @@ typedef enum {
     // been provided to the joining device using an out of band
     // configuration process.
     GMOS_ZIGBEE_JOINING_MODE_PRESET_LINK_KEY,
+
+    // Enable device joining using a temporary link key which will be
+    // replaced with the permanent link key on joining. This is the
+    // joining mode that is required for standard Zigbee 3.0 operation.
+    GMOS_ZIGBEE_JOINING_MODE_TEMPORARY_LINK_KEY,
 
     // Disallow device joining, but allow previously joined devices to
     // rejoin the network after losing their network connection.
@@ -341,8 +333,6 @@ gmosZigbeeNetworkState_t gmosZigbeeGetNetworkState (
  * @param zigbeeStack This is the Zigbee stack instance for the radio
  *     interface that should be used when forming the new Zigbee
  *     network.
- * @param securityMode This is the Zigbee security mode to be used when
- *     forming the network.
  * @param channelMask This is a bit mask which specifies the Zigbee
  *     radio channels which may be used when forming the network.
  *     802.15.4 channels 11 to 26 are supported for 2.4GHz operation,
@@ -364,8 +354,8 @@ gmosZigbeeNetworkState_t gmosZigbeeGetNetworkState (
  *     formation process and the appropriate status code on failure.
  */
 gmosZigbeeStatus_t gmosZigbeeFormNetwork (gmosZigbeeStack_t* zigbeeStack,
-    gmosZigbeeSecurityMode_t securityMode, uint32_t channelMask,
-    uint8_t* commonLinkKey, uint8_t* networkKey, uint8_t* extendedPanId);
+    uint32_t channelMask, uint8_t* commonLinkKey, uint8_t* networkKey,
+    uint8_t* extendedPanId);
 
 /**
  * Initiates the joining process for an existing Zigbee network. This
@@ -421,7 +411,8 @@ gmosZigbeeStatus_t gmosZigbeeLeaveNetwork (
  *     during the joining process. Any device which joins using the
  *     temporary link key should request a permanent link key using the
  *     standard Zigbee 3.0 link key request handshake. A null reference
- *     indicates that no temporary link key should be used.
+ *     should be used if the joining mode does not require a temporary
+ *     link key.
  * @param joinerEui64 This is the optional joining device EUI64 that is
  *     associated with the temporary link key. A null reference may be
  *     used to indicate that any joining device can use the temporary

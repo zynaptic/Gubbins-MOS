@@ -21,6 +21,9 @@
  * the EmberZNet Zigbee network stack.
  */
 
+#ifndef SL_ZIGBEE_STACK_CONFIG_H
+#define SL_ZIGBEE_STACK_CONFIG_H
+
 #include "gmos-zigbee-config.h"
 
 /*
@@ -66,9 +69,11 @@
 /*
  * Enable source routing library for concentrator nodes.
  */
-#if (GMOS_CONFIG_ZIGBEE_CONCENTRATOR_NODE == true)
+#if (GMOS_CONFIG_ZIGBEE_CONCENTRATOR_NODE)
 #define SL_CATALOG_ZIGBEE_SOURCE_ROUTE_PRESENT
 #define SL_ZIGBEE_APPLICATION_HAS_OVERRIDE_SOURCE_ROUTING
 #define SL_ZIGBEE_APPLICATION_HAS_INCOMING_ROUTE_ERROR_HANDLER
 #define SL_ZIGBEE_APPLICATION_HAS_ID_CONFLICT_HANDLER
 #endif
+
+#endif // SL_ZIGBEE_STACK_CONFIG_H

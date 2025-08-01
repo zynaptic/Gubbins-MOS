@@ -129,8 +129,7 @@ static void setSecurityKey (uint8_t* keyData, uint8_t* keySource)
  * Sets the initial security state for the network.
  */
 static inline sl_status_t setInitialSecurityState (
-    gmosZigbeeSecurityMode_t securityMode, uint8_t* commonLinkKey,
-    uint8_t* networkKey)
+    uint8_t* commonLinkKey, uint8_t* networkKey)
 {
     sl_status_t slStatus;
     sl_zigbee_initial_security_state_t initSecurity = { 0 };
@@ -142,7 +141,7 @@ static inline sl_status_t setInitialSecurityState (
     setSecurityKey (initSecurity.preconfiguredKey.contents, commonLinkKey);
 
     // Select the security mode settings.
-    if (securityMode == GMOS_ZIGBEE_SECURITY_MODE_HASHED_LINK_KEYS) {
+    if (GMOS_CONFIG_ZIGBEE_COORDINATOR_USES_HASHED_LINK_KEYS) {
         initSecurity.bitmask =
             SL_ZIGBEE_STANDARD_SECURITY_MODE |
             SL_ZIGBEE_TRUST_CENTER_GLOBAL_LINK_KEY |
@@ -531,8 +530,8 @@ gmosTaskStatus_t gmosZigbeeRalEmberFormNetworkPhase (
  * Zigbee device is not currently joined to a Zigbee network.
  */
 gmosZigbeeStatus_t gmosZigbeeFormNetwork (gmosZigbeeStack_t* zigbeeStack,
-    gmosZigbeeSecurityMode_t securityMode, uint32_t channelMask,
-    uint8_t* commonLinkKey, uint8_t* networkKey, uint8_t* extendedPanId)
+    uint32_t channelMask, uint8_t* commonLinkKey, uint8_t* networkKey,
+    uint8_t* extendedPanId)
 {
     gmosZigbeeRalState_t* ralData = zigbeeStack->ralData;
     uint_fast8_t i;
@@ -578,8 +577,7 @@ gmosZigbeeStatus_t gmosZigbeeFormNetwork (gmosZigbeeStack_t* zigbeeStack,
     }
 
     // Attempt to set the network security parameters.
-    slStatus = setInitialSecurityState (
-        securityMode, commonLinkKey, networkKey);
+    slStatus = setInitialSecurityState (commonLinkKey, networkKey);
     if (slStatus != SL_STATUS_OK) {
         return GMOS_ZIGBEE_STATUS_FATAL_ERROR;
     }
