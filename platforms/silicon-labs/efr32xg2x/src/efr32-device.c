@@ -31,23 +31,12 @@
 #include "efr32-device.h"
 #include "em_core.h"
 #include "em_chip.h"
-#include "em_emu.h"
 #include "em_cmu.h"
-#include "sl_hfxo_manager.h"
-
-// The high frequency oscillator configuration used by the various
-// Silicon Labs libraries needs to be consistent with the settings
-// used here.
+#include "sl_device_init_dcdc.h"
+#include "sl_device_init_lfxo.h"
+#include "sl_device_init_hfxo.h"
 #include "sl_device_init_hfxo_config.h"
-#if ((SL_DEVICE_INIT_HFXO_MODE != cmuHfxoOscMode_Crystal) || \
-     (SL_DEVICE_INIT_HFXO_FREQ != 39000000))
-#error "Inconsistent HFXO configuration options."
-#endif
-
-// If supported, select the pre-calibrated high frequency oscillator
-// tuning capacitor value from a fixed offset in the USERDATA page.
-#define HFXO_MFG_CTUNE_ADDR 0x0FE00100UL
-#define HFXO_MFG_CTUNE_VAL  (*((uint16_t *) (HFXO_MFG_CTUNE_ADDR)))
+#include "sl_hfxo_manager.h"
 
 /*
  * Perform NVIC initialisation, setting all interrupts to the default
@@ -68,13 +57,8 @@ static inline void gmosPalNvicSetup (void)
  */
 static inline void gmosPalRegulatorSetup (void)
 {
-    // Set the default DC/DC regulator configuration.
-    EMU_DCDCInit_TypeDef dcdcInit = EMU_DCDCINIT_DEFAULT;
-    EMU_DCDCInit(&dcdcInit);
-
-    // Set DC/DC peak current to the recommended 60mA for the active and
-    // sleep power modes (see reference manual table 11.6).
-    EMU_DCDCSetPFMXModePeakCurrent (9);
+    // Set the initial regulator configuration.
+    sl_device_init_dcdc ();
 }
 
 /*
@@ -84,7 +68,10 @@ static inline void gmosPalRegulatorSetup (void)
  */
 static inline void gmosPalHfxoSetup ()
 {
-    // Initialise the HFXO hardware.
+    // Set the initial HFXO configuration.
+    sl_device_init_hfxo ();
+
+    // Initialise the HFXO manager hardware.
     sl_hfxo_manager_init_hardware ();
 
     // Initialise the HFXO management service from the SDK.
@@ -97,9 +84,8 @@ static inline void gmosPalHfxoSetup ()
  */
 static inline void gmosPalLfxoSetup (void)
 {
-    CMU_LFXOInit_TypeDef lfxoInit = CMU_LFXOINIT_DEFAULT;
-    CMU_LFXOInit (&lfxoInit);
-    CMU_LFXOPrecisionSet (GMOS_CONFIG_EFR32_LFXO_PRECISION);
+    // Set the initial LFXO configuration.
+    sl_device_init_lfxo ();
 }
 
 /*
@@ -111,7 +97,7 @@ static inline void gmosPalLfxoSetup (void)
 static inline void gmosPalClockSetup (void)
 {
     // Use the high frequency oscillator as the system clock.
-#if (GMOS_CONFIG_EFR32_SYSTEM_CLOCK == GMOS_CONFIG_EFR32_HFXO_FREQUENCY)
+#if (GMOS_CONFIG_EFR32_SYSTEM_CLOCK == SL_DEVICE_INIT_HFXO_FREQ)
     CMU_CLOCK_SELECT_SET (SYSCLK, HFXO);
 #else
 #error "System clock PLL is not currently supported."

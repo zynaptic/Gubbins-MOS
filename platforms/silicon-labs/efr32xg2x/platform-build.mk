@@ -42,6 +42,7 @@ PLATFORM_HEADER_DIRS = \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/driver/gpio/inc \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/mpu/inc \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/sleeptimer/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/device_init/inc \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/device_manager/inc \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/interrupt_manager/inc \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/interrupt_manager/config \
@@ -94,6 +95,9 @@ PLATFORM_OBJ_FILE_NAMES = \
 	sdk-sl_device_clock_${GMOS_TARGET_DEVICE_FAMILY_XLC}.o \
 	sdk-sl_device_peripheral_hal_${GMOS_TARGET_DEVICE_FAMILY_XLC}.o \
 	sdk-sl_interrupt_manager_cortexm.o \
+	sdk-sl_device_init_dcdc_s2.o \
+	sdk-sl_device_init_hfxo_s2.o \
+	sdk-sl_device_init_lfxo_s2.o \
 	sdk-sl_gpio.o \
 	sdk-sl_slist.o \
 	sdk-sl_hal_gpio.o \

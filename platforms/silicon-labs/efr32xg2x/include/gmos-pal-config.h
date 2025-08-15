@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,39 +27,13 @@
 #include <stdbool.h>
 
 /**
- * Specify the frequency of the high frequency crystal oscillator. The
- * default setting is 39MHz, which corresponds to the oscillator that is
- * fitted to the standard Silicon Labs radio modules.
- */
-#ifndef GMOS_CONFIG_EFR32_HFXO_FREQUENCY
-#define GMOS_CONFIG_EFR32_HFXO_FREQUENCY 39000000
-#endif
-
-/**
- * Set a fixed HFXO tuning capacitor value which is suitable for most
- * standard implementations. A negative value indicates that the default
- * device specific settings should be used.
- */
-#ifndef GMOS_CONFIG_EFR32_HFXO_FIXED_CTUNE_VAL
-#define GMOS_CONFIG_EFR32_HFXO_FIXED_CTUNE_VAL -1
-#endif
-
-/**
  * Specify the system clock rate. The default setting is 39MHz, which
  * corresponds to the 39MHz high frequency oscillator as present on the
  * standard Silicon Labs radio modules. Other values which require use
  * of the PLL are not currently supported.
  */
 #ifndef GMOS_CONFIG_EFR32_SYSTEM_CLOCK
-#define GMOS_CONFIG_EFR32_SYSTEM_CLOCK GMOS_CONFIG_EFR32_HFXO_FREQUENCY
-#endif
-
-/**
- * Set the precision of the 32.768kHz low frequency oscillator in parts
- * per million.
- */
-#ifndef GMOS_CONFIG_EFR32_LFXO_PRECISION
-#define GMOS_CONFIG_EFR32_LFXO_PRECISION 100
+#define GMOS_CONFIG_EFR32_SYSTEM_CLOCK 39000000
 #endif
 
 /**
