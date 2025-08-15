@@ -33,6 +33,7 @@
 #include "em_chip.h"
 #include "em_emu.h"
 #include "em_cmu.h"
+#include "sl_hfxo_manager.h"
 
 // The high frequency oscillator configuration used by the various
 // Silicon Labs libraries needs to be consistent with the settings
@@ -83,45 +84,11 @@ static inline void gmosPalRegulatorSetup (void)
  */
 static inline void gmosPalHfxoSetup ()
 {
-    int ctune = -1;
+    // Initialise the HFXO hardware.
+    sl_hfxo_manager_init_hardware ();
 
-    // Select the default high frequency crystal oscillator settings.
-    CMU_HFXOInit_TypeDef hfxoInit = CMU_HFXOINIT_DEFAULT;
-
-    // Use tuning value from DEVINFO if available (for PCB modules).
-#ifdef _DEVINFO_MODXOCAL_HFXOCTUNEXIANA_MASK
-    if ((DEVINFO->MODULEINFO & _DEVINFO_MODULEINFO_HFXOCALVAL_MASK) == 0) {
-        ctune = DEVINFO->MODXOCAL & _DEVINFO_MODXOCAL_HFXOCTUNEXIANA_MASK;
-    }
-#endif
-
-    // Use tuning value from USERDATA page if not already set.
-    if ((ctune < 0) && (HFXO_MFG_CTUNE_VAL != 0xFFFF)) {
-        ctune = HFXO_MFG_CTUNE_VAL;
-    }
-
-    // Use fixed tuning value if not already set.
-    if (ctune < 0) {
-        ctune = GMOS_CONFIG_EFR32_HFXO_FIXED_CTUNE_VAL;
-    }
-
-    // Adjust tuning capacitors to the set value. The output tuning
-    // capacitor includes a delta value which accounts for internal
-    // chip load imbalance on some series 2 chips.
-    if (ctune >= 0) {
-        int ctuneMax = (int) (_HFXO_XTALCTRL_CTUNEXOANA_MASK >>
-            _HFXO_XTALCTRL_CTUNEXOANA_SHIFT);
-        hfxoInit.ctuneXiAna = (uint8_t) ctune;
-        ctune += CMU_HFXOCTuneDeltaGet();
-        if (ctune < 0) {
-            ctune = 0;
-        } else if (ctune > ctuneMax) {
-            ctune = ctuneMax;
-        }
-        hfxoInit.ctuneXoAna = (uint8_t) ctune;
-    }
-    SystemHFXOClockSet (GMOS_CONFIG_EFR32_HFXO_FREQUENCY);
-    CMU_HFXOInit (&hfxoInit);
+    // Initialise the HFXO management service from the SDK.
+    sl_hfxo_manager_init ();
 }
 
 /*

@@ -84,6 +84,7 @@ PLATFORM_CRYPTO_OBJ_FILE_NAMES = \
 	crypto-mbedtls-md.o \
 	crypto-mbedtls-cipher.o \
 	crypto-mbedtls-cipher_wrap.o \
+	crypto-mbedtls-block_cipher.o \
 	crypto-mbedtls-sha256.o \
 	crypto-mbedtls-sha512.o \
 	crypto-mbedtls-aes.o \

@@ -28,6 +28,7 @@ PLATFORM_HEADER_DIRS = \
 	${GMOS_GIT_DIR}/common/include \
 	${GMOS_GIT_DIR}/imports/printf \
 	${TARGET_PLATFORM_DIR}/include \
+	${TARGET_PLATFORM_DIR}/include/sdk-config \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/common/inc \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/common/config \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/emlib/inc \
@@ -44,7 +45,10 @@ PLATFORM_HEADER_DIRS = \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/device_manager/inc \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/interrupt_manager/inc \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/interrupt_manager/config \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/hfxo_manager/inc \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/clock_manager/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/power_manager/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/power_manager/src/sleep_loop \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/se_manager/inc \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/CMSIS/Core/Include \
 	${GMOS_TARGET_DEVICE_FAMILY_DIR}/Include
@@ -54,7 +58,7 @@ PLATFORM_OBJ_FILE_NAMES = \
 	printf.o \
 	gmos-platform.o \
 	efr32-device.o \
-	efr32-timer.o \
+	efr32-sleep-timer.o \
 	efr32-console-simple.o \
 	efr32-driver-gpio.o \
 	efr32-driver-timer.o \
@@ -91,9 +95,16 @@ PLATFORM_OBJ_FILE_NAMES = \
 	sdk-sl_device_peripheral_hal_${GMOS_TARGET_DEVICE_FAMILY_XLC}.o \
 	sdk-sl_interrupt_manager_cortexm.o \
 	sdk-sl_gpio.o \
+	sdk-sl_slist.o \
 	sdk-sl_hal_gpio.o \
 	sdk-sl_clock_manager.o \
 	sdk-sl_clock_manager_hal_s2.o \
+	sdk-sl_hfxo_manager.o \
+	sdk-sl_hfxo_manager_hal_s2.o \
+	sdk-sl_power_manager.o \
+	sdk-sl_power_manager_common.o \
+	sdk-sl_power_manager_em4.o \
+	sdk-sl_power_manager_hal_s2.o \
 	sdk-sl_hal_sysrtc.o \
 	sdk-sl_sleeptimer.o \
 	sdk-sl_sleeptimer_hal_burtc.o \
@@ -137,7 +148,11 @@ ${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/*/src/%.c | ${LOCAL_D
 
 # Run the C compiler on the SDK service library specific files.
 ${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/*/*/*/%.c | ${LOCAL_DIR}
-	${CC} ${CFLAGS} ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
+	${CC} ${CFLAGS} -DSL_COMPONENT_CATALOG_PRESENT ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
+
+# Run the C compiler on the SDK service library specific files.
+${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/*/*/*/*/%.c | ${LOCAL_DIR}
+	${CC} ${CFLAGS} -DSL_COMPONENT_CATALOG_PRESENT ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the Silicon Labs core utilities files.
 ${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/util/silicon_labs/*/*/%.c | ${LOCAL_DIR}

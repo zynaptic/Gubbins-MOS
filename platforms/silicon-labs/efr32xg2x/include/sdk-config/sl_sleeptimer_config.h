@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,8 +24,6 @@
 #ifndef SL_SLEEPTIMER_CONFIG_H
 #define SL_SLEEPTIMER_CONFIG_H
 
-#include "gmos-config.h"
-
 // This list specifies the available sleep timer options, copied from
 // the default sleep timer configuration file.
 #define SL_SLEEPTIMER_PERIPHERAL_DEFAULT 0
@@ -40,8 +38,10 @@
 // Selects the counter to use for the sleep timer. This will be the
 // SYSRTC counter for EFR32xG2x devices to ensure that it is correctly
 // configured for use by the vendor radio libraries.
-#define SL_SLEEPTIMER_PERIPHERAL \
-        SL_SLEEPTIMER_PERIPHERAL_SYSRTC
+#define SL_SLEEPTIMER_PERIPHERAL SL_SLEEPTIMER_PERIPHERAL_SYSRTC
+
+// Timer frequency divider. No frequency divider is used by default.
+#define SL_SLEEPTIMER_FREQ_DIVIDER 1
 
 // Wallclock support is provided by the common GubbinsMOS RTC library.
 #define SL_SLEEPTIMER_WALLCLOCK_CONFIG 0

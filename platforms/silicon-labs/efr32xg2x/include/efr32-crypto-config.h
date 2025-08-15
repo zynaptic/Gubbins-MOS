@@ -47,6 +47,7 @@
 #define MBEDTLS_SHA256_C
 #define MBEDTLS_CIPHER_C
 #define MBEDTLS_CMAC_C
+#define MBEDTLS_CCM_C
 #define MBEDTLS_CTR_DRBG_C
 
 // Enable PSA API support (medium profile with key storage).
@@ -63,7 +64,6 @@
 #define MBEDTLS_ASN1_WRITE_C
 #define MBEDTLS_PK_PARSE_C
 #define MBEDTLS_OID_C
-#define MBEDTLS_CCM_C
 #define MBEDTLS_ECP_C
 #define MBEDTLS_MD_C
 #define MBEDTLS_HMAC_DRBG_C

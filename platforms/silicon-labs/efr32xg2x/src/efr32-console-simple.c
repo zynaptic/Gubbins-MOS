@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -34,6 +34,7 @@
 #include "em_cmu.h"
 #include "em_gpio.h"
 #include "em_usart.h"
+#include "sl_power_manager.h"
 
 // Use this implementation if the basic serial console is selected.
 #if !GMOS_CONFIG_EFR32_DEBUG_CONSOLE_USE_DMA
@@ -84,6 +85,9 @@ void gmosPalSerialConsoleInit (void)
 
     // Enable the USART0 clock.
     CMU_ClockEnable (cmuClock_USART0, true);
+
+    // USART0 requires EM1 power mode for continuous operation.
+    sl_power_manager_add_em_requirement (SL_POWER_MANAGER_EM1);
 
     // Configure the selected GPIO pin for USART transmit.
     gmosDriverGpioPinInit (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_TX_PIN,
