@@ -97,13 +97,6 @@
 #endif
 
 /**
- * Specify whether the serial debug console should use DMA transfers.
- */
-#ifndef GMOS_CONFIG_EFR32_DEBUG_CONSOLE_USE_DMA
-#define GMOS_CONFIG_EFR32_DEBUG_CONSOLE_USE_DMA false
-#endif
-
-/**
  * Specify the maximum size of the serial debug console transmit buffer.
  * The transmit buffer will be dynamically allocated from the memory
  * pool.

@@ -36,12 +36,55 @@
 #include "em_usart.h"
 #include "sl_power_manager.h"
 
-// Use this implementation if the basic serial console is selected.
-#if !GMOS_CONFIG_EFR32_DEBUG_CONSOLE_USE_DMA
-
 // Statically allocate the task and stream state structures.
 static gmosTaskState_t consoleTask;
 static gmosStream_t consoleStream;
+
+// Store the power notification callback state.
+static sl_power_manager_em_transition_event_handle_t powerEventHandle;
+
+/*
+ * This function implements the UART initialisation process that is
+ * required after powering up.
+ */
+static void gmosPalSerialConsolePowerUpInit (void)
+{
+    USART_InitAsync_TypeDef usartInit = USART_INITASYNC_DEFAULT;
+
+    // Initialise USART0 ready for use.
+    usartInit.baudrate = GMOS_CONFIG_EFR32_DEBUG_CONSOLE_BAUD_RATE;
+    if (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_CTS_PIN != GMOS_DRIVER_GPIO_UNUSED_PIN_ID) {
+        usartInit.hwFlowControl = usartHwFlowControlCts;
+    }
+    USART_InitAsync (USART0, &usartInit);
+
+    // Invert the CTS signal if required.
+    if (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_RTS_CTS_INV) {
+        USART0->CTRLX |= USART_CTRLX_CTSINV;
+    }
+}
+
+/*
+ * This function implements the EFR32 energy mode transition handler.
+ */
+static void gmosPalSerialConsoleEnergyModeHandler (
+    sl_power_manager_em_t from, sl_power_manager_em_t to)
+{
+    // Detect transitions to a power mode that allows console operation.
+    // This reinitialises the UART peripheral ready for use.
+    if ((from >= SL_POWER_MANAGER_EM2) && (to <= SL_POWER_MANAGER_EM1)) {
+        gmosPalSerialConsolePowerUpInit ();
+    }
+}
+
+/*
+ * Define the power management callback event.
+ */
+static const sl_power_manager_em_transition_event_info_t powerEventInfo = {
+    .event_mask =
+        SL_POWER_MANAGER_EVENT_TRANSITION_ENTERING_EM0 |
+        SL_POWER_MANAGER_EVENT_TRANSITION_ENTERING_EM1,
+    .on_event = gmosPalSerialConsoleEnergyModeHandler};
 
 /*
  * This function implements the EFR32 serial debug task handler.
@@ -74,7 +117,6 @@ GMOS_TASK_DEFINITION (gmosPalSerialConsoleTask,
  */
 void gmosPalSerialConsoleInit (void)
 {
-    USART_InitAsync_TypeDef usartInit = USART_INITASYNC_DEFAULT;
     GPIO_Port_TypeDef txPinPort;
     uint16_t txPinSel;
 
@@ -86,8 +128,9 @@ void gmosPalSerialConsoleInit (void)
     // Enable the USART0 clock.
     CMU_ClockEnable (cmuClock_USART0, true);
 
-    // USART0 requires EM1 power mode for continuous operation.
-    sl_power_manager_add_em_requirement (SL_POWER_MANAGER_EM1);
+    // USART0 requires reinitialisation after power down.
+    sl_power_manager_subscribe_em_transition_event (
+        &powerEventHandle, &powerEventInfo);
 
     // Configure the selected GPIO pin for USART transmit.
     gmosDriverGpioPinInit (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_TX_PIN,
@@ -129,16 +172,7 @@ void gmosPalSerialConsoleInit (void)
     }
 
     // Initialise USART0 ready for use.
-    usartInit.baudrate = GMOS_CONFIG_EFR32_DEBUG_CONSOLE_BAUD_RATE;
-    if (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_CTS_PIN != GMOS_DRIVER_GPIO_UNUSED_PIN_ID) {
-        usartInit.hwFlowControl = usartHwFlowControlCts;
-    }
-    USART_InitAsync (USART0, &usartInit);
-
-    // Invert the CTS signal if required.
-    if (GMOS_CONFIG_EFR32_DEBUG_CONSOLE_RTS_CTS_INV) {
-        USART0->CTRLX |= USART_CTRLX_CTSINV;
-    }
+    gmosPalSerialConsolePowerUpInit ();
 }
 
 /*
@@ -166,5 +200,3 @@ void gmosPalSerialConsoleFlushAssertion (void)
         }
     }
 }
-
-#endif // GMOS_CONFIG_EFR32_DEBUG_CONSOLE_USE_DMA
