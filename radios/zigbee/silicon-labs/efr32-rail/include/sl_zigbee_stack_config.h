@@ -52,10 +52,24 @@
 #define SL_ZIGBEE_APPLICATION_HANDLES_ENDPOINT_ZDO_REQUESTS
 
 /*
+ * Specify the maximum number of supported end device child nodes.
+ */
+#define SL_ZIGBEE_MAX_END_DEVICE_CHILDREN \
+    GMOS_CONFIG_ZIGBEE_MAX_END_DEVICE_CHILD_NODES
+
+/*
  * Enable standard device stack callbacks.
  */
 #if (GMOS_CONFIG_ZIGBEE_NODE_TYPE != GMOS_ZIGBEE_COORDINATOR_NODE)
 #define SL_ZIGBEE_APPLICATION_HAS_ZIGBEE_KEY_ESTABLISHMENT_HANDLER
+#endif
+
+/*
+ * Enable sleepy device stack callbacks.
+ */
+#if ((GMOS_CONFIG_ZIGBEE_NODE_TYPE != GMOS_ZIGBEE_COORDINATOR_NODE) && \
+    (GMOS_CONFIG_ZIGBEE_NODE_TYPE != GMOS_ZIGBEE_ROUTER_NODE))
+#define SL_ZIGBEE_APPLICATION_HAS_POLL_COMPLETE_HANDLER
 #endif
 
 /*

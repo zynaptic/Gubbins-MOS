@@ -109,16 +109,18 @@ uint8_t sl_zigbee_internal_override_append_source_route_handler (
     // Attempt to retrieve the stored source route for the device.
     if ((header != NULL) && gmosZigbeeConcentratorReadRoute (
         zigbeeStack, destination, relayCount, &relayCount, relayList + 2)) {
+        if (relayCount > 0) {
 
-        // Populate the relay list length and index fields.
-        relayList [0] = relayCount;
-        relayList [1] = 0;
+            // Populate the relay list length and index fields.
+            relayList [0] = relayCount;
+            relayList [1] = 0;
 
-        // Attempt to append the source route to the header.
-        slStatus = sl_legacy_buffer_manager_really_append_to_linked_buffers (
-            header, relayList, 2 + 2 * relayCount, true);
-        if (slStatus == SL_STATUS_OK) {
-            retVal = 2 + 2 * relayCount;
+            // Attempt to append the source route to the header.
+            slStatus = sl_legacy_buffer_manager_really_append_to_linked_buffers (
+                header, relayList, 2 + 2 * relayCount, true);
+            if (slStatus == SL_STATUS_OK) {
+                retVal = 2 + 2 * relayCount;
+            }
         }
     }
     *consumed = true;

@@ -21,8 +21,13 @@
  * to be included in the EmberZNet stack build.
  */
 
-#ifndef SL_COMPONENT_CATALOG_H
-#define SL_COMPONENT_CATALOG_H
+#ifndef SL_COMPONENT_CATALOG_ZIGBEE_H
+#define SL_COMPONENT_CATALOG_ZIGBEE_H
+
+/*
+ * Include the common modular components for the platform.
+ */
+#include "sdk-config/sl_component_catalog.h"
 
 /*
  * Select the modular components for the Zigbee stack.
@@ -33,4 +38,4 @@
 #define SL_CATALOG_RADIO_PRIORITY_15_4_PRESENT
 #define SL_CATALOG_ZIGBEE_STRONG_RANDOM_API_PSA_PRESENT
 
-#endif // SL_COMPONENT_CATALOG_H
+#endif // SL_COMPONENT_CATALOG_ZIGBEE_H

@@ -54,6 +54,67 @@
 #endif
 
 /**
+ * Specify whether the Zigbee node should be configured as a parent node
+ * with support for the specified number of child nodes.
+ */
+#ifndef GMOS_CONFIG_ZIGBEE_MAX_END_DEVICE_CHILD_NODES
+#if (GMOS_CONFIG_ZIGBEE_NODE_TYPE == GMOS_ZIGBEE_COORDINATOR_NODE)
+#define GMOS_CONFIG_ZIGBEE_MAX_END_DEVICE_CHILD_NODES 8
+#elif (GMOS_CONFIG_ZIGBEE_NODE_TYPE == GMOS_ZIGBEE_ROUTER_NODE)
+#define GMOS_CONFIG_ZIGBEE_MAX_END_DEVICE_CHILD_NODES 8
+#else
+#define GMOS_CONFIG_ZIGBEE_MAX_END_DEVICE_CHILD_NODES 0
+#endif
+#endif
+
+/**
+ * Specify the fast polling interval to use for sleepy end devices as an
+ * integer number of milliseconds. This is the polling interval to use
+ * if the last polling request returned data from the parent node.
+ */
+#ifndef GMOS_CONFIG_ZIGBEE_FAST_POLL_INTERVAL
+#define GMOS_CONFIG_ZIGBEE_FAST_POLL_INTERVAL 1000
+#endif
+
+/**
+ * Specify the slow polling interval to use for sleepy end devices as an
+ * integer number of milliseconds. This is the polling interval to use
+ * if the last polling request did not return any data from the parent
+ * node.
+ */
+#ifndef GMOS_CONFIG_ZIGBEE_SLOW_POLL_INTERVAL
+#define GMOS_CONFIG_ZIGBEE_SLOW_POLL_INTERVAL 5000
+#endif
+
+/**
+ * Specify the slow polling limit to use for sleepy end devices. This is
+ * the number of consecutive polling requests that return no data before
+ * the device enters hibernation.
+ */
+#ifndef GMOS_CONFIG_ZIGBEE_SLOW_POLL_LIMIT
+#define GMOS_CONFIG_ZIGBEE_SLOW_POLL_LIMIT 3
+#endif
+
+/**
+ * Specify the hibernation interval to use for sleepy end devices as an
+ * integer number of milliseconds. This is the interval between polling
+ * cycles that will be used if there is no other device activity.
+ */
+#ifndef GMOS_CONFIG_ZIGBEE_HIBERNATE_INTERVAL
+#define GMOS_CONFIG_ZIGBEE_HIBERNATE_INTERVAL 60000
+#endif
+
+/**
+ * Specify the device rejoin interval to use for sleepy end devices as
+ * an integer number of milliseconds. This is the interval between
+ * rejoin attempts if the device has not been able to communicate with
+ * the network.
+ */
+#ifndef GMOS_CONFIG_ZIGBEE_REJOIN_RETRY_INTERVAL
+#define GMOS_CONFIG_ZIGBEE_REJOIN_RETRY_INTERVAL 60000
+#endif
+
+/**
  * Specify the default radio transmit power level expressed in dBm.
  */
 #ifndef GMOS_CONFIG_ZIGBEE_DEFAULT_TX_POWER

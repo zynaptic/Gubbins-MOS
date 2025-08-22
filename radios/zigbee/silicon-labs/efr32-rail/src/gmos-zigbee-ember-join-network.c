@@ -418,6 +418,9 @@ gmosTaskStatus_t gmosZigbeeRalEmberJoinNetworkPhase (
         case ZIGBEE_STACK_STATE_JOINING_START :
             gmosZigbeeSetNetworkState (zigbeeStack,
                 GMOS_ZIGBEE_NETWORK_STATE_JOINING);
+            if (GMOS_CONFIG_ZIGBEE_NODE_TYPE != GMOS_ZIGBEE_ROUTER_NODE) {
+                gmosZigbeeRalEmberSleepyNodePowerUp (zigbeeStack);
+            }
             nextState = ZIGBEE_STACK_STATE_JOINING_ACTIVE_SCAN_REQ;
             break;
 
@@ -427,8 +430,13 @@ gmosTaskStatus_t gmosZigbeeRalEmberJoinNetworkPhase (
                 "EmberZNet implement joining retry backoff.");
             gmosZigbeeSetNetworkState (zigbeeStack,
                 GMOS_ZIGBEE_NETWORK_STATE_DOWN);
-            nextState = ZIGBEE_STACK_STATE_JOINING_START;
+            nextState = ZIGBEE_STACK_STATE_JOINING_RETRY_WAIT;
             taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (60 * 1000));
+            break;
+
+        // Implement wait state prior to joining retry attempt.
+        case ZIGBEE_STACK_STATE_JOINING_RETRY_WAIT :
+            nextState = ZIGBEE_STACK_STATE_JOINING_START;
             break;
 
         // Initiate active network scan request. This selects a random

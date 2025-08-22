@@ -95,12 +95,23 @@ gmosTaskStatus_t gmosZigbeeRalEmberStartupPhase (
             networkInitData.bitmask = SL_ZIGBEE_NETWORK_INIT_NO_OPTIONS;
             slStatus = sl_zigbee_network_init (&networkInitData);
             if (slStatus == SL_STATUS_OK) {
-                nextState = ZIGBEE_STACK_STATE_STARTUP_NETWORK_UP;
+                nextState = ZIGBEE_STACK_STATE_STARTUP_NETWORK_CHECK;
             } else if (slStatus == SL_STATUS_NOT_JOINED) {
                 nextState = ZIGBEE_STACK_STATE_STARTUP_NETWORK_DOWN;
             } else {
                 nextState = ZIGBEE_STACK_STATE_STARTUP_FAILED;
             }
+            taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (100));
+            break;
+
+        // Check whether the current network configuration is valid.
+        case ZIGBEE_STACK_STATE_STARTUP_NETWORK_CHECK :
+            if (sl_zigbee_stack_is_up ()) {
+                nextState = ZIGBEE_STACK_STATE_STARTUP_NETWORK_UP;
+            } else {
+                nextState = ZIGBEE_STACK_STATE_STARTUP_NETWORK_DOWN;
+            }
+            taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (100));
             break;
 
         // Complete network processing if a configured Zigbee network

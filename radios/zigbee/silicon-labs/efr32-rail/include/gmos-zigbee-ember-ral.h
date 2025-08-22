@@ -47,7 +47,6 @@ typedef enum {
     ZIGBEE_STACK_PHASE_STARTUP,
     ZIGBEE_STACK_PHASE_FORMING,
     ZIGBEE_STACK_PHASE_JOINING,
-    ZIGBEE_STACK_PHASE_LEAVING,
     ZIGBEE_STACK_PHASE_ACTIVE,
     ZIGBEE_STACK_PHASE_FAILED
 } zigbeeStackPhase_t;
@@ -61,6 +60,7 @@ typedef enum {
     ZIGBEE_STACK_STATE_STARTUP_FAILED,
     ZIGBEE_STACK_STATE_STARTUP_NETWORK_INIT,
     ZIGBEE_STACK_STATE_STARTUP_NETWORK_UP,
+    ZIGBEE_STACK_STATE_STARTUP_NETWORK_CHECK,
     ZIGBEE_STACK_STATE_STARTUP_NETWORK_DOWN
 } zigbeeStackStateStartup_t;
 
@@ -104,6 +104,7 @@ typedef enum {
     ZIGBEE_STACK_STATE_JOINING_ACTIVE_SCAN_REQ,
     ZIGBEE_STACK_STATE_JOINING_ACTIVE_SCAN_CHECK,
     ZIGBEE_STACK_STATE_JOINING_RETRY_BACKOFF,
+    ZIGBEE_STACK_STATE_JOINING_RETRY_WAIT,
     ZIGBEE_STACK_STATE_JOINING_JOIN_NETWORK_REQ,
     ZIGBEE_STACK_STATE_JOINING_JOIN_NETWORK_CHECK,
     ZIGBEE_STACK_STATE_JOINING_KEY_UPDATE_REQ,
@@ -112,6 +113,23 @@ typedef enum {
     ZIGBEE_STACK_STATE_JOINING_LEAVE_NETWORK_CHECK,
     ZIGBEE_STACK_STATE_JOINING_JOIN_NETWORK_DONE
 } zigbeeStackStateJoining_t;
+
+/**
+ * This enumeration defines the state space used by the EmberZNet sleepy
+ * node sleep managagement state machine.
+ */
+typedef enum {
+    ZIGBEE_STACK_STATE_SLEEPING_INIT,
+    ZIGBEE_STACK_STATE_SLEEPING_FAILED,
+    ZIGBEE_STACK_STATE_SLEEPING_NOT_JOINED,
+    ZIGBEE_STACK_STATE_SLEEPING_POWERED_UP,
+    ZIGBEE_STACK_STATE_SLEEPING_POWERED_DOWN,
+    ZIGBEE_STACK_STATE_SLEEPING_DATA_POLL_REQ,
+    ZIGBEE_STACK_STATE_SLEEPING_DATA_POLL_CHECK,
+    ZIGBEE_STACK_STATE_SLEEPING_DATA_POLL_RETRY,
+    ZIGBEE_STACK_STATE_SLEEPING_DATA_RECEIVED,
+    ZIGBEE_STACK_STATE_SLEEPING_NO_PENDING_DATA,
+} zigbeeStackStateSleeping_t;
 
 /**
  * Defines the Zigbee radio specific I/O state data structure.
@@ -128,6 +146,13 @@ typedef struct gmosZigbeeRalState_t {
     #if GMOS_CONFIG_ZIGBEE_CONCENTRATOR_NODE
     gmosHashMap_t nodeInfoTable;
     gmosHashMap_t nodeAddrTable;
+    #endif
+
+    // Allocate state variables for sleepy nodes.
+    #if ((GMOS_CONFIG_ZIGBEE_NODE_TYPE != GMOS_ZIGBEE_COORDINATOR_NODE) && \
+        (GMOS_CONFIG_ZIGBEE_NODE_TYPE != GMOS_ZIGBEE_ROUTER_NODE))
+    uint8_t zigbeeSleepState;
+    uint8_t zigbeeNapCount;
     #endif
 
     // Specify the current EmberZNet stack core operating phase.
@@ -216,6 +241,35 @@ gmosTaskStatus_t gmosZigbeeRalEmberFormNetworkPhase (
  *     the associated GMOS task.
  */
 gmosTaskStatus_t gmosZigbeeRalEmberJoinNetworkPhase (
+    gmosZigbeeStack_t* zigbeeStack);
+
+/**
+ * Implement the EmberZNet stack processing initialisation function for
+ * sleepy devices.
+ * @param zigbeeStack This is the Zigbee stack data structure that
+ *     represents the EmberZNet stack interface being processed.
+ */
+void gmosZigbeeRalEmberSleepyNodeInit (
+    gmosZigbeeStack_t* zigbeeStack);
+
+/**
+ * Ensure that the EmberZNet stack on a sleepy device is powered up
+ * prior to using any other stack functions.
+ * @param zigbeeStack This is the Zigbee stack data structure that
+ *     represents the EmberZNet stack interface being processed.
+ */
+void gmosZigbeeRalEmberSleepyNodePowerUp (
+    gmosZigbeeStack_t* zigbeeStack);
+
+/**
+ * Implement the EmberZNet stack processing tick function for sleepy
+ * devices.
+ * @param zigbeeStack This is the Zigbee stack data structure that
+ *     represents the EmberZNet stack interface being processed.
+ * @return Returns a GMOS task status that will be used for rescheduling
+ *     the associated GMOS task.
+ */
+gmosTaskStatus_t gmosZigbeeRalEmberSleepyNodeTick (
     gmosZigbeeStack_t* zigbeeStack);
 
 /**

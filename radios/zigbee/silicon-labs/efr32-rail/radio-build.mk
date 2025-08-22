@@ -106,6 +106,7 @@ ZIGBEE_TARGET_OBJ_FILE_NAMES = \
 	gmos-zigbee-ember-join-network.o \
 	gmos-zigbee-ember-coordinator.o \
 	gmos-zigbee-ember-concentrator.o \
+	gmos-zigbee-ember-sleepy-node.o \
 	gmos-zigbee-ember-aps-device.o \
 	em-hal-base-replacement.o \
 	em-hal-token_legacy.o \
@@ -143,6 +144,8 @@ ZIGBEE_TARGET_OBJ_FILE_NAMES = \
 	em-stack-sl_token_manufacturing.o \
 	em-stack-message_baremetal_wrapper.o \
 	em-stack-message_baremetal_callbacks.o \
+	em-stack-child_baremetal_wrapper.o \
+	em-stack-child_baremetal_callbacks.o \
 	em-stack-raw-message-baremetal-callbacks.o \
 	em-stack-bootload_baremetal_callbacks.o \
 	em-stack-child_baremetal_callbacks.o \
@@ -164,8 +167,6 @@ ZIGBEE_TARGET_OBJ_FILE_NAMES = \
 	sdk-pa_conversions_efr32.o \
 	sdk-coexistence-802154.o \
 	${TSFILES}
-
-#	em-stack-source-route-stub.o \
 
 # Specify additional target specific compiler options.
 TSFLAGS = \

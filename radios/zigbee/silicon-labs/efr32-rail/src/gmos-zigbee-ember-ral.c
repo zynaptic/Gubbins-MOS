@@ -48,14 +48,25 @@ gmosZigbeeStack_t* gmosZigbeeRalEmberStackInstance = NULL;
  * GubbinsMOS task.
  */
 static inline gmosTaskStatus_t gmosZigbeeEmberStackTickFn (
-    void* nullData)
+    gmosZigbeeStack_t* zigbeeStack)
 {
-    (void) nullData;
-    sl_zigbee_tick ();
-    return GMOS_TASK_RUN_IMMEDIATE;
+    gmosTaskStatus_t taskStatus;
+
+    // Implement periodic stack processing for sleepy devices.
+    if ((GMOS_CONFIG_ZIGBEE_NODE_TYPE != GMOS_ZIGBEE_COORDINATOR_NODE) &&
+        (GMOS_CONFIG_ZIGBEE_NODE_TYPE != GMOS_ZIGBEE_ROUTER_NODE)) {
+        taskStatus = gmosZigbeeRalEmberSleepyNodeTick (zigbeeStack);
+    }
+
+    // Implement a tight processing loop for receive while idle devices.
+    else {
+        sl_zigbee_tick ();
+        taskStatus = GMOS_TASK_RUN_IMMEDIATE;
+    }
+    return taskStatus;
 }
 GMOS_TASK_DEFINITION (gmosZigbeeEmberStackTick,
-    gmosZigbeeEmberStackTickFn, void);
+    gmosZigbeeEmberStackTickFn, gmosZigbeeStack_t);
 
 /*
  * Implement the main task loop for the EmberZNet interface state
@@ -159,13 +170,19 @@ bool gmosZigbeeRalInit (gmosZigbeeStack_t* zigbeeStack)
         }
     }
 
+    // Initialise the sleepy node state machine if required.
+    if ((GMOS_CONFIG_ZIGBEE_NODE_TYPE != GMOS_ZIGBEE_COORDINATOR_NODE) &&
+        (GMOS_CONFIG_ZIGBEE_NODE_TYPE != GMOS_ZIGBEE_ROUTER_NODE)) {
+        gmosZigbeeRalEmberSleepyNodeInit (zigbeeStack);
+    }
+
     // Initialise the EmberZNet core task state machine.
     ralData->zigbeeStackPhase = ZIGBEE_STACK_PHASE_STARTUP;
     ralData->zigbeeStackState = ZIGBEE_STACK_STATE_STARTUP_IDLE;
 
     // Run the EmberZNet stack tick task.
     gmosZigbeeEmberStackTick_start (&(ralData->emberTickTask),
-        NULL, "EmberZNet Tick");
+        zigbeeStack, "EmberZNet Tick");
 
     // Run the EmberZNet worker task.
     gmosZigbeeEmberStackWorker_start (&(ralData->emberWorkerTask),
