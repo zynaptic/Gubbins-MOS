@@ -98,6 +98,24 @@ gmosMbedtlsCertStatus_t gmosMbedtlsCertCreateKeyPair (
     uint32_t keyId, gmosMbedtlsCertKeyAlg_t keyAlg);
 
 /**
+ * Creates a new PSA key pair for subsequent use in MbedTLS client
+ * authentication using an imported private key in PEM format. The key
+ * material is kept in private storage and will be protected from
+ * external access on devices that support secure key storage.
+ * @param keyId This is the unique identifier for the key pair. It
+ *     corresponds to the PSA key ID that is used to identify the key
+ *     pair in private storage.
+ * @param keyBuffer This is a pointer to the GubbinsMOS buffer that
+ *     contains the PEM encoded private key.
+ * @param keyBufferOffset This is the offset in the key storage buffer
+ *     at which the PEM encoded private key is located.
+ * @return Returns a certificate status value which indicates successful
+ *     key pair creation or the reason for failure.
+ */
+gmosMbedtlsCertStatus_t gmosMbedtlsCertImportKeyPairPem (
+    uint32_t keyId, gmosBuffer_t* keyBuffer, uint16_t keyBufferOffset);
+
+/**
  * Destroys a PSA key pair, removing the key material from private
  * storage.
  * @param keyId This is the unique identifier for the key pair. It

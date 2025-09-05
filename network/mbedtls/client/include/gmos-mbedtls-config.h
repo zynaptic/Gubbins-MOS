@@ -113,6 +113,20 @@ bool gmosMbedtlsConfigLock (gmosMbedtlsConfig_t* mbedtlsConfig);
 bool gmosMbedtlsConfigUnlock (gmosMbedtlsConfig_t* mbedtlsConfig);
 
 /**
+ * Set the server host name for use in the server name indication
+ * handshake field.
+ * @param mbedtlsConfig This is the MbedTLS configuration instance for
+ *     which the server name indication field is being set.
+ * @param serverName This is a pointer to a string which contains the
+ *     server name to be used. It must remain valid for the lifetime
+ *     of the MbedTLS configuration.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully setting the server name and 'false' otherwise.
+ */
+bool gmosMbedtlsConfigSetServerName (gmosMbedtlsConfig_t* mbedtlsConfig,
+    const char* serverName);
+
+/**
  * Add a DER encoded CA certificate stored in EEPROM memory to the chain
  * of server certificate authorities that can be trusted by the client.
  * @param mbedtlsConfig This is the MbedTLS configuration instance to

@@ -87,15 +87,13 @@ static int gmosMbedtlsLinkSend (
     // Ensure that the transmit buffer is empty on exit.
 out :
     gmosBufferReset (&txBuffer, 0);
-    if (retVal == MBEDTLS_ERR_SSL_WANT_WRITE) {
-        GMOS_LOG (LOG_VERBOSE, "MbedTLS link send retry.");
-    } else if (retVal < 0) {
-        GMOS_LOG_FMT (LOG_DEBUG,
-            "MbedTLS link send failed (status 0x%04X).", -retVal);
-    } else {
+    if (retVal >= 0) {
         GMOS_LOG_FMT (LOG_VERBOSE,
             "MbedTLS link send requested %d bytes, accepted %d bytes.",
             txDataLen, retVal);
+    } else if (retVal != MBEDTLS_ERR_SSL_WANT_WRITE) {
+        GMOS_LOG_FMT (LOG_DEBUG,
+            "MbedTLS link send failed (status 0x%04X).", -retVal);
     }
     return retVal;
 }
@@ -147,15 +145,13 @@ static int gmosMbedtlsLinkRecv (
     }
 
     // Add debug tracing for low level transactions.
-    if (retVal == MBEDTLS_ERR_SSL_WANT_READ) {
-        GMOS_LOG (LOG_VERBOSE, "MbedTLS link receive retry.");
-    } else if (retVal < 0) {
-        GMOS_LOG_FMT (LOG_DEBUG,
-            "MbedTLS link receive failed (status 0x%04X)", -retVal);
-    } else {
+    if (retVal >= 0) {
         GMOS_LOG_FMT (LOG_VERBOSE,
             "MbedTLS link receive requested %d bytes, returned %d bytes.",
             rxDataLen, retVal);
+    } else if (retVal != MBEDTLS_ERR_SSL_WANT_READ) {
+        GMOS_LOG_FMT (LOG_DEBUG,
+            "MbedTLS link receive failed (status 0x%04X)", -retVal);
     }
     return retVal;
 }
@@ -177,11 +173,22 @@ bool gmosMbedtlsSupportConfigure (gmosMbedtlsClient_t* mbedtlsClient)
     mbedtls_ssl_init (&(clientSupport->ctxSsl));
 
     // Perform SSL context setup using the specified configuration.
-    mbedtlsStatus = mbedtls_ssl_setup (&(clientSupport->ctxSsl),
-        &(configSupport->cfgSsl));
+    mbedtlsStatus = mbedtls_ssl_setup (
+        &(clientSupport->ctxSsl), &(configSupport->cfgSsl));
     if (mbedtlsStatus < 0) {
         GMOS_LOG_FMT (LOG_DEBUG,
-            "MbedTLS  SSL setup failed (status 0x%04X).",
+            "MbedTLS SSL setup failed (status 0x%04X).",
+            -mbedtlsStatus);
+        configuredOk = false;
+        goto out;
+    }
+
+    // Set up the server name identifier.
+    mbedtlsStatus = mbedtls_ssl_set_hostname (
+        &(clientSupport->ctxSsl), configSupport->sniHostname);
+    if (mbedtlsStatus < 0) {
+        GMOS_LOG_FMT (LOG_DEBUG,
+            "MbedTLS SNI setup failed (status 0x%04X).",
             -mbedtlsStatus);
         configuredOk = false;
         goto out;

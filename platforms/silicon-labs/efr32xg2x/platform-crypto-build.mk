@@ -98,6 +98,7 @@ PLATFORM_CRYPTO_OBJ_FILE_NAMES = \
 	crypto-mbedtls-ecdsa.o \
 	crypto-mbedtls-ecjpake.o \
 	crypto-mbedtls-pk.o \
+	crypto-mbedtls-pk_ecc.o \
 	crypto-mbedtls-pk_wrap.o \
 	crypto-mbedtls-pkparse.o \
 	crypto-mbedtls-pkwrite.o \

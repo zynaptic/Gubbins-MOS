@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022 Zynaptic Limited
+ * Copyright 2022-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -464,6 +464,9 @@ static inline gmosBuffer_t* gmosTcpipDnsClientCacheLookup (
     gmosBuffer_t* dnsCacheBuffer;
     bool cacheHit;
     uint8_t i;
+#if (!GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    (void) useIpv6;
+#endif
 
     // Perform a linear search through the cache table.
     cacheHit = false;
@@ -520,6 +523,9 @@ static inline bool gmosTcpipDnsClientCacheAlloc (
     int32_t localTimestamp;
     uint8_t i;
     bool cacheFull;
+#if (!GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    (void) useIpv6;
+#endif
 
     // The supplied DNS name is initially assumed to be valid.
     *dnsNameError = false;
@@ -625,6 +631,10 @@ static gmosTcpipDnsServerInfo_t* gmosTcpipDnsServerSelect (
 static inline bool gmosTcpipDnsClientOpenUdp (
     gmosTcpipDnsClient_t* dnsClient, gmosTcpipDnsServerInfo_t* dnsServer)
 {
+#if (!GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    (void) dnsServer;
+#endif
+
     // Select IPv6 connection if the DNS server has an IPv6 address.
 #if (GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
     if (dnsServer->addressIsIpv6 != 0) {
@@ -873,6 +883,9 @@ static inline uint16_t gmosTcpipDnsClientResponseCheckHeader (
     uint16_t payloadOffset;
     uint8_t matchSize;
     uint8_t recordType;
+#if (!GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6)
+    (void) dnsCacheEntry;
+#endif
 
     // Select 'A' record type for IPv4 and 'AAAA' record type for IPv6.
     recordType = GMOS_TCPIP_DNS_RECORD_TYPE_A;

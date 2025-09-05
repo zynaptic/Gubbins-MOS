@@ -122,7 +122,7 @@ static inline bool gmosMbedtlsConfigSetup (
 
     // Assign SSL configuration callback for debug support.
 #ifdef MBEDTLS_DEBUG_C
-    mbedtls_ssl_conf_dbg (&(mbedtlsConfig->cfgSsl),
+    mbedtls_ssl_conf_dbg (&(configSupport->cfgSsl),
         gmosMbedtlsDebug, NULL);
     mbedtls_debug_set_threshold (MBEDTLS_DEBUG_LEVEL);
     GMOS_LOG_FMT (LOG_DEBUG,
@@ -214,6 +214,7 @@ bool gmosMbedtlsConfigCreate (gmosMbedtlsConfig_t* mbedtlsConfig)
     mbedtls_x509_crt_init (&(configSupport->caCertChain));
     mbedtls_x509_crt_init (&(configSupport->ownCertChain));
     mbedtls_pk_init (&(configSupport->ownKeyPair));
+    configSupport->sniHostname = NULL;
 
     // Reset the configuration lock counter on exit.
 out:
@@ -235,8 +236,14 @@ bool gmosMbedtlsConfigFree (gmosMbedtlsConfig_t* mbedtlsConfig)
         (gmosMbedtlsConfigSupport_t*) mbedtlsConfig->configSupport;
     bool freedOk = false;
 
+    // No action is required if a configuration has not been allocated.
+    if (mbedtlsConfig->lockCount == CONFIG_LOCK_UNALLOCATED) {
+        freedOk = true;
+    }
+
     // Free resources associated with the MbedTLS components.
-    if (mbedtlsConfig->lockCount == 0) {
+    else if ((mbedtlsConfig->lockCount == 0) ||
+        (mbedtlsConfig->lockCount == CONFIG_LOCK_ALLOCATED)) {
         if (mbedtlsConfig->configSupport != NULL) {
             mbedtls_ssl_config_free (&(configSupport->cfgSsl));
             mbedtls_ctr_drbg_free (&(configSupport->ctxCtrDrbg));
@@ -294,6 +301,39 @@ bool gmosMbedtlsConfigUnlock (gmosMbedtlsConfig_t* mbedtlsConfig)
         unlockedOk = true;
     }
     return unlockedOk;
+}
+
+/*
+ * Set the server host name for use in the server name indication
+ * handshake field.
+ */
+bool gmosMbedtlsConfigSetServerName (gmosMbedtlsConfig_t* mbedtlsConfig,
+    const char* serverName)
+{
+    gmosMbedtlsConfigSupport_t* configSupport =
+        (gmosMbedtlsConfigSupport_t*) mbedtlsConfig->configSupport;
+    bool addedOk = true;
+
+    // Only support configuration changes in the 'allocated' state.
+    if (mbedtlsConfig->lockCount != CONFIG_LOCK_ALLOCATED) {
+        addedOk = false;
+        goto out;
+    }
+
+    // The server name must not exceed the maximum supported size.
+    if (serverName != NULL) {
+        if (strlen (serverName) > MBEDTLS_SSL_MAX_HOST_NAME_LEN) {
+            addedOk = false;
+            goto out;
+        }
+    }
+
+    // The server name string must remains valid for the lifetime of the
+    // configuration.
+    configSupport->sniHostname = serverName;
+
+out:
+    return addedOk;
 }
 
 /*

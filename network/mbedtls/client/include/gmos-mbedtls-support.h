@@ -29,6 +29,7 @@
 #include "mbedtls/ssl.h"
 #include "mbedtls/entropy.h"
 #include "mbedtls/ctr_drbg.h"
+#include "mbedtls/x509_crt.h"
 
 /**
  * Specify the dynamically allocated data structure for MbedTLS clients.
@@ -60,6 +61,7 @@ typedef struct gmosMbedtlsConfigSupport_t {
     mbedtls_x509_crt         caCertChain;
     mbedtls_x509_crt         ownCertChain;
     mbedtls_pk_context       ownKeyPair;
+    const char*              sniHostname;
 
 } gmosMbedtlsConfigSupport_t;
 

@@ -209,8 +209,107 @@ gmosMbedtlsCertStatus_t gmosMbedtlsCertCreateKeyPair (
 
     // Clean up on exit and perform status code conversion.
 out :
-    psa_reset_key_attributes(&attributes);
+    psa_reset_key_attributes (&attributes);
     return gmosMbedtlsCertConvertPsaStatus (psaStatus);
+}
+
+/*
+ * Creates a new PSA key pair for subsequent use in MbedTLS client
+ * authentication using an imported private key in PEM format.
+ */
+gmosMbedtlsCertStatus_t gmosMbedtlsCertImportKeyPairPem (
+    uint32_t keyId, gmosBuffer_t* keyBuffer, uint16_t keyBufferOffset)
+{
+    int mbedtlsStatus = 0;
+    uint8_t localData [GMOS_CONFIG_MBEDTLS_MAX_PEM_CERT_SIZE];
+    size_t pemDataSize;
+    psa_key_id_t psaKeyId = keyId;
+    uint8_t csrDrbgSeed [64];
+    uint32_t psaAlgorithm;
+    mbedtls_entropy_context* ctxEntropy;
+    mbedtls_ctr_drbg_context ctxCtrDrbg;
+    mbedtls_pk_context ctxKey;
+    psa_status_t psaStatus;
+    psa_key_attributes_t attributes = PSA_KEY_ATTRIBUTES_INIT;
+
+    // The MbedTLS library function does not give useful feedback if a
+    // specified key already exists, so an explicit check is carried out
+    // prior to any other processing.
+    psaStatus = psa_get_key_attributes (psaKeyId, &attributes);
+    if (psaStatus != PSA_ERROR_INVALID_HANDLE) {
+        gmosMbedtlsCertStatus_t certStatus;
+        if (psaStatus == PSA_SUCCESS) {
+            certStatus = GMOS_MBEDTLS_CERT_STATUS_ALREADY_EXISTS;
+        } else {
+            certStatus = gmosMbedtlsCertConvertPsaStatus (psaStatus);
+        }
+        psa_reset_key_attributes (&attributes);
+        return certStatus;
+    }
+
+    // Initialise the MbedTLS context variables.
+    ctxEntropy = gmosMbedtlsSupportGetEntropy ();
+    mbedtls_ctr_drbg_init (&ctxCtrDrbg);
+    mbedtls_pk_init (&ctxKey);
+
+    // Configure a random number source for use during key blinding.
+    gmosPalGetRandomBytes (csrDrbgSeed, sizeof (csrDrbgSeed));
+    mbedtlsStatus = mbedtls_ctr_drbg_seed (&ctxCtrDrbg,
+        mbedtls_entropy_func, ctxEntropy, csrDrbgSeed,
+        sizeof (csrDrbgSeed));
+    if (mbedtlsStatus != 0) {
+        goto out;
+    }
+
+    // Read the maximum amount of data from the certificate buffer into
+    // the local PEM data array and add a null terminator.
+    pemDataSize = gmosBufferGetSize (keyBuffer) - keyBufferOffset;
+    if (pemDataSize >= sizeof (localData)) {
+        pemDataSize = sizeof (localData) - 1;
+    }
+    gmosBufferRead (keyBuffer, keyBufferOffset, localData, pemDataSize);
+    localData [pemDataSize] = '\0';
+
+    // Attempt to parse the PEM encoded data into the key context and
+    // then extract the default key attributes.
+    mbedtlsStatus = mbedtls_pk_parse_key (&ctxKey, localData,
+        pemDataSize + 1, NULL, 0, mbedtls_ctr_drbg_random, &ctxCtrDrbg);
+    if (mbedtlsStatus == 0) {
+        mbedtlsStatus = mbedtls_pk_get_psa_attributes (
+            &ctxKey, PSA_KEY_USAGE_SIGN_HASH, &attributes);
+    }
+    if (mbedtlsStatus != 0) {
+        GMOS_LOG_FMT (LOG_DEBUG,
+            "MbedTLS failed to parse PEM private key (status 0x%04X).",
+            -mbedtlsStatus);
+        goto out;
+    }
+
+    // Set additional options on the key attributes.
+    psa_set_key_id (&attributes, psaKeyId);
+    psa_set_key_lifetime (&attributes, PSA_KEY_LIFETIME_PERSISTENT);
+
+    // Restrict the set of supported hash algorithms to use.
+    psaAlgorithm = psa_get_key_algorithm (&attributes);
+    if (psaAlgorithm == PSA_ALG_ECDSA (PSA_ALG_ANY_HASH)) {
+        psa_set_key_algorithm (&attributes,
+             PSA_ALG_ECDSA (PSA_ALG_SHA_256));
+    }
+
+    // Import the private key using the modified attributes.
+    mbedtlsStatus = mbedtls_pk_import_into_psa (
+        &ctxKey, &attributes, &psaKeyId);
+    if ((mbedtlsStatus == 0) && (psaKeyId != keyId)) {
+        GMOS_LOG (LOG_ERROR, "MbedTLS key ID mismatch.");
+        mbedtlsStatus = MBEDTLS_ERR_PK_BAD_INPUT_DATA;
+    }
+
+    // Clean up on exit and perform status code conversion.
+out :
+    mbedtls_pk_free (&ctxKey);
+    psa_reset_key_attributes (&attributes);
+    mbedtls_ctr_drbg_free (&ctxCtrDrbg);
+    return gmosMbedtlsCertConvertMbedStatus (mbedtlsStatus);
 }
 
 /*

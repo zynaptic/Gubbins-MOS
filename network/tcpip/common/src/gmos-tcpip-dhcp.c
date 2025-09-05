@@ -182,9 +182,8 @@ static uint8_t gmosTcpipBroadcastAddr [] = { 255, 255, 255, 255 };
  * Parses a received DHCP message options segment.
  */
 static inline bool gmosTcpipDhcpClientParseRxMessageOptions (
-    gmosTcpipDhcpClient_t* dhcpClient, gmosBuffer_t* rxBuffer,
-    gmosTcpipDhcpRxMessage_t* rxMessage, uint16_t optOffset,
-    uint16_t optLimit)
+    gmosBuffer_t* rxBuffer, gmosTcpipDhcpRxMessage_t* rxMessage,
+    uint16_t optOffset, uint16_t optLimit)
 {
     uint8_t optId;
     uint8_t optSize;
@@ -416,7 +415,7 @@ static bool gmosTcpipDhcpClientParseRxMessage (
         // Process the selected option segment.
         if (optOffset != 0) {
             if (!gmosTcpipDhcpClientParseRxMessageOptions (
-                dhcpClient, rxBuffer, rxMessage, optOffset, optLimit)) {
+                rxBuffer, rxMessage, optOffset, optLimit)) {
                 return false;
             }
         }
@@ -873,18 +872,19 @@ static inline bool gmosTcpipDhcpClientParseDhcpResponse (
 static gmosTaskStatus_t gmosTcpipDhcpClientSocketSetup (
     gmosTcpipDhcpClient_t* dhcpClient)
 {
-    uint16_t startupDelay;
+    uint16_t randomDelay;
+    uint32_t startupDelay;
 
     // Increment the 'xid' value each time a new UDP socket is opened.
     dhcpClient->dhcpXid += 1;
 
     // Set the task scheduling status to give a semi-random delay
     // between 1 and 10 seconds, as per RFC2131 section 4.4.1.
-    gmosPalGetRandomBytes ((uint8_t*) &startupDelay, sizeof (startupDelay));
-    while (startupDelay > GMOS_MS_TO_TICKS (9000)) {
-        startupDelay /= 2;
+    gmosPalGetRandomBytes ((uint8_t*) &randomDelay, sizeof (randomDelay));
+    while (randomDelay > GMOS_MS_TO_TICKS (9000)) {
+        randomDelay /= 2;
     }
-    startupDelay += GMOS_MS_TO_TICKS (1000);
+    startupDelay = randomDelay + GMOS_MS_TO_TICKS (1000);
     return GMOS_TASK_RUN_LATER (startupDelay);
 }
 
@@ -1071,7 +1071,7 @@ static bool gmosTcpipDhcpClientResponseDone (
     // The timestamp for the first lease renewal attempt is set to 1/2
     // the lease period, as recommended by RFC2131 section 4.4.5.
     retryDelay = (int32_t) (dhcpClient->leaseEnd - currentTime);
-    if (retryDelay > (dhcpClient->leaseTime / 2)) {
+    if (retryDelay > (int32_t) (dhcpClient->leaseTime / 2)) {
         retryDelay /= 2;
     }
 

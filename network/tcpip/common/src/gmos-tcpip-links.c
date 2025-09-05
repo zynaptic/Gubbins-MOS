@@ -271,13 +271,11 @@ static gmosNetworkStatus_t gmosTcpipLinkReceiver (
     // Attempt the read any queued data, even if the socket has already
     // been closed by the remote side.
     status = gmosTcpipStackTcpReceive (tcpipLink->tcpSocket, payload);
-    GMOS_LOG_FMT (LOG_VERBOSE, "TCP receive status is %d", status);
 
     // Check that the link is connected.
     if ((status != GMOS_NETWORK_STATUS_SUCCESS) &&
         (tcpipLink->linkState != GMOS_TCPIP_LINK_STATE_CONNECTED)) {
         status = GMOS_NETWORK_STATUS_NOT_CONNECTED;
-        GMOS_LOG_FMT (LOG_VERBOSE, "TCP receive status replaced by %d", status);
     }
     return status;
 }

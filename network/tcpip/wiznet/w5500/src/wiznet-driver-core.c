@@ -929,10 +929,16 @@ bool gmosDriverTcpipInit (
     gmosTaskState_t* coreWorkerTask = &nalData->coreWorkerTask;
     gmosStream_t* spiResponseStream = &nalData->spiResponseStream;
     uint8_t i;
+    bool initOk = true;
 
     // Store the Ethernet MAC address in network byte order.
-    for (i = 0; i < 6; i++) {
-        nalData->ethMacAddr [i] = ethMacAddr [i];
+    if (ethMacAddr != NULL) {
+        for (i = 0; i < 6; i++) {
+            nalData->ethMacAddr [i] = ethMacAddr [i];
+        }
+    } else {
+        initOk = false;
+        goto out;
     }
 
     // Store the default network parameters, which correspond to the
@@ -943,7 +949,8 @@ bool gmosDriverTcpipInit (
 
     // Initialise the WIZnet SPI interface adaptor.
     if (!gmosNalTcpipWiznetSpiInit (tcpipDriver)) {
-        return false;
+        initOk = false;
+        goto out;
     }
 
     // Initialise the SPI response data stream, with the core worker
@@ -968,8 +975,8 @@ bool gmosDriverTcpipInit (
     coreWorkerTask->taskName =
         GMOS_TASK_NAME_WRAPPER ("WIZnet Core Worker Task");
     gmosSchedulerTaskStart (coreWorkerTask);
-
-    return true;
+out:
+    return initOk;
 }
 
 /*
@@ -1063,6 +1070,11 @@ bool gmosDriverTcpipSetNetworkInfoIpv6 (
     gmosDriverTcpip_t* tcpipDriver, const uint8_t* interfaceAddr,
     const uint8_t* gatewayAddr, const uint8_t subnetMask)
 {
+    (void) tcpipDriver;
+    (void) interfaceAddr;
+    (void) gatewayAddr;
+    (void) subnetMask;
+
     GMOS_ASSERT_FAIL ("IPv6 not supported by WIZnet W5500.");
     return false;
 }
