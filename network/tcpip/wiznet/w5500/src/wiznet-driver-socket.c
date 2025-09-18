@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022-2024 Zynaptic Limited
+ * Copyright 2022-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -625,10 +625,12 @@ void gmosNalTcpipSocketProcessResponse (
     // the interrupt status register.
     if ((response->address == 0x0002) &&
         (response->size == 2)) {
-        GMOS_LOG_FMT (LOG_VERBOSE,
-            "WIZnet TCP/IP : Socket %d interrupts 0x%02X, status 0x%02X.",
-            socket->socketId, response->data.bytes [0],
-            response->data.bytes [1]);
+        if (GMOS_CONFIG_TCPIP_DEBUG_W5500_INTERRUPTS) {
+            GMOS_LOG_FMT (GMOS_CONFIG_LOG_LEVEL,
+                "WIZnet TCP/IP : Socket %d interrupts 0x%02X, status 0x%02X.",
+                socket->socketId, response->data.bytes [0],
+                response->data.bytes [1]);
+        }
         socket->interruptFlags |= response->data.bytes [0];
         gmosSchedulerTaskResume (&(nalData->coreWorkerTask));
     }

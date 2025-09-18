@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022 Zynaptic Limited
+ * Copyright 2022-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -47,6 +47,14 @@
 #define GMOS_CONFIG_TCPIP_IPV6_ENABLE false
 #elif GMOS_CONFIG_TCPIP_IPV6_ENABLE
 #error "The W5500 TCP/IP stack does not support IPv6"
+#endif
+
+/**
+ * This configuration option specifies whether or not detailed debugging
+ * of the device interrupt state is required.
+ */
+#ifndef GMOS_CONFIG_TCPIP_DEBUG_W5500_INTERRUPTS
+#define GMOS_CONFIG_TCPIP_DEBUG_W5500_INTERRUPTS false
 #endif
 
 #endif // WIZNET_DRIVER_CONFIG_H

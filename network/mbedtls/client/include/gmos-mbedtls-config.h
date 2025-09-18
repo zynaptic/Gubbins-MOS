@@ -31,6 +31,50 @@
 #include "gmos-driver-eeprom.h"
 
 /**
+ * Specify the maximum size of TLS data transmit records. This should
+ * usually be set so that a maximum size record fits within the MTU of
+ * the underlying transport layer.
+ */
+#ifndef GMOS_CONFIG_MBEDTLS_MAX_TX_DATA_SIZE
+#define GMOS_CONFIG_MBEDTLS_MAX_TX_DATA_SIZE 1280
+#endif
+
+/**
+ * Specify the maximum supported size of DER encoded certificates. This
+ * corresponds to the maximum amount of EEPROM memory allocated for
+ * storing each DER encoded certificate.
+ */
+#ifndef GMOS_CONFIG_MBEDTLS_MAX_DER_CERT_SIZE
+#define GMOS_CONFIG_MBEDTLS_MAX_DER_CERT_SIZE 680
+#endif
+
+/**
+ * Specify the maximum supported size of PEM encoded certificates. This
+ * is used to specify the size of temporary internal storage for PEM
+ * certificate processing.
+ */
+#ifndef GMOS_CONFIG_MBEDTLS_MAX_PEM_CERT_SIZE
+#define GMOS_CONFIG_MBEDTLS_MAX_PEM_CERT_SIZE \
+    (((GMOS_CONFIG_MBEDTLS_MAX_DER_CERT_SIZE * 65) / 48) + 56)
+#endif
+
+/**
+ * Enable optional low level debugging of MbedTLS transport layer
+ * transactions.
+ */
+#ifndef GMOS_CONFIG_MBEDTLS_DEBUG_TRANSPORT_LAYER
+#define GMOS_CONFIG_MBEDTLS_DEBUG_TRANSPORT_LAYER false
+#endif
+
+/**
+ * Enable optional low level debugging of MbedTLS link layer
+ * transactions.
+ */
+#ifndef GMOS_CONFIG_MBEDTLS_DEBUG_LINK_LAYER
+#define GMOS_CONFIG_MBEDTLS_DEBUG_LINK_LAYER false
+#endif
+
+/**
  * Defines the GubbinsMOS MbedTLS configuration state structure that is
  * used for managing a single MbedTLS client configuration.
  */

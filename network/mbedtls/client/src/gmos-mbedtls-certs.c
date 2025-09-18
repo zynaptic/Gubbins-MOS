@@ -29,6 +29,7 @@
 #include "gmos-config.h"
 #include "gmos-platform.h"
 #include "gmos-driver-eeprom.h"
+#include "gmos-mbedtls-config.h"
 #include "gmos-mbedtls-certs.h"
 #include "gmos-mbedtls-support.h"
 #include "psa/crypto.h"
@@ -557,8 +558,7 @@ out:
  * Prints the contents of a PEM encoded entity as debug data. This
  * assumes canonical PEM file formatting.
  */
-void gmosMbedtlsCertPrintPemBuffer (gmosPalLogLevel_t logLevel,
-    gmosBuffer_t* pemBuffer)
+void gmosMbedtlsCertPrintPemBuffer (gmosBuffer_t* pemBuffer)
 {
     uint8_t lineBuffer [72];
     uint_fast16_t lineOffset;
@@ -583,7 +583,7 @@ void gmosMbedtlsCertPrintPemBuffer (gmosPalLogLevel_t logLevel,
         for (i = 0; i < sizeof (lineBuffer); i++) {
             if (lineBuffer [i] == '\n') {
                 lineBuffer [i] = '\0';
-                GMOS_LOG_FMT (logLevel, "%s", lineBuffer);
+                GMOS_LOG_FMT (LOG_INFO, "%s", lineBuffer);
                 break;
             }
         }

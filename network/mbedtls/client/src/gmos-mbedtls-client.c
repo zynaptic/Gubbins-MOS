@@ -30,10 +30,17 @@
 #include "gmos-buffers.h"
 #include "gmos-streams.h"
 #include "gmos-network-links.h"
-#include "gmos-mbedtls-client.h"
 #include "gmos-mbedtls-config.h"
+#include "gmos-mbedtls-client.h"
 #include "gmos-mbedtls-support.h"
 #include "mbedtls/ssl.h"
+
+/*
+ * Support for TLS network links requires heap based memory management.
+ */
+#if (GMOS_CONFIG_HEAP_SIZE == 0)
+#error "TLS network link support requires heap based memory management."
+#endif
 
 /*
  * Specify the state space for the MbedTLS client state machine.
@@ -75,6 +82,8 @@ static gmosNetworkStatus_t gmosMbedtlsLinkConnector (
         if (networkStatus == GMOS_NETWORK_STATUS_SUCCESS) {
             mbedtlsClient->clientState =
                 GMOS_MBEDTLS_CLIENT_STATE_TRANSPORT_CONNECT;
+            gmosStreamSetConsumerTask (&(mbedtlsClient->rxDataStream),
+                mbedtlsClient->networkLink.consumerTask);
             gmosSchedulerTaskResume (&(mbedtlsClient->mbedtlsWorkerTask));
         }
     }
@@ -255,9 +264,6 @@ static gmosTaskStatus_t gmosMbedtlsClientStreamTxData (
     while (txDataBufferSize > 0) {
 
         // Copy data from the buffer into an intermediate data array.
-        GMOS_LOG_FMT (LOG_VERBOSE,
-            "MbedTLS transmit data buffer length %d.",
-            txDataBufferSize);
         txDataSize = (txDataBufferSize > sizeof (txDataArray)) ?
             sizeof (txDataArray) : txDataBufferSize;
         gmosBufferRead (&txDataBuffer, 0, txDataArray, txDataSize);
@@ -268,9 +274,11 @@ static gmosTaskStatus_t gmosMbedtlsClientStreamTxData (
 
         // Remove transmitted data from the buffer.
         if (mbedtlsStatus > 0) {
-            GMOS_LOG_FMT (LOG_VERBOSE,
-                "MbedTLS completed data write length %d.",
-                mbedtlsStatus);
+            if (GMOS_CONFIG_MBEDTLS_DEBUG_LINK_LAYER) {
+                GMOS_LOG_FMT (GMOS_CONFIG_LOG_LEVEL,
+                    "MbedTLS link completed data write length %d.",
+                    mbedtlsStatus);
+            }
             txDataBufferSize -= mbedtlsStatus;
             gmosBufferRebase (&txDataBuffer, txDataBufferSize);
         }
@@ -349,9 +357,11 @@ static gmosTaskStatus_t gmosMbedtlsClientStreamRxData (
         // On receiving new data, copy it to the receive data buffer and
         // update the buffer size if required.
         if (mbedtlsStatus > 0) {
-            GMOS_LOG_FMT (LOG_VERBOSE,
-                "MbedTLS completed data read length %d.",
-                mbedtlsStatus);
+            if (GMOS_CONFIG_MBEDTLS_DEBUG_LINK_LAYER) {
+                GMOS_LOG_FMT (GMOS_CONFIG_LOG_LEVEL,
+                    "MbedTLS link completed data read length %d.",
+                    mbedtlsStatus);
+            }
             gmosBufferWrite (&rxDataBuffer,
                 rxDataBufferSize, rxDataArray, mbedtlsStatus);
             rxDataBufferSize += mbedtlsStatus;

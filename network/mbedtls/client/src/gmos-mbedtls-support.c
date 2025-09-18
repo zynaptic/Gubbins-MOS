@@ -31,6 +31,7 @@
 #include "gmos-mempool.h"
 #include "gmos-buffers.h"
 #include "gmos-network-links.h"
+#include "gmos-mbedtls-config.h"
 #include "gmos-mbedtls-client.h"
 #include "gmos-mbedtls-support.h"
 #include "mbedtls/ssl.h"
@@ -84,16 +85,19 @@ static int gmosMbedtlsLinkSend (
             break;
     }
 
-    // Ensure that the transmit buffer is empty on exit.
+    // Add optional debug tracing for low level transactions and ensure
+    // that the transmit buffer is empty on exit.
 out :
     gmosBufferReset (&txBuffer, 0);
     if (retVal >= 0) {
-        GMOS_LOG_FMT (LOG_VERBOSE,
-            "MbedTLS link send requested %d bytes, accepted %d bytes.",
-            txDataLen, retVal);
+        if (GMOS_CONFIG_MBEDTLS_DEBUG_TRANSPORT_LAYER) {
+            GMOS_LOG_FMT (GMOS_CONFIG_LOG_LEVEL,
+                "MbedTLS transport send requested %d bytes, accepted %d bytes.",
+                txDataLen, retVal);
+        }
     } else if (retVal != MBEDTLS_ERR_SSL_WANT_WRITE) {
         GMOS_LOG_FMT (LOG_DEBUG,
-            "MbedTLS link send failed (status 0x%04X).", -retVal);
+            "MbedTLS transport send failed (status 0x%04X).", -retVal);
     }
     return retVal;
 }
@@ -144,14 +148,16 @@ static int gmosMbedtlsLinkRecv (
             break;
     }
 
-    // Add debug tracing for low level transactions.
+    // Add optional debug tracing for low level transactions.
     if (retVal >= 0) {
-        GMOS_LOG_FMT (LOG_VERBOSE,
-            "MbedTLS link receive requested %d bytes, returned %d bytes.",
-            rxDataLen, retVal);
+        if (GMOS_CONFIG_MBEDTLS_DEBUG_TRANSPORT_LAYER) {
+            GMOS_LOG_FMT (GMOS_CONFIG_LOG_LEVEL,
+                "MbedTLS transport receive requested %d bytes, returned %d bytes.",
+                rxDataLen, retVal);
+        }
     } else if (retVal != MBEDTLS_ERR_SSL_WANT_READ) {
         GMOS_LOG_FMT (LOG_DEBUG,
-            "MbedTLS link receive failed (status 0x%04X)", -retVal);
+            "MbedTLS transport receive failed (status 0x%04X)", -retVal);
     }
     return retVal;
 }

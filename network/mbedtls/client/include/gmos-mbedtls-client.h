@@ -34,22 +34,6 @@
 #include "gmos-mbedtls-config.h"
 
 /**
- * Support for TLS network links requires heap based memory management.
- */
-#if (GMOS_CONFIG_HEAP_SIZE == 0)
-#error "TLS network link support requires heap based memory management."
-#endif
-
-/**
- * Specify the maximum size of TLS data transmit records. This should
- * usually be set so that a maximum size record fits within the MTU of
- * the underlying transport layer.
- */
-#ifndef GMOS_CONFIG_MBEDTLS_MAX_TX_DATA_SIZE
-#define GMOS_CONFIG_MBEDTLS_MAX_TX_DATA_SIZE 1280
-#endif
-
-/**
  * Defines the GubbinsMOS MbedTLS client state that is used for managing
  * a single MbedTLS client session.
  */

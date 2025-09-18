@@ -32,25 +32,6 @@
 #include "gmos-driver-eeprom.h"
 
 /**
- * Specify the maximum supported size of DER encoded certificates. This
- * corresponds to the maximum amount of EEPROM memory allocated for
- * storing each DER encoded certificate.
- */
-#ifndef GMOS_CONFIG_MBEDTLS_MAX_DER_CERT_SIZE
-#define GMOS_CONFIG_MBEDTLS_MAX_DER_CERT_SIZE 680
-#endif
-
-/**
- * Specify the maximum supported size of PEM encoded certificates. This
- * is used to specify the size of temporary internal storage for PEM
- * certificate processing.
- */
-#ifndef GMOS_CONFIG_MBEDTLS_MAX_PEM_CERT_SIZE
-#define GMOS_CONFIG_MBEDTLS_MAX_PEM_CERT_SIZE \
-    (((GMOS_CONFIG_MBEDTLS_MAX_DER_CERT_SIZE * 65) / 48) + 56)
-#endif
-
-/**
  * Defines the set of key algorithms that are supported for certificate
  * signing. This is a reduced set of key algorithms for use on resource
  * constrained devices.
@@ -197,13 +178,10 @@ gmosMbedtlsCertStatus_t gmosMbedtlsCertStoreCertPem (
 
 /**
  * Prints the contents of a PEM encoded entity to the serial debug
- * console.
- * @param logLevel This is the GubbinsMOS logging level to be used when
- *     printing out the contents of the PEM data buffer.
+ * console at the 'info' debug level.
  * @param pemBuffer This is a GubbinsMOS buffer which should contain the
  *     PEM encoded certificate or certificate signing request.
  */
-void gmosMbedtlsCertPrintPemBuffer (gmosPalLogLevel_t logLevel,
-    gmosBuffer_t* pemBuffer);
+void gmosMbedtlsCertPrintPemBuffer (gmosBuffer_t* pemBuffer);
 
 #endif // GMOS_MBEDTLS_CERTS_H
