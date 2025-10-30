@@ -208,20 +208,32 @@ static inline bool gmosNalTcpipSocketTcpRxDataBufRead (
     gmosBuffer_t* readDataBuffer = &(readDataCommand.data.buffer);
     uint8_t socketId = socket->socketId;
     uint16_t bufferSize;
-    uint16_t maxTransferSize;
-
-    // Determine the amount of data storage for the read data buffer.
-    bufferSize = socket->data.active.limitPtr - socket->data.active.dataPtr;
+    uint16_t maxTransferSize = GMOS_CONFIG_TCPIP_MAX_BUFFER_SIZE;
 
     // When using a fixed memory pool, leave at leat 4 memory pool
     // segments available for other processing. Wait for memory pool
     // capacity to be released if this is not possible.
     if (!GMOS_CONFIG_MEMPOOL_USE_HEAP) {
-        maxTransferSize = gmosMempoolSegmentsAvailable () - 4;
-        maxTransferSize *= GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE;
-        if (maxTransferSize < bufferSize) {
+        uint_fast16_t mempoolLimit = gmosMempoolSegmentsAvailable ();
+        if (mempoolLimit <= 4) {
             return false;
         }
+        mempoolLimit =
+            (mempoolLimit - 4) * GMOS_CONFIG_MEMPOOL_SEGMENT_SIZE;
+        if (mempoolLimit < maxTransferSize) {
+            maxTransferSize = mempoolLimit;
+        }
+    }
+
+    // Determine the amount of data storage for the read data buffer.
+    bufferSize =
+        socket->data.active.limitPtr - socket->data.active.dataPtr;
+
+    // Limit the size of individual buffer transfers.
+    if (bufferSize > maxTransferSize) {
+        bufferSize = maxTransferSize;
+        socket->data.active.limitPtr =
+            socket->data.active.dataPtr + bufferSize;
     }
 
     // Allocate sufficient buffer memory to receive all the data from

@@ -40,6 +40,15 @@
 #endif
 
 /**
+ * Set the maximum size of received host side TCP buffers. This places
+ * an upper limit on the amount of data transferred from the W5500 TCP
+ * received data buffers to the host in a single SPI bus transaction.
+ */
+#ifndef GMOS_CONFIG_TCPIP_MAX_BUFFER_SIZE
+#define GMOS_CONFIG_TCPIP_MAX_BUFFER_SIZE 1024
+#endif
+
+/**
  * This configuration option specifies whether or not IPv6 support is
  * enabled for the TCP/IP stack.
  */
