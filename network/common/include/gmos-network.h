@@ -51,6 +51,9 @@ typedef enum {
     // but may be retried later.
     GMOS_NETWORK_STATUS_RETRY,
 
+    // Indicate that a network transaction has completed.
+    GMOS_NETWORK_STATUS_COMPLETED,
+
     // Indicates that a data buffer is too large for transmission by
     // the network connection. This may be as a result of hardware
     // buffer size limitations or exceeding a protocol imposed limit.

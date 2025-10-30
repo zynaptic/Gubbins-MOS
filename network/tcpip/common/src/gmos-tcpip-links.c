@@ -274,6 +274,7 @@ static gmosNetworkStatus_t gmosTcpipLinkReceiver (
 
     // Check that the link is connected.
     if ((status != GMOS_NETWORK_STATUS_SUCCESS) &&
+        (status |= GMOS_NETWORK_STATUS_RETRY) &&
         (tcpipLink->linkState != GMOS_TCPIP_LINK_STATE_CONNECTED)) {
         status = GMOS_NETWORK_STATUS_NOT_CONNECTED;
     }
@@ -347,6 +348,8 @@ bool gmosTcpipLinkInit (gmosTcpipLink_t* tcpipLink,
     tcpipLink->networkLink.notifyHandler = NULL;
     tcpipLink->networkLink.notifyContext = NULL;
     tcpipLink->networkLink.consumerTask = NULL;
+    tcpipLink->networkLink.linkTypeId =
+        GMOS_NETWORK_LINK_TYPE_TCP_CLIENT;
 
     // Initialise the TCP link specific data.
     tcpipLink->linkState = GMOS_TCPIP_LINK_STATE_INITIALISED;
@@ -369,6 +372,26 @@ bool gmosTcpipLinkInit (gmosTcpipLink_t* tcpipLink,
         GMOS_TASK_NAME_WRAPPER ("TCP/IP Network Link");
     gmosSchedulerTaskStart (workerTask);
     return true;
+}
+
+/*
+ * Access the TCP link data structure for a given generic network link.
+ */
+gmosTcpipLink_t* gmosTcpipLinkTypeAccess (
+    gmosNetworkLink_t* networkLink)
+{
+    gmosTcpipLink_t* tcpipLink;
+
+    // The generic network link is the first element of the TCP link
+    // data structure, so the pointer can be cast directly to the outer
+    // data type.
+    if ((networkLink != NULL) && (networkLink->linkTypeId ==
+        GMOS_NETWORK_LINK_TYPE_TCP_CLIENT)) {
+        tcpipLink = (gmosTcpipLink_t*) networkLink;
+    } else {
+        tcpipLink = NULL;
+    }
+    return tcpipLink;
 }
 
 /*

@@ -606,6 +606,10 @@ bool gmosMbedtlsClientInit (gmosMbedtlsClient_t* mbedtlsClient,
     mbedtlsClient->networkLink.notifyHandler = NULL;
     mbedtlsClient->networkLink.notifyContext = NULL;
     mbedtlsClient->networkLink.consumerTask = NULL;
+    mbedtlsClient->networkLink.linkTypeId =
+        GMOS_NETWORK_LINK_TYPE_MBEDTLS_CLIENT;
+
+    // Set up the MbedTLS configuration and client support structures.
     mbedtlsClient->mbedtlsConfig = NULL;
     mbedtlsClient->clientSupport = NULL;
 
@@ -619,6 +623,27 @@ bool gmosMbedtlsClientInit (gmosMbedtlsClient_t* mbedtlsClient,
         &(mbedtlsClient->mbedtlsWorkerTask), mbedtlsClient,
         GMOS_TASK_NAME_WRAPPER ("MbedTLS Client"));
     return true;
+}
+
+/*
+ * Access the MbedTLS client data structure for a given generic network
+ * link.
+ */
+gmosMbedtlsClient_t* gmosMbedtlsClientTypeAccess (
+    gmosNetworkLink_t* networkLink)
+{
+    gmosMbedtlsClient_t* mbedtlsClient;
+
+    // The generic network link is the first element of the MbedTLS
+    // client data structure, so the pointer can be cast directly to the
+    // outer data type.
+    if ((networkLink != NULL) && (networkLink->linkTypeId ==
+        GMOS_NETWORK_LINK_TYPE_MBEDTLS_CLIENT)) {
+        mbedtlsClient = (gmosMbedtlsClient_t*) networkLink;
+    } else {
+        mbedtlsClient = NULL;
+    }
+    return mbedtlsClient;
 }
 
 /*

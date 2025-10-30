@@ -42,6 +42,9 @@ typedef struct gmosMbedtlsClient_t {
     // The MbedTLS client instance implements the network link API.
     gmosNetworkLink_t networkLink;
 
+    // Specify the current MbedTLS client state.
+    uint8_t clientState;
+
     // The MbedTLS client requires an underlying network link for data
     // transport.
     gmosNetworkLink_t* transportLink;
@@ -64,9 +67,6 @@ typedef struct gmosMbedtlsClient_t {
     // Allocate the MbedTLS client worker task data structure.
     gmosTaskState_t mbedtlsWorkerTask;
 
-    // Specify the current MbedTLS client state.
-    uint8_t clientState;
-
 } gmosMbedtlsClient_t;
 
 /**
@@ -83,6 +83,19 @@ typedef struct gmosMbedtlsClient_t {
  */
 bool gmosMbedtlsClientInit (gmosMbedtlsClient_t* mbedtlsClient,
     gmosNetworkLink_t* transportLink);
+
+/**
+ * Access the MbedTLS client data structure for a given generic network
+ * link.
+ * @param networkLink This is the generic network link for which the
+ *     corresponding MbedTLS client data structure is to be accessed.
+ * @return Returns a reference to the MbedTLS client data structure
+ *     which corresponds to the specified generic network link, or a
+ *     null reference if the generic network link is not an MbedTLS
+ *     client.
+ */
+gmosMbedtlsClient_t* gmosMbedtlsClientTypeAccess (
+    gmosNetworkLink_t* networkLink);
 
 /**
  * Perform MbedTLS client setup on startup or after a reset. This should

@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2024 Zynaptic Limited
+ * Copyright 2024-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,6 +42,14 @@ typedef struct gmosTcpipLink_t {
     // Include the common network link data structure.
     gmosNetworkLink_t networkLink;
 
+    // Specify the current TCP/IP link state.
+    uint8_t linkState;
+
+    // Specify whether the link should use IPv6.
+#if GMOS_CONFIG_TCPIP_IPV6_ENABLE
+    uint8_t useIpv6;
+#endif
+
     // Specify the TCP/IP stack to use for the link.
     gmosTcpipStack_t* tcpipStack;
 
@@ -64,14 +72,6 @@ typedef struct gmosTcpipLink_t {
     // Specify the local IP port to use for the connection.
     uint16_t localIpPort;
 
-    // Specify whether the link should use IPv6.
-#if GMOS_CONFIG_TCPIP_IPV6_ENABLE
-    uint8_t useIpv6;
-#endif
-
-    // Specify the current TCP/IP link state.
-    uint8_t linkState;
-
 } gmosTcpipLink_t;
 
 /**
@@ -89,6 +89,17 @@ typedef struct gmosTcpipLink_t {
  */
 bool gmosTcpipLinkInit (gmosTcpipLink_t* tcpipLink,
     gmosTcpipStack_t* tcpipStack, bool useIpv6);
+
+/**
+ * Access the TCP link data structure for a given generic network link.
+ * @param networkLink This is the generic network link for which the
+ *     corresponding TCP link data structure is to be accessed.
+ * @return Returns a reference to the TCP link data structure which
+ *     corresponds to the specified generic network link, or a null
+ *     reference if the generic network link is not a TCP link.
+ */
+gmosTcpipLink_t* gmosTcpipLinkTypeAccess (
+    gmosNetworkLink_t* networkLink);
 
 /**
  * Configures a TCP link using a DNS host name to identify the remote

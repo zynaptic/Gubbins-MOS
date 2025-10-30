@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2024 Zynaptic Limited
+ * Copyright 2024-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -107,6 +107,15 @@ typedef gmosNetworkStatus_t (*gmosNetworkLinkMonitor_t) (
     gmosNetworkLink_t* networkLink);
 
 /**
+ * Define the link type identifiers which are used to uniquely identify
+ * the various different link implementations.
+ */
+typedef enum {
+    GMOS_NETWORK_LINK_TYPE_TCP_CLIENT     = 0x65,
+    GMOS_NETWORK_LINK_TYPE_MBEDTLS_CLIENT = 0xD5
+} gmosNetworkLinkType_t;
+
+/**
  * Defines the data structure for a generic network link, which mainly
  * consists of a function pointer table for selecting the appropriate
  * network link access functions. This will typically be placed at the
@@ -139,6 +148,10 @@ typedef struct gmosNetworkLink_t {
     // Specify the consumer task which will be automatically resumed
     // when new receive data is available.
     gmosTaskState_t* consumerTask;
+
+    // Specify a runtime link type identifier which allows network links
+    // to be safely cast to implementation specific data structures.
+    uint8_t linkTypeId;
 
 } gmosNetworkLink_t;
 

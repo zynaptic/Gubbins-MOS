@@ -41,7 +41,7 @@
 /*
  * Specify the retry interval used by the state machine.
  */
-#define GMOS_MQTT_CLIENT_CLIENT_TASK_RETRY \
+#define GMOS_MQTT_CLIENT_TASK_RETRY \
     (GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (10)))
 
 /*
@@ -346,7 +346,7 @@ static inline gmosTaskStatus_t gmosMqttClientWorkerTaskFn (
             if (networkStatus == GMOS_NETWORK_STATUS_CONNECTED) {
                 nextState = GMOS_MQTT_CLIENT_STATE_CONNECT_REQUEST;
             } else if (networkStatus == GMOS_NETWORK_STATUS_RETRY) {
-                taskStatus = GMOS_MQTT_CLIENT_CLIENT_TASK_RETRY;
+                taskStatus = GMOS_MQTT_CLIENT_TASK_RETRY;
             } else {
                 GMOS_LOG (LOG_DEBUG,
                     "MQTT transport link connection failed.");
@@ -363,7 +363,7 @@ static inline gmosTaskStatus_t gmosMqttClientWorkerTaskFn (
                     GMOS_MS_TO_TICKS (GMOS_CONFIG_MQTT_TIMEOUT_PERIOD * 1000);
                 nextState = GMOS_MQTT_CLIENT_STATE_CONNECT_WAIT;
             } else if (networkStatus == GMOS_NETWORK_STATUS_RETRY) {
-                taskStatus = GMOS_MQTT_CLIENT_CLIENT_TASK_RETRY;
+                taskStatus = GMOS_MQTT_CLIENT_TASK_RETRY;
             } else {
                 GMOS_LOG (LOG_DEBUG,
                     "MQTT connection request failed.");
@@ -434,7 +434,7 @@ static inline gmosTaskStatus_t gmosMqttClientWorkerTaskFn (
         case GMOS_MQTT_CLIENT_STATE_LINK_ERROR :
             networkStatus = gmosMqttClientSendDisconnectRequest (mqttClient);
             if (networkStatus == GMOS_NETWORK_STATUS_RETRY) {
-                taskStatus = GMOS_MQTT_CLIENT_CLIENT_TASK_RETRY;
+                taskStatus = GMOS_MQTT_CLIENT_TASK_RETRY;
             } else {
                 mqttClient->sessionFlags =
                     GMOS_CONFIG_MQTT_LINK_ERROR_AUTO_RECONNECT ?
@@ -449,7 +449,7 @@ static inline gmosTaskStatus_t gmosMqttClientWorkerTaskFn (
             networkStatus = gmosNetworkLinkDisconnect (
                 mqttClient->networkLink);
             if (networkStatus == GMOS_NETWORK_STATUS_RETRY) {
-                taskStatus = GMOS_MQTT_CLIENT_CLIENT_TASK_RETRY;
+                taskStatus = GMOS_MQTT_CLIENT_TASK_RETRY;
             } else {
                 GMOS_LOG_FMT (LOG_DEBUG,
                     "MQTT network link close request with status %d.",
@@ -479,7 +479,7 @@ static inline gmosTaskStatus_t gmosMqttClientWorkerTaskFn (
                     taskStatus = GMOS_TASK_RUN_IMMEDIATE;
                 }
             } else if (networkStatus == GMOS_NETWORK_STATUS_RETRY) {
-                taskStatus = GMOS_MQTT_CLIENT_CLIENT_TASK_RETRY;
+                taskStatus = GMOS_MQTT_CLIENT_TASK_RETRY;
             } else {
                 GMOS_LOG (LOG_DEBUG,
                     "MQTT transport link disconnection failed.");
@@ -496,7 +496,7 @@ static inline gmosTaskStatus_t gmosMqttClientWorkerTaskFn (
                 nextState = GMOS_MQTT_CLIENT_STATE_CONNECTING_LINK;
                 taskStatus = GMOS_TASK_RUN_IMMEDIATE;
             } else if (networkStatus == GMOS_NETWORK_STATUS_RETRY) {
-                taskStatus = GMOS_MQTT_CLIENT_CLIENT_TASK_RETRY;
+                taskStatus = GMOS_MQTT_CLIENT_TASK_RETRY;
             } else {
                 GMOS_LOG (LOG_DEBUG,
                     "MQTT transport link reconnection failed.");
