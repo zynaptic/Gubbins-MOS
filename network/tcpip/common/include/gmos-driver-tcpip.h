@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022 Zynaptic Limited
+ * Copyright 2022-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -97,8 +97,8 @@ typedef struct gmosDriverTcpip_t {
 /**
  * Initialise the TCP/IP driver on startup, using the supplied network
  * settings.
- * @param tcpipDriver This is the TCP/IP driver data structure that
- *     represents the TCP/IP driver being initialised.
+ * @param tcpipStack This is the TCP/IP stack data structure that is
+ *     associated with the TCP/IP driver being initialised.
  * @param ethMacAddr This is a pointer to the 48-bit Ethernet MAC
  *     address which is to be assigned to the network interface, stored
  *     as an array of six octets in network byte order. A null reference
@@ -109,7 +109,7 @@ typedef struct gmosDriverTcpip_t {
  *     'false' otherwise.
  */
 bool gmosDriverTcpipInit (
-    gmosDriverTcpip_t* tcpipDriver, const uint8_t* ethMacAddr);
+    gmosTcpipStack_t* tcpipStack, const uint8_t* ethMacAddr);
 
 /**
  * Resets the TCP/IP driver, forcing all sockets to close and clearing

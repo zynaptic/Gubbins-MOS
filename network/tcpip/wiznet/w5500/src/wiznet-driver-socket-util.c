@@ -39,7 +39,8 @@
 bool gmosNalTcpipSocketIssueCommand (gmosNalTcpipSocket_t* socket,
     wiznetSpiAdaptorSocketCommands_t command)
 {
-    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
+    gmosTcpipStack_t* tcpipStack = socket->common.tcpipStack;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t socketCommand;
     uint8_t socketId = socket->socketId;
 
@@ -64,7 +65,8 @@ bool gmosNalTcpipSocketIssueCommand (gmosNalTcpipSocket_t* socket,
  */
 bool gmosNalTcpipSocketSetRemoteAddr (gmosNalTcpipSocket_t* socket)
 {
-    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
+    gmosTcpipStack_t* tcpipStack = socket->common.tcpipStack;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
     uint8_t socketId = socket->socketId;
     uint16_t remoteAddrOffset;
     gmosBuffer_t* payloadData = &(socket->payloadData);
@@ -136,8 +138,8 @@ bool gmosNalTcpipSocketRxBufferCheck (
     // threshold.
     if ((bufRxSize >= rxThreshold) &&
         (bufWritePtr - bufReadPtr == bufRxSize)) {
-        socket->data.active.dataPtr = bufReadPtr;
-        socket->data.active.limitPtr = bufWritePtr;
+        socket->dataPtr = bufReadPtr;
+        socket->limitPtr = bufWritePtr;
         return true;
     }
 
@@ -155,9 +157,10 @@ bool gmosNalTcpipSocketRxBufferCheck (
  */
 bool gmosNalTcpipSocketRxPointerWrite (gmosNalTcpipSocket_t* socket)
 {
-    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
+    gmosTcpipStack_t* tcpipStack = socket->common.tcpipStack;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
     uint8_t socketId = socket->socketId;
-    uint16_t endOfDataPtr = socket->data.active.limitPtr;
+    uint16_t endOfDataPtr = socket->limitPtr;
     wiznetSpiAdaptorCmd_t rxPtrCommand;
 
     // Format the request to set the receive data read pointer at
@@ -194,7 +197,7 @@ bool gmosNalTcpipSocketRxDataBlockCheck (
 
     // A response sequence error is generated if this is not a valid
     // response message.
-    if ((response->address != socket->data.active.dataPtr) ||
+    if ((response->address != socket->dataPtr) ||
         (response->control != expectedControl) ||
         (response->size != 0)) {
         *sequenceError = true;
@@ -213,7 +216,8 @@ bool gmosNalTcpipSocketRxDataBlockCheck (
  */
 bool gmosNalTcpipSocketTxDataWrite (gmosNalTcpipSocket_t* socket)
 {
-    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
+    gmosTcpipStack_t* tcpipStack = socket->common.tcpipStack;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
     uint8_t socketId = socket->socketId;
     wiznetSpiAdaptorCmd_t txDataCommand;
     gmosBuffer_t* txDataBuffer = &txDataCommand.data.buffer;
@@ -222,7 +226,7 @@ bool gmosNalTcpipSocketTxDataWrite (gmosNalTcpipSocket_t* socket)
 
     // Format the request to send the transmit data, starting from the
     // current address pointer.
-    txDataCommand.address = socket->data.active.dataPtr;
+    txDataCommand.address = socket->dataPtr;
     txDataCommand.control =
         WIZNET_SPI_ADAPTOR_CTRL_SOCKET_TX_BUF (socketId) |
         WIZNET_SPI_ADAPTOR_CTRL_WRITE_ENABLE |
@@ -237,7 +241,7 @@ bool gmosNalTcpipSocketTxDataWrite (gmosNalTcpipSocket_t* socket)
     // correspond to the end of the written data.
     if (wiznetSpiAdaptorStream_write (
         &nalData->spiCommandStream, &txDataCommand)) {
-        socket->data.active.dataPtr += payloadSize;
+        socket->dataPtr += payloadSize;
         return true;
     }
 
@@ -254,9 +258,10 @@ bool gmosNalTcpipSocketTxDataWrite (gmosNalTcpipSocket_t* socket)
  */
 bool gmosNalTcpipSocketTxPointerWrite (gmosNalTcpipSocket_t* socket)
 {
-    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
+    gmosTcpipStack_t* tcpipStack = socket->common.tcpipStack;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
     uint8_t socketId = socket->socketId;
-    uint16_t endOfDataPtr = socket->data.active.dataPtr;
+    uint16_t endOfDataPtr = socket->dataPtr;
     wiznetSpiAdaptorCmd_t txPtrCommand;
 
     // Format the request to set the transmit data write pointer at

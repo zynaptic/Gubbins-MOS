@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022-2024 Zynaptic Limited
+ * Copyright 2022-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -55,8 +55,9 @@ static inline void gmosNalTcpipSocketSendNotification (
 static inline gmosTaskStatus_t gmosNalTcpipSocketProcessUdp (
     gmosNalTcpipSocket_t* socket, uint8_t* nextState)
 {
+    gmosTcpipStack_t* tcpipStack = socket->common.tcpipStack;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
     gmosTaskStatus_t taskStatus = GMOS_TASK_RUN_IMMEDIATE;
-    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t bufStatusCommand;
     gmosStream_t* rxStream = &(socket->common.rxStream);
     gmosStream_t* txStream = &(socket->common.txStream);
@@ -120,14 +121,15 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketProcessUdp (
 static inline bool gmosNalTcpipSocketUdpRxDataSizeRead (
     gmosNalTcpipSocket_t* socket)
 {
-    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
+    gmosTcpipStack_t* tcpipStack = socket->common.tcpipStack;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t getSizeCommand;
     uint8_t socketId = socket->socketId;
 
     // Set up the command to read from the socket receive buffer at the
     // read pointer offset. The packet size field is located in bytes
     // 6 and 7 of the header.
-    getSizeCommand.address = socket->data.active.dataPtr + 6;
+    getSizeCommand.address = socket->dataPtr + 6;
     getSizeCommand.control =
         WIZNET_SPI_ADAPTOR_CTRL_SOCKET_RX_BUF (socketId) |
         WIZNET_SPI_ADAPTOR_CTRL_READ_ENABLE;
@@ -156,7 +158,7 @@ static inline bool gmosNalTcpipSocketUdpRxDataSizeCheck (
 
     // A response sequence error is generated if this is not a valid
     // response message.
-    if ((response->address != socket->data.active.dataPtr + 6) ||
+    if ((response->address != socket->dataPtr + 6) ||
         (response->control != expectedControl) ||
         (response->size != 2)) {
         *sequenceError = true;
@@ -165,7 +167,7 @@ static inline bool gmosNalTcpipSocketUdpRxDataSizeCheck (
 
     // Extract the receive data size.
     *sequenceError = false;
-    bufRxSize = socket->data.active.limitPtr - socket->data.active.dataPtr;
+    bufRxSize = socket->limitPtr - socket->dataPtr;
     dataRxSize = ((uint16_t) response->data.bytes [1]) +
         (((uint16_t) response->data.bytes [0]) << 8);
     GMOS_LOG_FMT (LOG_VERBOSE,
@@ -175,8 +177,7 @@ static inline bool gmosNalTcpipSocketUdpRxDataSizeCheck (
     // Modify the end of data pointer so that it references the end of
     // the UDP packet, rather than the end of the received data block.
     if (dataRxSize <= bufRxSize - 8) {
-        socket->data.active.limitPtr =
-            socket->data.active.dataPtr + dataRxSize + 8;
+        socket->limitPtr = socket->dataPtr + dataRxSize + 8;
         return true;
     } else {
         return false;
@@ -190,21 +191,22 @@ static inline bool gmosNalTcpipSocketUdpRxDataSizeCheck (
 static inline bool gmosNalTcpipSocketUdpRxDataBufRead (
     gmosNalTcpipSocket_t* socket)
 {
-    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
+    gmosTcpipStack_t* tcpipStack = socket->common.tcpipStack;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t readDataCommand;
     gmosBuffer_t* readDataBuffer = &(readDataCommand.data.buffer);
     uint8_t socketId = socket->socketId;
     uint16_t bufferSize;
 
     // Attempt to allocate data storage for the read data buffer.
-    bufferSize = socket->data.active.limitPtr - socket->data.active.dataPtr;
+    bufferSize = socket->limitPtr - socket->dataPtr;
     gmosBufferInit (readDataBuffer);
     if (!gmosBufferResize (readDataBuffer, bufferSize)) {
         return false;
     }
 
     // Set up the command to read the UDP data from the WIZnet buffer.
-    readDataCommand.address = socket->data.active.dataPtr;
+    readDataCommand.address = socket->dataPtr;
     readDataCommand.control =
         WIZNET_SPI_ADAPTOR_CTRL_SOCKET_RX_BUF (socketId) |
         WIZNET_SPI_ADAPTOR_CTRL_READ_ENABLE;
@@ -252,7 +254,7 @@ static inline bool gmosNalTcpipSocketUdpTxBufferCheck (
     bufReadPtr = ((uint16_t) response->data.bytes [1]) +
         (((uint16_t) response->data.bytes [0]) << 8);
     if (gmosStreamAcceptBuffer (txStream, &(socket->payloadData))) {
-        socket->data.active.dataPtr = bufReadPtr;
+        socket->dataPtr = bufReadPtr;
         return true;
     } else {
         return false;
@@ -306,11 +308,11 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketUdpTxInterruptCheck (
  * opened UDP socket.
  */
 gmosNetworkStatus_t gmosDriverTcpipUdpSendTo (
-    gmosNalTcpipSocket_t* udpSocket, uint8_t* remoteAddr,
+    gmosNalTcpipSocket_t* socket, uint8_t* remoteAddr,
     uint16_t remotePort, gmosBuffer_t* payload)
 {
-    gmosStream_t* txStream = &(udpSocket->common.txStream);
-    uint8_t socketPhase = udpSocket->socketState & WIZNET_SOCKET_PHASE_MASK;
+    gmosStream_t* txStream = &(socket->common.txStream);
+    uint8_t socketPhase = socket->socketState & WIZNET_SOCKET_PHASE_MASK;
     uint16_t payloadLength = gmosBufferGetSize (payload);
     uint8_t remotePortBytes [2];
 
@@ -324,7 +326,7 @@ gmosNetworkStatus_t gmosDriverTcpipUdpSendTo (
     // buffer memory on the WIZnet device.
     // TODO: Also check for length exceeding a single Ethernet frame,
     // since fragmentation is not supported.
-    if (payloadLength > gmosNalTcpipSocketGetBufferSize (udpSocket)) {
+    if (payloadLength > gmosNalTcpipSocketGetBufferSize (socket)) {
         return GMOS_NETWORK_STATUS_OVERSIZED;
     }
 
@@ -347,11 +349,11 @@ gmosNetworkStatus_t gmosDriverTcpipUdpSendTo (
  * socket.
  */
 gmosNetworkStatus_t gmosDriverTcpipUdpReceiveFrom (
-    gmosNalTcpipSocket_t* udpSocket, uint8_t* remoteAddr,
+    gmosNalTcpipSocket_t* socket, uint8_t* remoteAddr,
     uint16_t* remotePort, gmosBuffer_t* payload)
 {
-    gmosStream_t* rxStream = &(udpSocket->common.rxStream);
-    uint8_t socketPhase = udpSocket->socketState & WIZNET_SOCKET_PHASE_MASK;
+    gmosStream_t* rxStream = &(socket->common.rxStream);
+    uint8_t socketPhase = socket->socketState & WIZNET_SOCKET_PHASE_MASK;
     uint16_t payloadLength;
     uint8_t remotePortBytes [2];
 
@@ -382,10 +384,11 @@ gmosNetworkStatus_t gmosDriverTcpipUdpReceiveFrom (
  * Closes the specified UDP socket, releasing all allocated resources.
  */
 gmosNetworkStatus_t gmosDriverTcpipUdpClose (
-    gmosNalTcpipSocket_t* udpSocket)
+    gmosNalTcpipSocket_t* socket)
 {
-    gmosNalTcpipState_t* nalData = udpSocket->common.tcpipDriver->nalData;
-    uint8_t socketPhase = udpSocket->socketState & WIZNET_SOCKET_PHASE_MASK;
+    gmosTcpipStack_t* tcpipStack = socket->common.tcpipStack;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
+    uint8_t socketPhase = socket->socketState & WIZNET_SOCKET_PHASE_MASK;
 
     // Check that the specified socket has been opened for UDP data
     // transfer.
@@ -394,7 +397,7 @@ gmosNetworkStatus_t gmosDriverTcpipUdpClose (
     }
 
     // Set the close request flag to initiate a clean shutdown.
-    udpSocket->interruptFlags |= WIZNET_SPI_ADAPTOR_SOCKET_FLAG_CLOSE_REQ;
+    socket->interruptFlags |= WIZNET_SPI_ADAPTOR_SOCKET_FLAG_CLOSE_REQ;
     gmosSchedulerTaskResume (&(nalData->coreWorkerTask));
     return GMOS_NETWORK_STATUS_SUCCESS;
 }
@@ -549,7 +552,8 @@ gmosTaskStatus_t gmosNalTcpipSocketProcessTickUdp (
 void gmosNalTcpipSocketProcessResponseUdp (
     gmosNalTcpipSocket_t* socket, wiznetSpiAdaptorCmd_t* response)
 {
-    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
+    gmosTcpipStack_t* tcpipStack = socket->common.tcpipStack;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
     bool sequenceError;
     uint8_t nextState = socket->socketState & ~WIZNET_SOCKET_PHASE_MASK;
     uint8_t nextPhase = WIZNET_SOCKET_PHASE_UDP;

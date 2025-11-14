@@ -616,6 +616,7 @@ bool gmosStreamSendBuffer (gmosStream_t* stream, gmosBuffer_t* buffer)
     if (gmosStreamWriteAll (stream, writeData, writeSize)) {
         buffer->segmentList = NULL;
         buffer->bufferSize = 0;
+        buffer->bufferOffset = 0;
         sendOk = true;
     }
     return sendOk;
@@ -655,6 +656,7 @@ bool gmosStreamPushBackBuffer (gmosStream_t* stream, gmosBuffer_t* buffer)
     if (gmosStreamPushBack (stream, pushBackData, pushBackSize)) {
         buffer->segmentList = NULL;
         buffer->bufferSize = 0;
+        buffer->bufferOffset = 0;
         pushBackOk = true;
     }
     return pushBackOk;

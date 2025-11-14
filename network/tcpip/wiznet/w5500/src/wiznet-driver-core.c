@@ -923,8 +923,9 @@ static gmosTaskStatus_t wiznetCoreWorkerTaskFn (void* taskData)
  * using the supplied network settings.
  */
 bool gmosDriverTcpipInit (
-    gmosDriverTcpip_t* tcpipDriver, const uint8_t* ethMacAddr)
+    gmosTcpipStack_t* tcpipStack, const uint8_t* ethMacAddr)
 {
+    gmosDriverTcpip_t* tcpipDriver = tcpipStack->tcpipDriver;
     gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
     gmosTaskState_t* coreWorkerTask = &nalData->coreWorkerTask;
     gmosStream_t* spiResponseStream = &nalData->spiResponseStream;
@@ -965,7 +966,7 @@ bool gmosDriverTcpipInit (
     // Initialise the socket specific state.
     for (i = 0; i < GMOS_CONFIG_TCPIP_MAX_SOCKETS; i++) {
         (nalData->socketData [i]).socketId = i;
-        gmosNalTcpipSocketInit (tcpipDriver, &nalData->socketData [i]);
+        gmosNalTcpipSocketInit (tcpipStack, &nalData->socketData [i]);
     }
 
     // Initialise the core worker task and schedule it for immediate

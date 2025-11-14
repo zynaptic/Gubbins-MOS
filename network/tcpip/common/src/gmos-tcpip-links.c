@@ -274,7 +274,7 @@ static gmosNetworkStatus_t gmosTcpipLinkReceiver (
 
     // Check that the link is connected.
     if ((status != GMOS_NETWORK_STATUS_SUCCESS) &&
-        (status |= GMOS_NETWORK_STATUS_RETRY) &&
+        (status != GMOS_NETWORK_STATUS_RETRY) &&
         (tcpipLink->linkState != GMOS_TCPIP_LINK_STATE_CONNECTED)) {
         status = GMOS_NETWORK_STATUS_NOT_CONNECTED;
     }

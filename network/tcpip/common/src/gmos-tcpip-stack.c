@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022 Zynaptic Limited
+ * Copyright 2022-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,6 +27,7 @@
 #include <stddef.h>
 
 #include "gmos-config.h"
+#include "gmos-platform.h"
 #include "gmos-scheduler.h"
 #include "gmos-buffers.h"
 #include "gmos-network.h"
@@ -36,6 +37,67 @@
 #include "gmos-driver-tcpip.h"
 
 /*
+ * Allocates an ephemeral local port number for subsequent use.
+ */
+static uint16_t gmosTcpipPortAllocate (gmosTcpipStack_t* tcpipStack)
+{
+    uint16_t newPortNumber;
+    uint_fast8_t i;
+    uint_fast16_t activePort;
+    uint_fast8_t emptySlotIndex;
+    bool emptySlotFound;
+    bool duplicatePort;
+
+    // Repeat until the generated port number is not a duplicate of an
+    // existing allocated port number.
+    do {
+
+        // RFC 6335 specifies an ephemeral port range from 49152 to
+        // 65535 (0xC000 to 0xFFFF).
+        newPortNumber = tcpipStack->portCounter++;
+        newPortNumber |= 0xC000;
+
+        // Search for empty slot and duplicate ports.
+        emptySlotIndex = 0;
+        emptySlotFound = false;
+        duplicatePort = false;
+        for (i = 0; i < GMOS_CONFIG_TCPIP_MAX_EPHEMERAL_PORTS; i++) {
+            activePort = tcpipStack->activePorts [i];
+            if (activePort == newPortNumber) {
+                duplicatePort = true;
+            } else if ((activePort == 0) && (!emptySlotFound)) {
+                emptySlotFound = true;
+                emptySlotIndex = i;
+            }
+        }
+    } while (duplicatePort);
+
+    // Add the new port number in the specified empty slot.
+    if (emptySlotFound) {
+        tcpipStack->activePorts [emptySlotIndex] = newPortNumber;
+    } else {
+        newPortNumber = 0;
+    }
+    return newPortNumber;
+}
+
+/*
+ * Releases an ephemeral local port number from current use.
+ */
+static void gmosTcpipPortRelease (gmosTcpipStack_t* tcpipStack,
+    uint16_t portNumber)
+{
+    uint_fast8_t i;
+
+    // Search the active ports list for the matching port number.
+    for (i = 0; i < GMOS_CONFIG_TCPIP_MAX_EPHEMERAL_PORTS; i++) {
+        if (tcpipStack->activePorts [i] == portNumber) {
+            tcpipStack->activePorts [i] = 0;
+        }
+    }
+}
+
+/*
  * Initialises the TCP/IP stack on startup.
  */
 bool gmosTcpipStackInit (gmosTcpipStack_t* tcpipStack,
@@ -43,13 +105,16 @@ bool gmosTcpipStackInit (gmosTcpipStack_t* tcpipStack,
     gmosTcpipDnsClient_t* dnsClient, const uint8_t* ethMacAddr,
     const char* dhcpHostName)
 {
+    uint16_t randomPortNumber;
+    uint_fast8_t i;
+
     // Set the TCP/IP stack component pointers.
     tcpipStack->tcpipDriver = tcpipDriver;
     tcpipStack->dhcpClient = dhcpClient;
     tcpipStack->dnsClient = dnsClient;
 
     // Initialise the TCP/IP driver component.
-    if (!gmosDriverTcpipInit (tcpipDriver, ethMacAddr)) {
+    if (!gmosDriverTcpipInit (tcpipStack, ethMacAddr)) {
         return false;
     }
 
@@ -67,6 +132,14 @@ bool gmosTcpipStackInit (gmosTcpipStack_t* tcpipStack,
             return false;
         }
     }
+
+    // Clear the allocated ephemeral local port list.
+    gmosPalGetRandomBytes (
+        (uint8_t*) (&randomPortNumber), sizeof (randomPortNumber));
+    tcpipStack->portCounter = randomPortNumber;
+    for (i = 0; i < GMOS_CONFIG_TCPIP_MAX_EPHEMERAL_PORTS; i++) {
+        tcpipStack->activePorts [i] = 0;
+    }
     return true;
 }
 
@@ -78,11 +151,18 @@ gmosTcpipStackSocket_t* gmosTcpipStackUdpOpen (
     uint16_t localPort, gmosTaskState_t* appTask,
     gmosTcpipStackNotifyCallback_t notifyHandler, void* notifyData)
 {
-    gmosNalTcpipSocket_t* nalSocket;
+    gmosNalTcpipSocket_t* nalSocket = NULL;
+
+    // Allocate an ephemeral local port if required.
+    if (localPort == 0) {
+        localPort = gmosTcpipPortAllocate (tcpipStack);
+    }
 
     // Open the implementation specific socket.
-    nalSocket = gmosDriverTcpipUdpOpen (tcpipStack->tcpipDriver,
-        useIpv6, localPort, appTask, notifyHandler, notifyData);
+    if (localPort != 0) {
+        nalSocket = gmosDriverTcpipUdpOpen (tcpipStack->tcpipDriver,
+            useIpv6, localPort, appTask, notifyHandler, notifyData);
+    }
     return (gmosTcpipStackSocket_t*) nalSocket;
 }
 
@@ -119,6 +199,7 @@ gmosNetworkStatus_t gmosTcpipStackUdpClose (
     gmosTcpipStackSocket_t* udpSocket)
 {
     gmosNalTcpipSocket_t* nalSocket = (gmosNalTcpipSocket_t*) udpSocket;
+    gmosTcpipPortRelease (udpSocket->tcpipStack, udpSocket->localPort);
     return gmosDriverTcpipUdpClose (nalSocket);
 }
 
@@ -130,11 +211,18 @@ gmosTcpipStackSocket_t* gmosTcpipStackTcpOpen (
     uint16_t localPort, gmosTaskState_t* appTask,
     gmosTcpipStackNotifyCallback_t notifyHandler, void* notifyData)
 {
-    gmosNalTcpipSocket_t* nalSocket;
+    gmosNalTcpipSocket_t* nalSocket = NULL;
+
+    // Allocate an ephemeral local port if required.
+    if (localPort == 0) {
+        localPort = gmosTcpipPortAllocate (tcpipStack);
+    }
 
     // Open the implementation specific socket.
-    nalSocket = gmosDriverTcpipTcpOpen (tcpipStack->tcpipDriver,
-        useIpv6, localPort, appTask, notifyHandler, notifyData);
+    if (localPort != 0) {
+        nalSocket = gmosDriverTcpipTcpOpen (tcpipStack->tcpipDriver,
+            useIpv6, localPort, appTask, notifyHandler, notifyData);
+    }
     return (gmosTcpipStackSocket_t*) nalSocket;
 }
 
@@ -289,5 +377,6 @@ gmosNetworkStatus_t gmosTcpipStackTcpClose (
     gmosTcpipStackSocket_t* tcpSocket)
 {
     gmosNalTcpipSocket_t* nalSocket = (gmosNalTcpipSocket_t*) tcpSocket;
+    gmosTcpipPortRelease (tcpSocket->tcpipStack, tcpSocket->localPort);
     return gmosDriverTcpipTcpClose (nalSocket);
 }

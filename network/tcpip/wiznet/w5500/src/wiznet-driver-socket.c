@@ -41,10 +41,11 @@
 static inline bool gmosNalTcpipSocketSetPort (
     gmosNalTcpipSocket_t* socket)
 {
-    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
+    gmosTcpipStack_t* tcpipStack = socket->common.tcpipStack;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t cfgCommand;
     uint8_t socketId = socket->socketId;
-    uint16_t localPort = socket->data.setup.localPort;
+    uint16_t localPort = socket->common.localPort;
 
     // Set up the command to write to the local source port registers
     // at offset 0x0004 in network byte order.
@@ -68,7 +69,8 @@ static inline bool gmosNalTcpipSocketSetPort (
 static inline bool gmosNalTcpipSocketSetOpen (
     gmosNalTcpipSocket_t* socket, bool isTcpSocket)
 {
-    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
+    gmosTcpipStack_t* tcpipStack = socket->common.tcpipStack;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t cfgCommand;
     uint8_t socketId = socket->socketId;
 
@@ -94,7 +96,8 @@ static inline bool gmosNalTcpipSocketSetOpen (
 static bool gmosNalTcpipSocketStatusRead (
     gmosNalTcpipSocket_t* socket)
 {
-    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
+    gmosTcpipStack_t* tcpipStack = socket->common.tcpipStack;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t readCommand;
     uint8_t socketId = socket->socketId;
 
@@ -175,7 +178,8 @@ static inline void gmosNalTcpipSocketCleanup (
 static bool gmosNalTcpipSocketInterruptEnable (
     gmosNalTcpipSocket_t* socket, bool isTcpSocket, bool isEnabled)
 {
-    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
+    gmosTcpipStack_t* tcpipStack = socket->common.tcpipStack;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t intEnableCommand;
     uint8_t socketId = socket->socketId;
     uint8_t intEnables;
@@ -230,7 +234,8 @@ static bool gmosNalTcpipSocketInterruptEnable (
 static inline void gmosNalTcpipSocketInterruptClear (
     gmosNalTcpipSocket_t* socket)
 {
-    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
+    gmosTcpipStack_t* tcpipStack = socket->common.tcpipStack;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
     wiznetSpiAdaptorCmd_t socketCommand;
     uint8_t socketId = socket->socketId;
 
@@ -390,7 +395,8 @@ static inline gmosTaskStatus_t gmosNalTcpipSocketProcessTickCommon (
 static inline void gmosNalTcpipSocketProcessResponseCommon (
     gmosNalTcpipSocket_t* socket, wiznetSpiAdaptorCmd_t* response)
 {
-    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
+    gmosTcpipStack_t* tcpipStack = socket->common.tcpipStack;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
     bool sequenceError;
     uint8_t expectedStatus;
     uint8_t nextState = socket->socketState & ~WIZNET_SOCKET_PHASE_MASK;
@@ -451,9 +457,9 @@ static inline void gmosNalTcpipSocketProcessResponseCommon (
  * Performs socket specific initialisation on startup.
  */
 void gmosNalTcpipSocketInit (
-    gmosDriverTcpip_t* tcpipDriver, gmosNalTcpipSocket_t* socket)
+    gmosTcpipStack_t* tcpipStack, gmosNalTcpipSocket_t* socket)
 {
-    gmosNalTcpipState_t* nalData = tcpipDriver->nalData;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
 
     // The socket transmit stream is configured to use the driver worker
     // task as the consumer.
@@ -471,8 +477,8 @@ void gmosNalTcpipSocketInit (
     // Set the socket state as being available for use.
     socket->socketState = WIZNET_SOCKET_STATE_FREE;
 
-    // Hold a local reference to the associated TCP/IP driver.
-    socket->common.tcpipDriver = tcpipDriver;
+    // Hold a local reference to the associated TCP/IP stack.
+    socket->common.tcpipStack = tcpipStack;
 
     // Clear local interrupt flag state.
     socket->interruptFlags = 0;
@@ -520,8 +526,8 @@ gmosNalTcpipSocket_t* gmosDriverTcpipUdpOpen (
     // Start the UDP socket setup process, storing the local port number
     // for future reference.
     if (socket != NULL) {
-        socket->data.setup.localPort = localPort;
         socket->socketState = WIZNET_SOCKET_STATE_UDP_SET_PORT;
+        socket->common.localPort = localPort;
         socket->common.notifyHandler = notifyHandler;
         socket->common.notifyData = notifyData;
         gmosStreamSetConsumerTask (&(socket->common.rxStream), appTask);
@@ -566,8 +572,8 @@ gmosNalTcpipSocket_t* gmosDriverTcpipTcpOpen (
     // Start the TCP socket setup process, storing the local port number
     // for future reference.
     if (socket != NULL) {
-        socket->data.setup.localPort = localPort;
         socket->socketState = WIZNET_SOCKET_STATE_TCP_SET_PORT;
+        socket->common.localPort = localPort;
         socket->common.notifyHandler = notifyHandler;
         socket->common.notifyData = notifyData;
         gmosStreamSetConsumerTask (&(socket->common.rxStream), appTask);
@@ -619,7 +625,8 @@ gmosTaskStatus_t gmosNalTcpipSocketProcessTick (
 void gmosNalTcpipSocketProcessResponse (
     gmosNalTcpipSocket_t* socket, wiznetSpiAdaptorCmd_t* response)
 {
-    gmosNalTcpipState_t* nalData = socket->common.tcpipDriver->nalData;
+    gmosTcpipStack_t* tcpipStack = socket->common.tcpipStack;
+    gmosNalTcpipState_t* nalData = tcpipStack->tcpipDriver->nalData;
 
     // Interrupt events are detected as asynchronous read responses from
     // the interrupt status register.

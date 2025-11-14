@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022 Zynaptic Limited
+ * Copyright 2022-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -45,6 +45,15 @@
 #endif
 
 /**
+ * Set the maximum number of active ephemeral port numbers supported by
+ * the TCP/IP stack configuration.
+ */
+#ifndef GMOS_CONFIG_TCPIP_MAX_EPHEMERAL_PORTS
+#define GMOS_CONFIG_TCPIP_MAX_EPHEMERAL_PORTS \
+        GMOS_CONFIG_TCPIP_MAX_SOCKETS
+#endif
+
+/**
  * Specifies the maximum number of DNS cache table entries.
  */
 #ifndef GMOS_CONFIG_TCPIP_DNS_CACHE_SIZE
@@ -83,7 +92,8 @@
  * Specifies whether the DNS client supports IPv6 requests.
  */
 #ifndef GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6
-#define GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6 GMOS_CONFIG_TCPIP_IPV6_ENABLE
+#define GMOS_CONFIG_TCPIP_DNS_SUPPORT_IPV6 \
+        GMOS_CONFIG_TCPIP_IPV6_ENABLE
 #endif
 
 /**

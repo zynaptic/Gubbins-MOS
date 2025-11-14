@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022 Zynaptic Limited
+ * Copyright 2022-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,16 +59,11 @@ typedef struct gmosNalTcpipSocket_t {
     // Specify the interrupt flag clear requests.
     uint8_t interruptClear;
 
-    // Store context specific state information.
-    union {
-        struct {
-            uint16_t localPort;
-        } setup;
-        struct {
-            uint16_t dataPtr;
-            uint16_t limitPtr;
-        } active;
-    } data;
+    // Specify the start of data pointer for the W5500 buffer.
+    uint16_t dataPtr;
+
+    // Specify the end of data pointer for the W5500 buffer.
+    uint16_t limitPtr;
 
 } gmosNalTcpipSocket_t;
 

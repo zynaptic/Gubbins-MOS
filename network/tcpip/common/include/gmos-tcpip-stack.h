@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022 Zynaptic Limited
+ * Copyright 2022-2025 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -33,6 +33,7 @@
 #include "gmos-streams.h"
 #include "gmos-scheduler.h"
 #include "gmos-network.h"
+#include "gmos-tcpip-config.h"
 
 /**
  * Defines the GubbinsMOS TCP/IP implementation state and networking
@@ -68,6 +69,12 @@ typedef struct gmosTcpipStack_t {
 
     // Link to the associated DNS client instance.
     gmosTcpipDnsClient_t* dnsClient;
+
+    // Current ephemeral port counter value.
+    uint16_t portCounter;
+
+    // Currently allocated ephemeral port list.
+    uint16_t activePorts [GMOS_CONFIG_TCPIP_MAX_EPHEMERAL_PORTS];
 
 } gmosTcpipStack_t;
 
@@ -131,8 +138,8 @@ typedef void (*gmosTcpipStackNotifyCallback_t) (
  */
 typedef struct gmosTcpipStackSocket_t {
 
-    // Link to the associated TCP/IP driver instance.
-    gmosDriverTcpip_t* tcpipDriver;
+    // Link to the associated TCP/IP stack instance.
+    gmosTcpipStack_t* tcpipStack;
 
     // Specifies the stack notification handler used for this socket.
     gmosTcpipStackNotifyCallback_t notifyHandler;
@@ -145,6 +152,9 @@ typedef struct gmosTcpipStackSocket_t {
 
     // Allocate the socket receive data stream.
     gmosStream_t rxStream;
+
+    // Specify the local port number in use by the socket.
+    uint16_t localPort;
 
     // Specify the generic socket operating state.
     uint8_t socketState;
@@ -187,7 +197,8 @@ bool gmosTcpipStackInit (gmosTcpipStack_t* tcpipStack,
  *     IPv6, the UDP socket will be opened as an IPv6 socket. Otherwise
  *     an IPv4 socket will be opened.
  * @param localPort This is the local port to be used when sending and
- *     receiving UDP datagrams.
+ *     receiving UDP datagrams. Setting this to zero will automatically
+ *     allocate an unused ephemeral port for use by the socket.
  * @param appTask This is the application layer task which will be used
  *     to process received data. A null reference may be passed if the
  *     application task does not need to be automatically resumed when
@@ -276,7 +287,8 @@ gmosNetworkStatus_t gmosTcpipStackUdpClose (
  *     IPv6, the TCP socket will be opened as an IPv6 socket. Otherwise
  *     an IPv4 socket will be opened.
  * @param localPort This is the local port to be used when establishing
- *     a TCP connection.
+ *     a TCP connection. Setting this to zero will automatically
+ *     allocate an unused ephemeral port for use by the socket.
  * @param appTask This is the application layer task which will be used
  *     to process received data. A null reference may be passed if the
  *     application task does not need to be automatically resumed when
