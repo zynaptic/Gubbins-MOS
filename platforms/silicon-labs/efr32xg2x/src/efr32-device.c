@@ -29,6 +29,7 @@
 #include "gmos-mempool.h"
 #include "gmos-scheduler.h"
 #include "efr32-device.h"
+#include "em_core.h"
 #include "em_chip.h"
 #include "em_cmu.h"
 #include "sl_device_init_dcdc.h"
@@ -36,7 +37,6 @@
 #include "sl_device_init_hfxo.h"
 #include "sl_device_init_hfxo_config.h"
 #include "sl_hfxo_manager.h"
-#include "sl_interrupt_manager.h"
 
 /*
  * Perform NVIC initialisation, setting all interrupts to the default
@@ -44,11 +44,9 @@
  */
 static inline void gmosPalNvicSetup (void)
 {
-    int32_t i;
-    uint32_t defaultPriority;
-    defaultPriority = sl_interrupt_manager_get_default_priority ();
+    IRQn_Type i;
     for (i = SVCall_IRQn; i < EXT_IRQ_COUNT; i++) {
-        sl_interrupt_manager_set_irq_priority (i, defaultPriority);
+        NVIC_SetPriority(i, CORE_INTERRUPT_DEFAULT_PRIORITY);
     }
 }
 

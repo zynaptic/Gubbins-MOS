@@ -68,6 +68,7 @@ PLATFORM_OBJ_FILE_NAMES = \
 	efr32-driver-eeprom.o \
 	efr32-driver-flash.o \
 	sdk-em_system.o \
+	sdk-em_core.o \
 	sdk-em_emu.o \
 	sdk-em_cmu.o \
 	sdk-em_rmu.o \
@@ -89,7 +90,7 @@ PLATFORM_OBJ_FILE_NAMES = \
 	sdk-nvm3_cache.o \
 	sdk-nvm3_lock.o \
 	sdk-nvm3_hal_flash.o \
-	sdk-sl_mpu_s2.o \
+	sdk-sl_mpu.o \
 	sdk-sl_core_cortexm.o \
 	sdk-sl_device_clock_${GMOS_TARGET_DEVICE_FAMILY_XLC}.o \
 	sdk-sl_device_peripheral_hal_${GMOS_TARGET_DEVICE_FAMILY_XLC}.o \

@@ -76,17 +76,15 @@ static inline void gmosPalGpioMapPinId (
  * on that bank is the one which will be used.
  */
 static inline bool gmosDriverGpioSetSlewRate (
-    uint16_t gpioPinId, uint_fast8_t driveStrength)
+    uint_fast8_t gpioPort, uint_fast8_t driveStrength)
 {
     sl_status_t slStatus;
-    sl_gpio_t slGpioPinId;
     uint8_t currentSlewRate;
 
     // Check the current slew rate and only update it if required.
-    gmosPalGpioMapPinId (gpioPinId, &slGpioPinId);
-    slStatus = sl_gpio_get_slew_rate (&slGpioPinId, &currentSlewRate);
+    slStatus = sl_gpio_get_slew_rate (gpioPort, &currentSlewRate);
     if ((slStatus == SL_STATUS_OK) && (driveStrength > currentSlewRate)) {
-        slStatus = sl_gpio_set_slew_rate (&slGpioPinId, driveStrength);
+        slStatus = sl_gpio_set_slew_rate (gpioPort, driveStrength);
     }
     return (slStatus == SL_STATUS_OK) ? true : false;
 }
@@ -138,7 +136,7 @@ bool gmosDriverGpioPinInit (uint16_t gpioPinId, bool openDrain,
 
     // Set the GPIO drive strength.
     initOk = gmosDriverGpioSetSlewRate (
-        gpioPinId, driveStrength & EFR32_GPIO_DRIVER_SLEW_MASK);
+        gpioPort, driveStrength & EFR32_GPIO_DRIVER_SLEW_MASK);
 
     // Once all the pin options have been set, it is configured as an
     // input by default.
@@ -473,8 +471,7 @@ void gmosDriverGpioInterruptDisable (uint16_t gpioPinId)
 bool gmosPalGpioInit (void)
 {
     bool initOk = true;
-    uint_fast16_t i;
-    sl_gpio_t slGpioPinId;
+    uint_fast8_t i;
     sl_status_t slStatus;
 
     // Initialise the SDK driver.
@@ -492,8 +489,7 @@ bool gmosPalGpioInit (void)
         gmosDriverGpioPullupFlags [i] = 0;
         gmosDriverGpioPulldownFlags [i] = 0;
         gmosDriverGpioOutputEnFlags [i] = 0;
-        gmosPalGpioMapPinId (i << 8, &slGpioPinId);
-        slStatus = sl_gpio_set_slew_rate (&slGpioPinId, 0);
+        slStatus = sl_gpio_set_slew_rate (i, 0);
         if (slStatus != SL_STATUS_OK) {
             initOk = false;
             goto out;
