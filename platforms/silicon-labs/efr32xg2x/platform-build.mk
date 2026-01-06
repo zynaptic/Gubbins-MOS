@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2023-2025 Zynaptic Limited
+# Copyright 2023-2026 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -46,6 +46,8 @@ PLATFORM_HEADER_DIRS = \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/device_manager/inc \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/interrupt_manager/inc \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/interrupt_manager/config \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/memory_manager/inc \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/memory_manager/config \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/hfxo_manager/inc \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/clock_manager/inc \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/power_manager/inc \
@@ -105,6 +107,9 @@ PLATFORM_OBJ_FILE_NAMES = \
 	sdk-sl_clock_manager_hal_s2.o \
 	sdk-sl_hfxo_manager.o \
 	sdk-sl_hfxo_manager_hal_s2.o \
+	sdk-sl_memory_manager.o \
+	sdk-sl_memory_manager_region.o \
+	sdk-sli_memory_manager_common.o \
 	sdk-sl_power_manager.o \
 	sdk-sl_power_manager_common.o \
 	sdk-sl_power_manager_em4.o \

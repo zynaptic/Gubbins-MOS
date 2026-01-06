@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023-2024 Zynaptic Limited
+ * Copyright 2023-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -42,6 +42,28 @@ static const char* logLevelNames [] = {
 static CORE_DECLARE_IRQ_STATE;
 
 /*
+ * If required, allocate memory for the heap.
+ */
+#if (GMOS_CONFIG_HEAP_SIZE > 0)
+#include <sl_memory_manager.h>
+uint8_t gmosPalHeap [GMOS_CONFIG_HEAP_SIZE]
+    __attribute__ ((section (".heap")));
+#endif
+
+/*
+ * Initialises the memory manager component.
+ */
+static inline void gmosPalMemoryManagerInit (void)
+{
+#if (GMOS_CONFIG_HEAP_SIZE > 0)
+    sl_status_t initStatus;
+    initStatus = sl_memory_init ();
+    GMOS_ASSERT (ASSERT_FAILURE, (initStatus == SL_STATUS_OK),
+        "Failed to initialise Silicon Labs memory manager service.");
+#endif
+}
+
+/*
  * Initialises the platform abstraction layer on startup.
  */
 void gmosPalInit (void)
@@ -51,6 +73,9 @@ void gmosPalInit (void)
 
     // Initialise the GPIO support.
     gmosPalGpioInit ();
+
+    // Initialise the Silicon Labs memory manager.
+    gmosPalMemoryManagerInit ();
 
     // Initialise the serial debug console if required.
     if (GMOS_CONFIG_LOG_LEVEL < LOG_UNUSED) {
@@ -151,20 +176,12 @@ void gmosPalAssertFail (const char* fileName, uint32_t lineNo,
 }
 
 /*
- * If required, allocate memory for the heap.
- */
-#if (GMOS_CONFIG_HEAP_SIZE > 0)
-#include <stdlib.h>
-uint8_t gmosPalHeap [GMOS_CONFIG_HEAP_SIZE] __attribute__ ((section (".heap")));
-#endif
-
-/*
  * Implement platform specific heap allocation.
  */
 void* gmosPalMalloc (size_t size)
 {
 #if (GMOS_CONFIG_HEAP_SIZE > 0)
-    return malloc (size);
+    return sl_malloc (size);
 #else
     (void) size;
     GMOS_ASSERT_FAIL ("No Dynamic Memory Support.");
@@ -178,7 +195,7 @@ void* gmosPalMalloc (size_t size)
 void* gmosPalCalloc (size_t num, size_t size)
 {
 #if (GMOS_CONFIG_HEAP_SIZE > 0)
-    return calloc (num, size);
+    return sl_calloc (num, size);
 #else
     (void) num;
     (void) size;
@@ -193,7 +210,7 @@ void* gmosPalCalloc (size_t num, size_t size)
 void gmosPalFree (void* memPtr)
 {
 #if (GMOS_CONFIG_HEAP_SIZE > 0)
-    free (memPtr);
+    sl_free (memPtr);
 #else
     (void) memPtr;
     GMOS_ASSERT_FAIL ("No Dynamic Memory Support.");

@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023-2025 Zynaptic Limited
+ * Copyright 2023-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -142,11 +142,11 @@ int main(void)
     gmosPalLfxoSetup ();
     gmosPalClockSetup ();
 
-    // Initialise the common platform components.
-    gmosMempoolInit ();
-
     // Initialise the platform abstraction layer.
     gmosPalInit ();
+
+    // Initialise the common platform components.
+    gmosMempoolInit ();
 
     // Initialise the application code.
     gmosAppInit ();
