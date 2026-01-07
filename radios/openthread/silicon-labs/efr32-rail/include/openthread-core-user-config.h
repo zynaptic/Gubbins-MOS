@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -46,9 +46,8 @@
 #define OPENTHREAD_CONFIG_ASSERT_ENABLE 1
 #define OPENTHREAD_CONFIG_PLATFORM_ASSERT_MANAGEMENT 1
 
-// Set persistent storage to use the Silicon Labs NVM3 non volatile
-// memory library.
-#define SL_CATALOG_NVM3_PRESENT 1
+// Use the Silicon Labs catalogue configuration header.
+#define SL_COMPONENT_CATALOG_PRESENT 1
 
 // Specify 2.4 GHz operation only.
 #define RADIO_CONFIG_2P4GHZ_OQPSK_SUPPORT 1
@@ -80,8 +79,18 @@
 #define OPENTHREAD_CONFIG_DNS_CLIENT_ENABLE 1
 #define OPENTHREAD_CONFIG_DNS_CLIENT_SERVICE_DISCOVERY_ENABLE 1
 
+// Disable link metrics support for the time being.
+#define OPENTHREAD_CONFIG_MLE_LINK_METRICS_INITIATOR_ENABLE 0
+#define OPENTHREAD_CONFIG_MLE_LINK_METRICS_SUBJECT_ENABLE 0
+
 // Disable TCP support since this still appears to be in development.
 #define OPENTHREAD_CONFIG_TCP_ENABLE 0
+
+// Use default feature settings if not otherwise specified.
+#include "sl_openthread_features_config.h"
+
+// Set the maximum circular queue length to match the receive queue.
+#define MAX_QUEUE_LENGTH (SL_OPENTHREAD_RADIO_RX_BUFFER_COUNT + 1)
 
 // The EFR32 standard configuration settings override any in the
 // standard OpenThread configuration header.

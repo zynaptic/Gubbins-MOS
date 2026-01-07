@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -31,6 +31,7 @@
 #include "openthread-core-config.h"
 #include "openthread/instance.h"
 #include "pa_conversions_efr32.h"
+#include "psa/crypto.h"
 
 // Specify the external EFR32 driver processing function to use.
 void otSysProcessDrivers (otInstance *aInstance);
@@ -46,6 +47,9 @@ void RAIL_UnlockModule (uint32_t);
  */
 bool gmosOpenThreadRalInit (gmosOpenThreadStack_t* openThreadStack)
 {
+    psa_status_t psaStatus;
+    bool initOk = true;
+
     // No thread stack configuration options are currently used.
     (void) openThreadStack;
 
@@ -54,6 +58,29 @@ bool gmosOpenThreadRalInit (gmosOpenThreadStack_t* openThreadStack)
     // a library stub function.
     RAIL_UnlockModule (0xec450369);
 
+    // Ensure that the PSA cryptography library is initialised for
+    // OpenThread protocol key storage. This function is safe to call
+    // multiple times, so it does not matter if the PSA cryptography
+    // library is also initialised elsewhere.
+    psaStatus = psa_crypto_init ();
+    if (psaStatus != PSA_SUCCESS) {
+        initOk = false;
+        goto out;
+    }
+
+    // Initialise the EFR32 platform abstraction layer. Equivalent to
+    // calling the conventional OpenThread otSysInit call without the
+    // command line arguments.
+    sl_ot_sys_init ();
+out:
+    return initOk;
+}
+
+/*
+ * Callback to initialise Silicon Labs support components on startup.
+ */
+void sl_openthread_init (void)
+{
     // Initialise the required EFR32 platform radio components.
     sl_rail_util_pa_init ();
 
@@ -62,13 +89,6 @@ bool gmosOpenThreadRalInit (gmosOpenThreadStack_t* openThreadStack)
     // sl_fem_util_init ();
     // sl_rail_util_pti_init ();
     // sl_rail_util_rssi_init ();
-
-    // Initialise the EFR32 platform abstraction layer. This is
-    // equivalent to calling the conventional OpenThread otSysInit call
-    // without the command line arguments.
-    sl_ot_sys_init ();
-
-    return true;
 }
 
 /*

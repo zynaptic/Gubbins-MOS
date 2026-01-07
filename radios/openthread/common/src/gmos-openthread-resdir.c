@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023-2025 Zynaptic Limited
+ * Copyright 2023-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -781,25 +781,24 @@ static inline gmosTaskStatus_t gmosOpenThreadResDirClientActionSelect (
         resDirClient->sdDnsBackoffDelay =
             GMOS_OPENTHREAD_RESDIR_SDDNS_BACKOFF_INIT;
         *nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_SDDNS_BROWSE;
-        return GMOS_TASK_RUN_IMMEDIATE;
     }
 
     // Issue a resource directory discovery request if the resource
     // directory URI path component is not known.
-    if (resDirClient->resDirRegPath [0] == '\0') {
+    else if (resDirClient->resDirRegPath [0] == '\0') {
         *nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_DISC_SEND;
-        return GMOS_TASK_RUN_IMMEDIATE;
     }
 
     // Issue a resource directory registration request if the device
     // is not currently registered.
-    if (resDirClient->resDirEntryPath [0] == '\0') {
+    else if (resDirClient->resDirEntryPath [0] == '\0') {
         *nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_REG_SEND;
-        return GMOS_TASK_RUN_IMMEDIATE;
     }
 
     // Issue a resource directory refresh request.
-    *nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_UPD_SEND;
+    else {
+        *nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_UPD_SEND;
+    }
     return GMOS_TASK_RUN_IMMEDIATE;
 }
 
@@ -886,6 +885,7 @@ static inline gmosTaskStatus_t gmosOpenThreadResDirClientTaskFn (
                 nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_DISC_CALLBACK;
                 taskStatus = GMOS_TASK_SUSPEND;
             } else {
+                nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_IDLE;
                 taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (1000));
             }
             break;
@@ -909,6 +909,7 @@ static inline gmosTaskStatus_t gmosOpenThreadResDirClientTaskFn (
                 nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_REG_CALLBACK;
                 taskStatus = GMOS_TASK_SUSPEND;
             } else {
+                nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_IDLE;
                 taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (1000));
             }
             break;
@@ -932,6 +933,7 @@ static inline gmosTaskStatus_t gmosOpenThreadResDirClientTaskFn (
                 nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_UPD_CALLBACK;
                 taskStatus = GMOS_TASK_SUSPEND;
             } else {
+                nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_IDLE;
                 taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (1000));
             }
             break;

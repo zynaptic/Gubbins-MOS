@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023-2025 Zynaptic Limited
+ * Copyright 2023-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -325,11 +325,12 @@ static inline gmosTaskStatus_t gmosOpenThreadSntpClientActionSelect (
         sntpClient->sdDnsBackoffDelay =
             GMOS_OPENTHREAD_SNTP_SDDNS_BACKOFF_INIT;
         *nextState = GMOS_OPENTHREAD_SNTP_CLIENT_STATE_SDDNS_BROWSE;
-        return GMOS_TASK_RUN_IMMEDIATE;
     }
 
     // Issue an SNTP synchronisation request.
-    *nextState = GMOS_OPENTHREAD_SNTP_CLIENT_STATE_QUERY_SEND;
+    else {
+        *nextState = GMOS_OPENTHREAD_SNTP_CLIENT_STATE_QUERY_SEND;
+    }
     return GMOS_TASK_RUN_IMMEDIATE;
 }
 
@@ -390,6 +391,7 @@ static inline gmosTaskStatus_t gmosOpenThreadSntpClientTaskFn (
                 nextState = GMOS_OPENTHREAD_SNTP_CLIENT_STATE_QUERY_CALLBACK;
                 taskStatus = GMOS_TASK_SUSPEND;
             } else {
+                nextState = GMOS_OPENTHREAD_SNTP_CLIENT_STATE_IDLE;
                 taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (1000));
             }
             break;
