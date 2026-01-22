@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2020-2025 Zynaptic Limited
+ * Copyright 2020-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -260,6 +260,30 @@
  */
 #ifndef GMOS_CONFIG_RTC_SOFTWARE_EMULATION
 #define GMOS_CONFIG_RTC_SOFTWARE_EMULATION false
+#endif
+
+/**
+ * Specify the size of the bootloader application image write data array
+ * as an integer number of bytes.
+ */
+#ifndef GMOS_CONFIG_BOOTLOADER_MAX_WRITE_SIZE
+#define GMOS_CONFIG_BOOTLOADER_MAX_WRITE_SIZE 64
+#endif
+
+/**
+ * Specify the flash memory write word size for bootloader application
+ * image writes. This is used to enforce word alignment on writes.
+ */
+#ifndef GMOS_CONFIG_BOOTLOADER_WRITE_WORD_SIZE
+#define GMOS_CONFIG_BOOTLOADER_WRITE_WORD_SIZE 4
+#endif
+
+/**
+ * Specify whether bootloader application image write data array needs
+ * to remain valid during flash memory writes.
+ */
+#ifndef GMOS_CONFIG_BOOTLOADER_STATIC_WRITE_ARRAY
+#define GMOS_CONFIG_BOOTLOADER_STATIC_WRITE_ARRAY true
 #endif
 
 #endif // GMOS_CONFIG_H

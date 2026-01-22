@@ -38,6 +38,11 @@ PLATFORM_HEADER_DIRS = \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/dmadrv/inc/s2_signals \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/nvm3/inc \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/nvm3/config \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/bootloader \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/bootloader/api \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/bootloader/config \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/bootloader/config/btl_interface \
+	${GMOS_SIMPLICITY_SDK_DIR}/platform/bootloader/core/flash \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/peripheral/inc \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/driver/gpio/inc \
 	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/mpu/inc \
@@ -61,6 +66,7 @@ PLATFORM_OBJ_FILE_NAMES = \
 	printf.o \
 	gmos-platform.o \
 	efr32-device.o \
+	efr32-bootloader.o \
 	efr32-sleep-timer.o \
 	efr32-console-simple.o \
 	efr32-driver-gpio.o \
@@ -92,6 +98,9 @@ PLATFORM_OBJ_FILE_NAMES = \
 	sdk-nvm3_cache.o \
 	sdk-nvm3_lock.o \
 	sdk-nvm3_hal_flash.o \
+	sdk-btl_interface.o \
+	sdk-btl_interface_storage.o \
+	sdk-btl_internal_flash.o \
 	sdk-sl_mpu.o \
 	sdk-sl_core_cortexm.o \
 	sdk-sl_device_clock_${GMOS_TARGET_DEVICE_FAMILY_XLC}.o \
@@ -152,8 +161,8 @@ ${LOCAL_DIR}/sdk-%.o : ${GMOS_TARGET_DEVICE_FAMILY_DIR}/Source/%.c | ${LOCAL_DIR
 	${CC} ${CFLAGS} ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the SDK device library specific files.
-${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/*/src/%.c | ${LOCAL_DIR}
-	${CC} ${CFLAGS} ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
+${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/*/*/%.c | ${LOCAL_DIR}
+	${CC} ${CFLAGS} -DSL_COMPONENT_CATALOG_PRESENT ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the SDK service library specific files.
 ${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/*/*/*/%.c | ${LOCAL_DIR}
@@ -187,3 +196,16 @@ ${GMOS_BUILD_DIR}/firmware.hex : ${GMOS_BUILD_DIR}/firmware.elf
 # Generate the firmware binary as a raw binary file.
 ${GMOS_BUILD_DIR}/firmware.bin : ${GMOS_BUILD_DIR}/firmware.elf
 	${OC} -S -O binary $< $@
+
+# Add the bootloader CRC to the Intel hex format file.
+${GMOS_BUILD_DIR}/firmware-crc.hex : ${GMOS_BUILD_DIR}/firmware.hex
+	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander convert $< --crc --outfile $@
+
+# Build the GBL3 file for the CRC protected firmware image.
+${GMOS_BUILD_DIR}/firmware-crc.gbl : ${GMOS_BUILD_DIR}/firmware-crc.hex
+	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ --app $<
+
+# Include extended build artifact list.
+all : \
+	${GMOS_BUILD_DIR}/firmware-crc.hex \
+	${GMOS_BUILD_DIR}/firmware-crc.gbl

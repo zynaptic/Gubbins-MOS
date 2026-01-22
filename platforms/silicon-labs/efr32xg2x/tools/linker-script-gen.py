@@ -3,7 +3,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2023-2025 Zynaptic Limited
+# Copyright 2023-2026 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,9 +20,7 @@
 
 #
 # This tool is used to generate a suitable GubbinsMOS linker script for
-# a specific Silicon labs EFR32xG2x device. The vendor template for the
-# linker script is provided as a Jinja template file, so this is
-# processed using the appropriate parameters for the target device.
+# a specific Silicon labs EFR32xG2x device.
 #
 
 import sys
@@ -94,7 +92,7 @@ linkerTemplateString = """
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -117,7 +115,8 @@ MEMORY
 {
   FLASH (rx) : ORIGIN = ${FLASH_IMAGE_BASE}, LENGTH = ${FLASH_IMAGE_SIZE}
   NVM (r)    : ORIGIN = ${FLASH_NVM_BASE}, LENGTH = ${FLASH_NVM_SIZE}
-  RAM (rwx)  : ORIGIN = 0x20000000, LENGTH = ${RAM_MEMORY_SIZE}
+  RAM (rwx)  : ORIGIN = 0x20000004, LENGTH = ${RAM_MEMORY_SIZE} - 4
+  BOOTLOADER_RESET_REGION (rwx) : ORIGIN = 0x20000000, LENGTH = 4
 }
 
 ENTRY(Reset_Handler)
@@ -199,6 +198,14 @@ SECTIONS
     __zero_table_end__ = .;
     __etext = ALIGN(4);
   } > FLASH
+
+  .bootloader_reset_section (NOLOAD):
+  {
+    __ResetReasonStart__ = .;
+    . = . + 4;
+    . = ALIGN(4);
+    __ResetReasonEnd__ = .;
+  } > BOOTLOADER_RESET_REGION
 
   .data : AT (__etext)
   {
@@ -311,11 +318,20 @@ SECTIONS
   /* Place reserved NVM pages at the top of the flash memory area. */
   linker_nvm_begin = ORIGIN(NVM);
 
+  /* Place upgrade image immediately after the running firmware image. */
+  linker_upgrade_image_base = ${FLASH_IMAGE_BASE} + ${FLASH_IMAGE_SIZE};
+  linker_upgrade_image_top = linker_nvm_begin;
+
+  /* Place the firmware signature block at the end of flash memory. This
+   * also allocates enough space for an ECDSA-P256-SHA256 signature. */
+  __signature_start__ = __lma_ramfuncs_end__;
+  __signature_end__ = __signature_start__ + 32;
+
   /* Check if data + heap + stack exceeds RAM limit */
   ASSERT(__StackLimit >= __HeapLimit, "region RAM overflowed with stack")
 
   /* Check if FLASH usage exceeds FLASH size */
-  ASSERT( LENGTH(FLASH) >= (__etext + SIZEOF(.data)), "FLASH memory overflowed !")
+  ASSERT( ${FLASH_IMAGE_BASE} + LENGTH(FLASH) >= __signature_end__, "FLASH memory overflowed !")
 }
 
 """

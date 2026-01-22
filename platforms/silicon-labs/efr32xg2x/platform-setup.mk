@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2023-2025 Zynaptic Limited
+# Copyright 2023-2026 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -58,6 +58,13 @@ endif
 # working directory.
 ifndef GMOS_SIMPLICITY_SDK_DIR
 GMOS_SIMPLICITY_SDK_DIR = ${HOME}/SimplicityStudio/SDKs/simplicity_sdk
+endif
+
+# Specify the location of the Silicon Labs Simplicity Commander
+# directory. By default this assumes it has been downloaded to the
+# user's Simplicity Studio working directory.
+ifndef GMOS_SIMPLICITY_COMMANDER_DIR
+GMOS_SIMPLICITY_COMMANDER_DIR = ${HOME}/SimplicityStudio/SimplicityCommander-Linux/commander
 endif
 
 # Specify device specific SDK file locations.

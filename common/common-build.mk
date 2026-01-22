@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2020-2025 Zynaptic Limited
+# Copyright 2020-2026 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@ COMMON_OBJ_FILE_NAMES = \
 	gmos-streams.o \
 	gmos-buffers.o \
 	gmos-events.o \
+	gmos-bootloader.o \
 	gmos-hashmap-heap.o \
 	gmos-format-cbor-enc.o \
 	gmos-format-cbor-dec.o \
