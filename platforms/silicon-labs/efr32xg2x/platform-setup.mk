@@ -34,6 +34,11 @@ ifndef GMOS_TARGET_DEVICE_VARIANT
 GMOS_TARGET_DEVICE_VARIANT = EFR32MG24B220F1536IM48
 endif
 
+# Module families need to be mapped to their corresponding device silicon.
+ifndef GMOS_TARGET_SILICON_FAMILY
+GMOS_TARGET_SILICON_FAMILY = EFR32MG24
+endif
+
 # The lower case family and variant names are used in some of the SDK
 # file names.
 GMOS_TARGET_DEVICE_FAMILY_LC := \
@@ -42,6 +47,10 @@ GMOS_TARGET_DEVICE_FAMILY_XLC := \
 	$(shell echo $(GMOS_TARGET_DEVICE_FAMILY_LC) | sed -r "s/32[mb]g/32xg/")
 GMOS_TARGET_DEVICE_VARIANT_LC := \
 	$(shell echo $(GMOS_TARGET_DEVICE_VARIANT) | tr A-Z a-z)
+GMOS_TARGET_SILICON_FAMILY_LC := \
+	$(shell echo $(GMOS_TARGET_SILICON_FAMILY) | tr A-Z a-z)
+GMOS_TARGET_SILICON_FAMILY_XLC := \
+	$(shell echo $(GMOS_TARGET_SILICON_FAMILY_LC) | sed -r "s/32[mb]g/32xg/")
 
 # All EFR32xG2x devices use the Cortex-M33 core.
 ARCH_NAME = cortex-m33
@@ -50,21 +59,21 @@ ARCH_NAME = cortex-m33
 # assumes the Silicon Labs recommended ARM toolchain located in the /opt
 # directory.
 ifndef ARM_GCC_TOOLCHAIN_DIR
-ARM_GCC_TOOLCHAIN_DIR = /opt/arm-gnu-toolchain-12.2.rel1-x86_64-arm-none-eabi/
+ARM_GCC_TOOLCHAIN_DIR = /opt/arm-gnu-toolchain-15.2.rel1-x86_64-arm-none-eabi/
 endif
 
 # Specify the location of the Silicon Labs Simplicity SDK directory. By
 # default this assumes it has been downloaded to the Simplicity Studio
 # working directory.
 ifndef GMOS_SIMPLICITY_SDK_DIR
-GMOS_SIMPLICITY_SDK_DIR = ${HOME}/SimplicityStudio/SDKs/simplicity_sdk
+GMOS_SIMPLICITY_SDK_DIR = /data/vendors/silicon-labs/simplicity_sdk
 endif
 
 # Specify the location of the Silicon Labs Simplicity Commander
 # directory. By default this assumes it has been downloaded to the
 # user's Simplicity Studio working directory.
 ifndef GMOS_SIMPLICITY_COMMANDER_DIR
-GMOS_SIMPLICITY_COMMANDER_DIR = ${HOME}/SimplicityStudio/SimplicityCommander-Linux/commander
+GMOS_SIMPLICITY_COMMANDER_DIR = /data/vendors/silicon-labs/commander
 endif
 
 # Specify device specific SDK file locations.

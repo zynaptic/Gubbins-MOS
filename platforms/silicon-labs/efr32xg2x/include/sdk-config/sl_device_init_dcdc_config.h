@@ -47,7 +47,7 @@
 #endif
 
 /**
- * Select default paak current limit setting.
+ * Select default peak current limit setting.
  */
 #ifndef SL_DEVICE_INIT_DCDC_PFMX_IPKVAL
 #define SL_DEVICE_INIT_DCDC_PFMX_IPKVAL DCDC_PFMXCTRL_IPKVAL_DEFAULT

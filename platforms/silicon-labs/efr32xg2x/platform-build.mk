@@ -103,8 +103,8 @@ PLATFORM_OBJ_FILE_NAMES = \
 	sdk-btl_internal_flash.o \
 	sdk-sl_mpu.o \
 	sdk-sl_core_cortexm.o \
-	sdk-sl_device_clock_${GMOS_TARGET_DEVICE_FAMILY_XLC}.o \
-	sdk-sl_device_peripheral_hal_${GMOS_TARGET_DEVICE_FAMILY_XLC}.o \
+	sdk-sl_device_clock_${GMOS_TARGET_SILICON_FAMILY_XLC}.o \
+	sdk-sl_device_peripheral_hal_${GMOS_TARGET_SILICON_FAMILY_XLC}.o \
 	sdk-sl_interrupt_manager_cortexm.o \
 	sdk-sl_device_init_dcdc_s2.o \
 	sdk-sl_device_init_hfxo_s2.o \
