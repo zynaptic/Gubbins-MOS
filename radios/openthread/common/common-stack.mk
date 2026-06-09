@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2023-2024 Zynaptic Limited
+# Copyright 2023-2026 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ OPENTHREAD_HEADER_DIRS += \
 # List all the common component object files that need to be built.
 OPENTHREAD_OBJ_FILE_NAMES = \
 	gmos-openthread.o \
+	gmos-openthread-gpio.o \
 	gmos-openthread-join.o \
 	gmos-openthread-resdir.o \
 	gmos-openthread-sntp.o

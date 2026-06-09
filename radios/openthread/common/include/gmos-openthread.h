@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -40,6 +40,16 @@ typedef enum {
     GMOS_OPENTHREAD_STATUS_INVALID_STATE = 13, // OT_ERROR_INVALID_STATE
     GMOS_OPENTHREAD_STATUS_NOT_READY     = 36, // OT_ERROR_PENDING
 } gmosOpenThreadStatus_t;
+
+/**
+ * This enumeration specifies the available OpenThread stack reset
+ * modes. A default software reset will be used unless one of the mode
+ * specific magic numbers is used as the reset type parameter.
+ */
+typedef enum {
+    GMOS_OPENTHREAD_RESET_TYPE_DEFAULT = 0,
+    GMOS_OPENTHREAD_RESET_TYPE_FACTORY = 0x3BCDC449
+} gmosOpenThreadResetType_t;
 
 /**
  * Defines the OpenThread radio specific I/O state data structure. The
@@ -116,6 +126,18 @@ typedef struct gmosOpenThreadStack_t {
  *     otherwise.
  */
 bool gmosOpenThreadInit (gmosOpenThreadStack_t* openThreadStack);
+
+/**
+ * Resets the OpenThread stack. This will also force a device reset via
+ * the OpenThread platform abstraction layer, so it is not expected to
+ * return.
+ * @param openThreadStack This is the OpenThread stack data structure
+ *     that will be used for initiating the stack reset process.
+ * @param resetType This specifies the type of OpenThread stack reset to
+ *     be performed.
+ */
+void gmosOpenThreadReset (gmosOpenThreadStack_t* openThreadStack,
+    gmosOpenThreadResetType_t resetType);
 
 /**
  * Initialises the OpenThread network control task on startup.

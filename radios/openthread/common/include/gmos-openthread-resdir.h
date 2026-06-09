@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023-2025 Zynaptic Limited
+ * Copyright 2023-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -80,8 +80,8 @@ typedef struct gmosOpenThreadResDirClient_t {
     // registration location.
     char resDirRegPath [32];
 
-    // This is the URI path component for the resource directory
-    // enhtry management location.
+    // This is the URI path component for the resource directory entry
+    // management location.
     char resDirEntryPath [32];
 
     // This is the SD-DNS service label which is used to identify the

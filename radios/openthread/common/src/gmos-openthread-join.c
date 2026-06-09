@@ -29,6 +29,7 @@
 #include "gmos-platform.h"
 #include "gmos-scheduler.h"
 #include "gmos-openthread.h"
+#include "gmos-openthread-gpio.h"
 #include "gmos-openthread-join.h"
 #include "openthread/ip6.h"
 #include "openthread/thread.h"
@@ -301,6 +302,8 @@ static inline gmosTaskStatus_t gmosOpenThreadJoinTaskFn (
         // Enter the joining idle state, which waits for the application
         // to provide valid network joining credentials.
         case GMOS_OPENTHREAD_JOIN_IDLE :
+            gmosOpenThreadSetIndicatorLed (
+                GMOS_OPENTHREAD_NETWORK_INDICATOR_LED_MODE_FLASH_SLOW);
             GMOS_LOG (LOG_DEBUG,
                 "OpenThread : Ready to start network joining process.");
             taskStatus = GMOS_TASK_SUSPEND;
@@ -308,6 +311,8 @@ static inline gmosTaskStatus_t gmosOpenThreadJoinTaskFn (
 
         // Attempt to connect to the thread network.
         case GMOS_OPENTHREAD_JOIN_ENABLE_THREAD :
+            gmosOpenThreadSetIndicatorLed (
+                GMOS_OPENTHREAD_NETWORK_INDICATOR_LED_MODE_FLASH_FAST);
             if (!gmosOpenThreadJoinEnableThread (openThreadStack)) {
                 nextState = GMOS_OPENTHREAD_JOIN_FAILED;
             } else {
@@ -331,6 +336,8 @@ static inline gmosTaskStatus_t gmosOpenThreadJoinTaskFn (
         // Find the primary backbone router to use as the DNS server.
         case GMOS_OPENTHREAD_JOIN_CONFIGURE_DNS :
             if (gmosOpenThreadJoinConfigureDns (openThreadStack)) {
+                gmosOpenThreadSetIndicatorLed (
+                    GMOS_OPENTHREAD_NETWORK_INDICATOR_LED_MODE_OFF);
                 nextState = GMOS_OPENTHREAD_JOIN_MONITOR_NETWORK;
             } else {
                 taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (2500));
@@ -444,6 +451,8 @@ gmosOpenThreadStatus_t gmosOpenThreadJoinStartJoiner (
 
     // Attempt to start the network joining process with the specified
     // parameters.
+    gmosOpenThreadSetIndicatorLed (
+        GMOS_OPENTHREAD_NETWORK_INDICATOR_LED_MODE_ON);
     otStatus = otJoinerStart (otStack, password, provisioningUrl,
         vendorName, vendorModel, vendorSwVersion, vendorData,
         gmosOpenThreadJoinCallbackHandler, openThreadStack);

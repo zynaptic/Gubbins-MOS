@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -29,6 +29,7 @@
 #include "gmos-platform.h"
 #include "gmos-scheduler.h"
 #include "gmos-openthread.h"
+#include "gmos-openthread-gpio.h"
 #include "openthread-core-config.h"
 #include "openthread/instance.h"
 #include "openthread/tasklet.h"
@@ -73,6 +74,9 @@ bool gmosOpenThreadInit (gmosOpenThreadStack_t* openThreadStack)
     uint32_t entropy;
     otError otStatus;
 
+    // Initialise the GPIO support if required.
+    gmosOpenThreadGpioInit (openThreadStack);
+
     // Initialise the platform specific OpenThread RAL.
     if (!gmosOpenThreadRalInit (openThreadStack)) {
         return false;
@@ -104,6 +108,26 @@ bool gmosOpenThreadInit (gmosOpenThreadStack_t* openThreadStack)
     gmosOpenThreadTask_start (&(openThreadStack->openThreadTask),
         openThreadStack, "OpenThread Stack");
     return true;
+}
+
+/*
+ * Resets the OpenThread stack. This will also force a device reset via
+ * the OpenThread platform abstraction layer, so it is not expected to
+ * return.
+ */
+void gmosOpenThreadReset (gmosOpenThreadStack_t* openThreadStack,
+    gmosOpenThreadResetType_t resetType)
+{
+    otInstance* instance = (otInstance*) openThreadStack->otInstance;
+
+    switch (resetType) {
+        case GMOS_OPENTHREAD_RESET_TYPE_FACTORY :
+            otInstanceFactoryReset (instance);
+            break;
+        default :
+            otInstanceReset (instance);
+            break;
+    }
 }
 
 /*
