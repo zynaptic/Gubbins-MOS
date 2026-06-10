@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023 Zynaptic Limited
+ * Copyright 2023-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,50 +25,7 @@
 #define GMOS_OPENTHREAD_JOIN_H
 
 #include <stdbool.h>
-#include <stddef.h>
 #include "gmos-openthread.h"
-
-/**
- * This configuration option is a fixed string which specifies the
- * OpenThread provisioning URL to be used during the joining process.
- */
-#ifndef GMOS_CONFIG_OPENTHREAD_PROVISIONING_URL
-#define GMOS_CONFIG_OPENTHREAD_PROVISIONING_URL NULL
-#endif
-
-/**
- * This configuration option is a fixed string which specifies the
- * OpenThread vendor name to be used during the joining process.
- */
-#ifndef GMOS_CONFIG_OPENTHREAD_VENDOR_NAME
-#define GMOS_CONFIG_OPENTHREAD_VENDOR_NAME NULL
-#endif
-
-/**
- * This configuration option is a fixed string which specifies the
- * OpenThread vendor device model name to be used during the joining
- * process.
- */
-#ifndef GMOS_CONFIG_OPENTHREAD_VENDOR_MODEL
-#define GMOS_CONFIG_OPENTHREAD_VENDOR_MODEL NULL
-#endif
-
-/**
- * This configuration option is a fixed string which specifies the
- * OpenThread vendor software version to be used during the joining
- * process.
- */
-#ifndef GMOS_CONFIG_OPENTHREAD_VENDOR_SW_VERSION
-#define GMOS_CONFIG_OPENTHREAD_VENDOR_SW_VERSION NULL
-#endif
-
-/**
- * This configuration option is a fixed string which specifies the
- * OpenThread vendor data field to be used during the joining process.
- */
-#ifndef GMOS_CONFIG_OPENTHREAD_VENDOR_DATA
-#define GMOS_CONFIG_OPENTHREAD_VENDOR_DATA NULL
-#endif
 
 /**
  * Initiates the OpenThread network joining process using the standard

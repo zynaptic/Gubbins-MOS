@@ -24,6 +24,7 @@
 #ifndef GMOS_OPENTHREAD_H
 #define GMOS_OPENTHREAD_H
 
+#include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include "gmos-scheduler.h"
@@ -140,17 +141,6 @@ void gmosOpenThreadReset (gmosOpenThreadStack_t* openThreadStack,
     gmosOpenThreadResetType_t resetType);
 
 /**
- * Initialises the OpenThread network control task on startup.
- * @param openThreadStack This is the OpenThread stack data structure
- *     that will be used for managing GubbinsMOS access to the
- *     OpenThread stack.
- * @return Returns a boolean value which will be set to 'true' on
- *     successfully completing the initialisation process and 'false'
- *     otherwise.
- */
-bool gmosOpenThreadNetInit (gmosOpenThreadStack_t* openThreadStack);
-
-/**
  * Determines the current status of the OpenThread network. The
  * OpenThread network is ready for use once this returns a successful
  * status value.
@@ -161,6 +151,32 @@ bool gmosOpenThreadNetInit (gmosOpenThreadStack_t* openThreadStack);
  */
 gmosOpenThreadStatus_t gmosOpenThreadNetStatus (
     gmosOpenThreadStack_t* openThreadStack);
+
+/**
+ * Gets the currently active Thread network key. This will only return
+ * a valid result if the network is currently active.
+ * @param openThreadStack This is the OpenThread stack data structure
+ *     that is being used for the network key request.
+ * @param networkKey This is a pointer to a 16 entry byte array which on
+ *     successful completion will be populated with the currently active
+ *     Thread network key.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully accessing the Thread network key and 'false'
+ *     otherwise.
+ */
+bool gmosOpenThreadGetNetworkKey (
+    gmosOpenThreadStack_t* openThreadStack, uint8_t* networkKey);
+
+/**
+ * Initialises the OpenThread network control task on startup.
+ * @param openThreadStack This is the OpenThread stack data structure
+ *     that will be used for managing GubbinsMOS access to the
+ *     OpenThread stack.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully completing the initialisation process and 'false'
+ *     otherwise.
+ */
+bool gmosOpenThreadNetInit (gmosOpenThreadStack_t* openThreadStack);
 
 /**
  * Initialises the OpenThread CLI on startup. This may be used during

@@ -31,6 +31,7 @@
 #include "gmos-driver-gpio.h"
 #include "gmos-openthread.h"
 #include "gmos-openthread-gpio.h"
+#include "gmos-openthread-config.h"
 
 /*
  * Only compile network state indicator LED code if a valid LED output

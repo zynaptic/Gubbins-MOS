@@ -24,6 +24,8 @@
 #ifndef OPENTHREAD_CORE_USER_CONFIG_H
 #define OPENTHREAD_CORE_USER_CONFIG_H
 
+#include "gmos-openthread-config.h"
+
 // The package name is normally set by CMake in the standard OpenThread
 // build process. Configure it here instead.
 #define PACKAGE_NAME "GMOS-OPENTHREAD"
@@ -85,6 +87,13 @@
 
 // Disable TCP support since this still appears to be in development.
 #define OPENTHREAD_CONFIG_TCP_ENABLE 0
+
+// Enable interactive CLI support if required.
+#if GMOS_CONFIG_OPENTHREAD_ENABLE_INTERACTIVE_CLI
+#define OPENTHREAD_CONFIG_CLI_STATIC_INTERPRETER_ENABLE 1
+#else
+#define OPENTHREAD_CONFIG_CLI_STATIC_INTERPRETER_ENABLE 0
+#endif
 
 // Use default feature settings if not otherwise specified.
 #include "sl_openthread_features_config.h"

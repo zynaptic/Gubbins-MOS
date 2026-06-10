@@ -30,6 +30,7 @@
 #include "gmos-scheduler.h"
 #include "gmos-openthread.h"
 #include "gmos-openthread-gpio.h"
+#include "gmos-openthread-config.h"
 #include "openthread-core-config.h"
 #include "openthread/instance.h"
 #include "openthread/tasklet.h"
@@ -86,9 +87,11 @@ bool gmosOpenThreadInit (gmosOpenThreadStack_t* openThreadStack)
     openThreadStack->otInstance = otInstanceInitSingle ();
 
     // Initialise the OpenThread CLI using the debug console.
+#if GMOS_CONFIG_OPENTHREAD_ENABLE_INTERACTIVE_CLI
     if (!gmosOpenThreadCliInit (openThreadStack)) {
         return false;
     }
+#endif
 
     // Initialise the OpenThread network control task.
     if (!gmosOpenThreadNetInit (openThreadStack)) {
@@ -128,6 +131,31 @@ void gmosOpenThreadReset (gmosOpenThreadStack_t* openThreadStack,
             otInstanceReset (instance);
             break;
     }
+}
+
+/*
+ * Gets the currently active Thread network key. This will only return
+ * a valid result if the network is currently active.
+ */
+bool gmosOpenThreadGetNetworkKey (
+    gmosOpenThreadStack_t* openThreadStack, uint8_t* networkKey)
+{
+    otInstance* instance = (otInstance*) openThreadStack->otInstance;
+    otOperationalDataset activeDataset;
+    otError status;
+    uint_fast8_t i;
+    bool accessedOk = false;
+
+    // Attempt to access the full active dataset.
+    status = otDatasetGetActive (instance, &activeDataset);
+    if ((status == OT_ERROR_NONE) &&
+        (activeDataset.mComponents.mIsNetworkKeyPresent)) {
+        for (i = 0; i < 16; i++) {
+            networkKey [i] = activeDataset.mNetworkKey.m8 [i];
+        }
+        accessedOk = true;
+    }
+    return accessedOk;
 }
 
 /*

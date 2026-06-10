@@ -31,6 +31,7 @@
 #include "gmos-openthread.h"
 #include "gmos-openthread-gpio.h"
 #include "gmos-openthread-join.h"
+#include "gmos-openthread-config.h"
 #include "openthread/ip6.h"
 #include "openthread/thread.h"
 #include "openthread/dataset.h"

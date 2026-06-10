@@ -22,6 +22,10 @@
  * of the debug console UART as the input.
  */
 
+// Only compile this file if CLI support is enabled.
+#include "gmos-openthread-config.h"
+#if GMOS_CONFIG_OPENTHREAD_ENABLE_INTERACTIVE_CLI
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -281,3 +285,5 @@ bool gmosOpenThreadCliInit (gmosOpenThreadStack_t* openThreadStack)
         openThreadStack, "OpenThread CLI");
     return true;
 }
+
+#endif // GMOS_CONFIG_OPENTHREAD_ENABLE_INTERACTIVE_CLI
