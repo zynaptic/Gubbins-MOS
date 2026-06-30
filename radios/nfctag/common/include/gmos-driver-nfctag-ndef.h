@@ -57,19 +57,47 @@ typedef enum {
 } gmosDriverNfcTagNdefFlag_t;
 
 /**
+ * This enumeration specifies the most commonly used well-known NDEF
+ * global type definitions.
+ */
+typedef enum {
+    GMOS_DRIVER_NFC_TAG_NDEF_WKT_TEXT,
+    GMOS_DRIVER_NFC_TAG_NDEF_WKT_URI,
+    GMOS_DRIVER_NFC_TAG_NDEF_WKT_SMART_POSTER,
+    GMOS_DRIVER_NFC_TAG_NDEF_WKT_UNKNOWN,
+    GMOS_DRIVER_NFC_TAG_NDEF_WKT_INVALID
+} gmosDriverNfcTagNdefWkt_t;
+
+/**
+ * This enumeration specifies the most commonly used NDEF URI prefix
+ * options. A byte value taken from this enumeration should be the first
+ * octet of any NDEF URI payload.
+ */
+typedef enum {
+    GMOS_DRIVER_NFC_TAG_NDEF_URI_NO_PREFIX = 0x00,
+    GMOS_DRIVER_NFC_TAG_NDEF_URI_HTTP_WWW  = 0x01,
+    GMOS_DRIVER_NFC_TAG_NDEF_URI_HTTPS_WWW = 0x02,
+    GMOS_DRIVER_NFC_TAG_NDEF_URI_HTTP      = 0x03,
+    GMOS_DRIVER_NFC_TAG_NDEF_URI_HTTPS     = 0x04
+} gmosDriverNfcTagNdefUri_t;
+
+/**
  * This data structure is used to build NDEF records by setting the
  * various fields prior to construction.
  */
 typedef struct gmosDriverNfcTagNdefBuilder_t {
 
+    // Specifies a pointer to a payload buffer.
+    gmosBuffer_t* payloadBuffer;
+
     // Specifies a pointer to the payload data byte array.
-    uint8_t* payloadData;
+    const uint8_t* payloadData;
 
     // Specifies a pointer to the record data type byte array.
-    uint8_t* typeData;
+    const uint8_t* typeData;
 
     // Specifies a pointer to the record ID byte array.
-    uint8_t* idData;
+    const uint8_t* idData;
 
     // Specifies the length of the payload data byte array.
     uint16_t payloadSize;
@@ -173,7 +201,21 @@ bool gmosDriverNfcTagNdefBuilderSetFlags (
  */
 bool gmosDriverNfcTagNdefBuilderSetType (
    gmosDriverNfcTagNdefBuilder_t* builder,
-   uint8_t* typeData, uint8_t typeSize);
+   const uint8_t* typeData, uint8_t typeSize);
+
+/**
+ * Sets the NDEF record type for the specified record builder using one
+ * of the supported well known types.
+ * @param builder This is the record builder structure for which the
+ *     NDEF record type is to be set.
+ * @param wellKnownType This is the NDEF well known type which should be
+ *     assigned to the NDEF record.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully setting the NDEF record type and 'false' otherwise.
+ */
+bool gmosDriverNfcTagNdefBuilderSetWellKnownType (
+   gmosDriverNfcTagNdefBuilder_t* builder,
+   gmosDriverNfcTagNdefWkt_t wellKnownType);
 
 /**
  * Sets the NDEF record ID for the specified record builder.
@@ -188,7 +230,7 @@ bool gmosDriverNfcTagNdefBuilderSetType (
  */
 bool gmosDriverNfcTagNdefBuilderSetId (
     gmosDriverNfcTagNdefBuilder_t* builder,
-    uint8_t* idData, uint8_t idSize);
+    const uint8_t* idData, uint8_t idSize);
 
 /**
  * Sets the NDEF record payload for the specified record builder.
@@ -204,7 +246,22 @@ bool gmosDriverNfcTagNdefBuilderSetId (
  */
 bool gmosDriverNfcTagNdefBuilderSetPayload (
     gmosDriverNfcTagNdefBuilder_t* builder,
-    uint8_t* payloadData, uint16_t payloadSize);
+    const uint8_t* payloadData, uint16_t payloadSize);
+
+/**
+ * Sets the NDEF record payload for the specified record builder, using
+ * a payload buffer as the data source.
+ * @param builder This is the record builder structure for which the
+ *     NDEF record payload is to be set.
+ * @param payloadBuffer This is a pointer to the NDEF record payload,
+ *     stored in a data buffer. It should not be set to a null value.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully setting the NDEF record payload and 'false'
+ *     otherwise.
+ */
+bool gmosDriverNfcTagNdefBuilderSetPayloadBuffer (
+    gmosDriverNfcTagNdefBuilder_t* builder,
+    gmosBuffer_t* payloadBuffer);
 
 /**
  * Encodes the contents of an NDEF record builder and appends them to
@@ -284,6 +341,18 @@ uint8_t gmosDriverNfcTagNdefParserReadToken (
 uint8_t gmosDriverNfcTagNdefParserGetType (
     gmosDriverNfcTagNdefToken_t* token,
     uint8_t* typeData, uint8_t typeDataSize);
+
+/**
+ * Gets a supported well known type field associated with an NDEF
+ * record.
+ * @param token This is a pointer to the token instance which represents
+ *     the parsed NDEF record.
+ * @return Returns the well known type for the NDEF record, the unknown
+ *     type if the well known type is not supported or the invalid type
+ *     on failure.
+ */
+gmosDriverNfcTagNdefWkt_t gmosDriverNfcTagNdefParserGetWellKnownType (
+    gmosDriverNfcTagNdefToken_t* token);
 
 /**
  * Gets the record ID data field associated with an NDEF record,

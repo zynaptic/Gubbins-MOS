@@ -51,6 +51,7 @@ bool gmosDriverNfcTagNdefBuilderInit (
         builder->idSize = 0;
         builder->payloadData = NULL;
         builder->payloadSize = 0;
+        builder->payloadBuffer = NULL;
     }
     return initOk;
 }
@@ -89,7 +90,7 @@ bool gmosDriverNfcTagNdefBuilderSetFlags (
  */
 bool gmosDriverNfcTagNdefBuilderSetType (
     gmosDriverNfcTagNdefBuilder_t* builder,
-    uint8_t* typeData, uint8_t typeSize)
+    const uint8_t* typeData, uint8_t typeSize)
 {
     uint8_t tnfOption = builder->headerByte & 0x07;
     bool setOk = true;
@@ -116,11 +117,62 @@ bool gmosDriverNfcTagNdefBuilderSetType (
 }
 
 /*
+ * Sets the NDEF record type for the specified record builder using one
+ * of the supported well known types.
+ */
+bool gmosDriverNfcTagNdefBuilderSetWellKnownType (
+   gmosDriverNfcTagNdefBuilder_t* builder,
+   gmosDriverNfcTagNdefWkt_t wellKnownType)
+{
+    uint8_t tnfOption = builder->headerByte & 0x07;
+    const uint8_t* typeData;
+    uint_fast8_t typeSize;
+    bool setOk = true;
+
+    // Define the supported well known type strings.
+    static const uint8_t wktTextString [] = { 'T' };
+    static const uint8_t wktUriString [] = { 'U' };
+    static const uint8_t wktSpString [] = { 'S', 'p' };
+
+    // The TNF well known type option must be selected.
+    if (tnfOption != GMOS_DRIVER_NFC_TAG_NDEF_TNF_WELL_KNOWN_TYPE) {
+        setOk = false;
+        goto out;
+    }
+
+    // Select the supported well known type.
+    switch (wellKnownType) {
+        case GMOS_DRIVER_NFC_TAG_NDEF_WKT_TEXT :
+            typeData = wktTextString;
+            typeSize = 1;
+            break;
+        case GMOS_DRIVER_NFC_TAG_NDEF_WKT_URI :
+            typeData = wktUriString;
+            typeSize = 1;
+            break;
+        case GMOS_DRIVER_NFC_TAG_NDEF_WKT_SMART_POSTER :
+            typeData = wktSpString;
+            typeSize = 2;
+            break;
+        default :
+            setOk = false;
+            goto out;
+    }
+
+    // Set the well known type.
+    setOk = gmosDriverNfcTagNdefBuilderSetType (
+        builder, typeData, typeSize);
+
+out :
+    return setOk;
+}
+
+/*
  * Sets the NDEF record ID for the specified record builder.
  */
 bool gmosDriverNfcTagNdefBuilderSetId (
     gmosDriverNfcTagNdefBuilder_t* builder,
-    uint8_t* idData, uint8_t idSize)
+    const uint8_t* idData, uint8_t idSize)
 {
     uint8_t tnfOption = builder->headerByte & 0x07;
     bool setOk = true;
@@ -150,13 +202,15 @@ bool gmosDriverNfcTagNdefBuilderSetId (
  */
 bool gmosDriverNfcTagNdefBuilderSetPayload (
     gmosDriverNfcTagNdefBuilder_t* builder,
-    uint8_t* payloadData, uint16_t payloadSize)
+    const uint8_t* payloadData, uint16_t payloadSize)
 {
     uint8_t tnfOption = builder->headerByte & 0x07;
     bool setOk = true;
 
-    // The payload data and size fields must contain valid data.
-    if ((payloadData == NULL) || (payloadSize == 0)) {
+    // The payload data and size fields must contain valid data and
+    // should not conflict with a payload buffer.
+    if ((builder->payloadBuffer != NULL) ||
+        (payloadData == NULL) || (payloadSize == 0)) {
         setOk = false;
     }
 
@@ -169,6 +223,36 @@ bool gmosDriverNfcTagNdefBuilderSetPayload (
     if (setOk) {
         builder->payloadData = payloadData;
         builder->payloadSize = payloadSize;
+    }
+    return setOk;
+}
+
+/*
+ * Sets the NDEF record payload for the specified record builder, using
+ * a payload buffer as the data source.
+ */
+bool gmosDriverNfcTagNdefBuilderSetPayloadBuffer (
+    gmosDriverNfcTagNdefBuilder_t* builder,
+    gmosBuffer_t* payloadBuffer)
+{
+    uint8_t tnfOption = builder->headerByte & 0x07;
+    bool setOk = true;
+
+    // The payload buffer must contain valid data and should not
+    // conflict with a payload data array.
+    if ((builder->payloadData != NULL) || (payloadBuffer == NULL)) {
+        setOk = false;
+    }
+
+    // The payload field should not be present for empty records.
+    if (tnfOption == GMOS_DRIVER_NFC_TAG_NDEF_TNF_EMPTY) {
+        setOk = false;
+    }
+
+    // Update payload settings.
+    if (setOk) {
+        builder->payloadBuffer = payloadBuffer;
+        builder->payloadSize = gmosBufferGetSize (payloadBuffer);
     }
     return setOk;
 }
@@ -232,8 +316,13 @@ bool gmosDriverNfcTagNdefBuilderEncode (
 
     // Append the payload data to the buffer.
     if (builder->payloadSize > 0) {
-        encodeOk = encodeOk && gmosBufferAppend (buffer,
-            builder->payloadData, builder->payloadSize);
+        if (builder->payloadBuffer != NULL) {
+            encodeOk = encodeOk & gmosBufferConcatenate (
+                buffer, builder->payloadBuffer, buffer);
+        } else {
+            encodeOk = encodeOk && gmosBufferAppend (buffer,
+                builder->payloadData, builder->payloadSize);
+        }
     }
 
     // Discard any changes to the buffer contents on failure.

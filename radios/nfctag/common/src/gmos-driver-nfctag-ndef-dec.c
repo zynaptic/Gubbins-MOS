@@ -324,6 +324,50 @@ uint8_t gmosDriverNfcTagNdefParserGetType (
 }
 
 /*
+ * Gets a supported well known type field associated with an NDEF
+ * record.
+ */
+gmosDriverNfcTagNdefWkt_t gmosDriverNfcTagNdefParserGetWellKnownType (
+    gmosDriverNfcTagNdefToken_t* token)
+{
+    uint8_t typeData [2];
+    uint_fast8_t typeSize;
+    gmosDriverNfcTagNdefWkt_t wellKnownType;
+
+    // Extract the generic type information for the token.
+    typeSize = gmosDriverNfcTagNdefParserGetType (
+        token, typeData, sizeof (typeData));
+
+    // The TNF option must specify a well known type.
+    if ((token->headerByte & 0x07) !=
+        GMOS_DRIVER_NFC_TAG_NDEF_TNF_WELL_KNOWN_TYPE) {
+        wellKnownType = GMOS_DRIVER_NFC_TAG_NDEF_WKT_INVALID;
+    }
+
+    // Identify text data types.
+    else if ((typeSize == 1) && (typeData [0] == 'T')) {
+        wellKnownType = GMOS_DRIVER_NFC_TAG_NDEF_WKT_TEXT;
+    }
+
+    // Identify URI data types.
+    else if ((typeSize == 1) && (typeData [0] == 'U')) {
+        wellKnownType = GMOS_DRIVER_NFC_TAG_NDEF_WKT_URI;
+    }
+
+    // Identify smart poster data types.
+    else if ((typeSize == 2) &&
+        (typeData [0] == 'S') && (typeData [1] == 'p')) {
+        wellKnownType = GMOS_DRIVER_NFC_TAG_NDEF_WKT_SMART_POSTER;
+    }
+
+    // Other well known types are not currently supported.
+    else {
+        wellKnownType = GMOS_DRIVER_NFC_TAG_NDEF_WKT_UNKNOWN;
+    }
+    return wellKnownType;
+}
+
+/*
  * Gets the record ID data field associated with an NDEF record,
  * updating the specified record ID data array value.
  */
