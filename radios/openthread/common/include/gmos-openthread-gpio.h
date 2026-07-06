@@ -57,7 +57,7 @@ void gmosOpenThreadGpioInit (gmosOpenThreadStack_t* openThreadStack);
 void gmosOpenThreadSetIndicatorLed (
     gmosOpenThreadNetworkIndicatorLedMode_t ledMode);
 #else
-#define gmosOpenThreadSetIndicatorLed (_ledMode_) {}
+#define gmosOpenThreadSetIndicatorLed(_ledMode_) {}
 #endif
 
 #endif // GMOS_OPENTHREAD_GPIO_H

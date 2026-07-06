@@ -34,6 +34,7 @@
 #include "openthread-core-config.h"
 #include "openthread/instance.h"
 #include "openthread/tasklet.h"
+#include "openthread/link.h"
 #include "openthread/random_crypto.h"
 #include "openthread/platform/logging.h"
 
@@ -134,6 +135,27 @@ void gmosOpenThreadReset (gmosOpenThreadStack_t* openThreadStack,
 }
 
 /*
+ * Gets the factory assigned IEEE EUI-64 value for the Thread network
+ * interface.
+ */
+uint64_t gmosOpenThreadGetDeviceEui64 (
+    gmosOpenThreadStack_t* openThreadStack)
+{
+    otInstance* instance = (otInstance*) openThreadStack->otInstance;
+    otExtAddress otEui64;
+    uint_fast8_t i;
+    uint64_t eui64;
+
+    // Convert to a 64-bit integer using network byte order.
+    otLinkGetFactoryAssignedIeeeEui64 (instance, &otEui64);
+    eui64 = 0;
+    for (i = 0; i < 8; i++) {
+        eui64 = (eui64 << 8) | otEui64.m8 [i];
+    }
+    return eui64;
+}
+
+/*
  * Gets the currently active Thread network key. This will only return
  * a valid result if the network is currently active.
  */
@@ -152,6 +174,41 @@ bool gmosOpenThreadGetNetworkKey (
         (activeDataset.mComponents.mIsNetworkKeyPresent)) {
         for (i = 0; i < 16; i++) {
             networkKey [i] = activeDataset.mNetworkKey.m8 [i];
+        }
+        accessedOk = true;
+    }
+    return accessedOk;
+}
+
+/*
+ * Gets the currently active Thread network name. This will only return
+ * a valid result if the network is currently active.
+ */
+bool gmosOpenThreadGetNetworkName (
+    gmosOpenThreadStack_t* openThreadStack, char* networkName,
+    uint8_t networkNameSize)
+{
+    otInstance* instance = (otInstance*) openThreadStack->otInstance;
+    otOperationalDataset activeDataset;
+    otError status;
+    char nextChar;
+    uint_fast8_t i;
+    bool accessedOk = false;
+
+    // Attempt to access the full active dataset.
+    status = otDatasetGetActive (instance, &activeDataset);
+    if ((status == OT_ERROR_NONE) &&
+        (activeDataset.mComponents.mIsNetworkNamePresent)) {
+        for (i = 0; i < networkNameSize; i++) {
+            if (i + 1 == networkNameSize) {
+                nextChar = '\0';
+            } else {
+                nextChar = activeDataset.mNetworkName.m8 [i];
+            }
+            networkName [i] = nextChar;
+            if (nextChar == '\0') {
+                break;
+            }
         }
         accessedOk = true;
     }

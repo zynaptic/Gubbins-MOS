@@ -153,6 +153,17 @@ gmosOpenThreadStatus_t gmosOpenThreadNetStatus (
     gmosOpenThreadStack_t* openThreadStack);
 
 /**
+ * Gets the factory assigned IEEE EUI-64 value for the Thread network
+ * interface.
+ * @param openThreadStack This is the OpenThread stack data structure
+ *     that is being used for the device EUI-64 request.
+ * @return Returns the 64-bit EUI-64 value, converted from network byte
+ *     order.
+ */
+uint64_t gmosOpenThreadGetDeviceEui64 (
+    gmosOpenThreadStack_t* openThreadStack);
+
+/**
  * Gets the currently active Thread network key. This will only return
  * a valid result if the network is currently active.
  * @param openThreadStack This is the OpenThread stack data structure
@@ -166,6 +177,26 @@ gmosOpenThreadStatus_t gmosOpenThreadNetStatus (
  */
 bool gmosOpenThreadGetNetworkKey (
     gmosOpenThreadStack_t* openThreadStack, uint8_t* networkKey);
+
+/**
+ * Gets the currently active Thread network name. This will only return
+ * a valid result if the network is currently active.
+ * @param openThreadStack This is the OpenThread stack data structure
+ *     that is being used for the network name request.
+ * @param networkName This is a pointer to character array which on
+ *     successful completion will be populated with the currently active
+ *     Thread network name as a null terminated string.
+ * @param networkNameSize This is the size of the network name character
+ *     array. If the actual network name exceeds this length it will be
+ *     truncated as required. A network name size of 17 will normally
+ *     be sufficient to avoid truncation.
+ * @return Returns a boolean value which will be set to 'true' on
+ *     successfully accessing the Thread network name and 'false'
+ *     otherwise.
+ */
+bool gmosOpenThreadGetNetworkName (
+    gmosOpenThreadStack_t* openThreadStack, char* networkName,
+    uint8_t networkNameSize);
 
 /**
  * Initialises the OpenThread network control task on startup.

@@ -287,6 +287,8 @@ static inline gmosTaskStatus_t timeFactoryResetEvents (
     if (elapsedTicks >= GMOS_MS_TO_TICKS (
         GMOS_CONFIG_OPENTHREAD_FACTORY_RESET_MAX_DELAY)) {
         GMOS_LOG (LOG_DEBUG, "Factory reset timer expired.");
+        gmosOpenThreadSetIndicatorLed (
+            GMOS_OPENTHREAD_NETWORK_INDICATOR_LED_MODE_OFF);
         *nextState = FACTORY_RESET_TASK_IDLE;
     }
 
@@ -299,6 +301,8 @@ static inline gmosTaskStatus_t timeFactoryResetEvents (
             taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (100));
         } else {
             GMOS_LOG (LOG_DEBUG, "Factory reset timer ignored.");
+            gmosOpenThreadSetIndicatorLed (
+                GMOS_OPENTHREAD_NETWORK_INDICATOR_LED_MODE_OFF);
             *nextState = FACTORY_RESET_TASK_IDLE;
         }
     }
@@ -306,6 +310,8 @@ static inline gmosTaskStatus_t timeFactoryResetEvents (
     // Reschedule the timer.
     else {
         GMOS_LOG (LOG_DEBUG, "Factory reset timer rescheduled.");
+        gmosOpenThreadSetIndicatorLed (
+            GMOS_OPENTHREAD_NETWORK_INDICATOR_LED_MODE_ON);
         taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (
             GMOS_CONFIG_OPENTHREAD_FACTORY_RESET_MAX_DELAY) - elapsedTicks);
     }
