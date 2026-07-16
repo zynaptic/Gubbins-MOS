@@ -45,7 +45,7 @@ static CORE_DECLARE_IRQ_STATE;
  * If required, allocate memory for the heap.
  */
 #if (GMOS_CONFIG_HEAP_SIZE > 0)
-#include <sl_memory_manager.h>
+#include "sl_memory_manager.h"
 uint8_t gmosPalHeap [GMOS_CONFIG_HEAP_SIZE]
     __attribute__ ((section (".heap")));
 #endif

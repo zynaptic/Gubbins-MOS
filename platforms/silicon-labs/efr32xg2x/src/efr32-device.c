@@ -29,7 +29,6 @@
 #include "gmos-mempool.h"
 #include "gmos-scheduler.h"
 #include "efr32-device.h"
-#include "em_core.h"
 #include "em_chip.h"
 #include "em_cmu.h"
 #include "sl_device_init_dcdc.h"
@@ -37,6 +36,11 @@
 #include "sl_device_init_hfxo.h"
 #include "sl_device_init_hfxo_config.h"
 #include "sl_hfxo_manager.h"
+
+/*
+ * Retain default interrupt priority from deprecated SDK settings.
+ */
+#define CORE_INTERRUPT_DEFAULT_PRIORITY 5
 
 /*
  * Perform NVIC initialisation, setting all interrupts to the default

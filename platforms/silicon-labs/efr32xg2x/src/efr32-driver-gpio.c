@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023-2025 Zynaptic Limited
+ * Copyright 2023-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -76,15 +76,17 @@ static inline void gmosPalGpioMapPinId (
  * on that bank is the one which will be used.
  */
 static inline bool gmosDriverGpioSetSlewRate (
-    uint_fast8_t gpioPort, uint_fast8_t driveStrength)
+    uint_fast16_t gpioPinId, uint_fast8_t driveStrength)
 {
-    sl_status_t slStatus;
     uint8_t currentSlewRate;
+    sl_gpio_t slGpioPinId;
+    sl_status_t slStatus;
 
     // Check the current slew rate and only update it if required.
-    slStatus = sl_gpio_get_slew_rate (gpioPort, &currentSlewRate);
+    gmosPalGpioMapPinId (gpioPinId, &slGpioPinId);
+    slStatus = sl_gpio_get_slew_rate (&slGpioPinId, &currentSlewRate);
     if ((slStatus == SL_STATUS_OK) && (driveStrength > currentSlewRate)) {
-        slStatus = sl_gpio_set_slew_rate (gpioPort, driveStrength);
+        slStatus = sl_gpio_set_slew_rate (&slGpioPinId, driveStrength);
     }
     return (slStatus == SL_STATUS_OK) ? true : false;
 }
@@ -136,7 +138,7 @@ bool gmosDriverGpioPinInit (uint16_t gpioPinId, bool openDrain,
 
     // Set the GPIO drive strength.
     initOk = gmosDriverGpioSetSlewRate (
-        gpioPort, driveStrength & EFR32_GPIO_DRIVER_SLEW_MASK);
+        gpioPinId, driveStrength & EFR32_GPIO_DRIVER_SLEW_MASK);
 
     // Once all the pin options have been set, it is configured as an
     // input by default.
@@ -472,6 +474,7 @@ bool gmosPalGpioInit (void)
 {
     bool initOk = true;
     uint_fast8_t i;
+    sl_gpio_t slGpioPinId;
     sl_status_t slStatus;
 
     // Initialise the SDK driver.
@@ -483,13 +486,15 @@ bool gmosPalGpioInit (void)
 
     // Clear the local configuration registers and set the bank slew
     // rates to their minimum setting.
+    slGpioPinId.pin = 0;
     for (i = 0; i < 4; i++) {
         gmosDriverGpioOpenDrainFlags [i] = 0;
         gmosDriverGpioFilterFlags [i] = 0;
         gmosDriverGpioPullupFlags [i] = 0;
         gmosDriverGpioPulldownFlags [i] = 0;
         gmosDriverGpioOutputEnFlags [i] = 0;
-        slStatus = sl_gpio_set_slew_rate (i, 0);
+        slGpioPinId.port = i;
+        slStatus = sl_gpio_set_slew_rate (&slGpioPinId, 0);
         if (slStatus != SL_STATUS_OK) {
             initOk = false;
             goto out;

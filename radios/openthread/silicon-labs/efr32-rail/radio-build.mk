@@ -26,21 +26,29 @@
 # By default this uses the version of the OpenThread stack shipped with
 # the Silicon Labs SDK.
 ifndef OPENTHREAD_IMPORT_PATH
-OPENTHREAD_IMPORT_PATH = ${GMOS_SIMPLICITY_SDK_DIR}/util/third_party/openthread
+OPENTHREAD_IMPORT_PATH = ${GMOS_SIMPLICITY_SDK_DIR}/openthread_stack/util/third_party/openthread
 endif
 
 # Specify the source code directories to use.
 OPENTHREAD_COMMON_SRC_DIR = ${GMOS_GIT_DIR}/radios/openthread/common
 OPENTHREAD_TARGET_PATH = openthread/silicon-labs/efr32-rail
 OPENTHREAD_TARGET_SRC_DIR = ${GMOS_GIT_DIR}/radios/${OPENTHREAD_TARGET_PATH}
-OPENTHREAD_EFR32_PLATFORM_DIR = ${GMOS_SIMPLICITY_SDK_DIR}/protocol/openthread
+OPENTHREAD_EFR32_PLATFORM_DIR = ${GMOS_SIMPLICITY_SDK_DIR}/openthread
+OPENTHREAD_EFR32_RAIL_LIB_DIR = ${GMOS_SIMPLICITY_SDK_DIR}/rail_library
+OPENTHREAD_EFR32_IEEE802154_DIR = ${GMOS_SIMPLICITY_SDK_DIR}/common_15_4
 
 # Select the target specific RAIL libraries for EFR32MG24 SoC devices.
 # Custom PA curve configurations need to be compiled for the standalone
 # devices.
 ifeq (${GMOS_TARGET_DEVICE_FAMILY}, EFR32MG24)
-TSLIBS = rail_efr32xg24_gcc_release
-TSFILES = sdk-pa_curves_efr32.o
+TSLIBS = \
+	rail_efr32xg24_gcc_release
+TSFILES = \
+	sdk-pa_curves_efr32.o \
+	sdk-sl_rail_util_built_in_phys.o \
+	sdk-sl_rail_ieee802154_config_38M4Hz.o \
+	sdk-sl_rail_ieee802154_config_39MHz.o \
+	sdk-sl_rail_ieee802154_config_40MHz.o
 endif
 
 # Select the target specific RAIL libraries for MGM24 modules. Standard
@@ -62,19 +70,19 @@ LDFLAGS += -L${GMOS_BUILD_DIR}/radios/${OPENTHREAD_TARGET_PATH}/lib
 # platform independent OpenThread components.
 OPENTHREAD_HEADER_DIRS = \
 	${GMOS_TARGET_DEVICE_FAMILY_DIR}/Include \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/common/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/emlib/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/CMSIS/Core/Include \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/common/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/emlib/inc \
+	${GMOS_SIMPLICITY_SDK_CMSIS}/Core/Include \
 	${OPENTHREAD_EFR32_PLATFORM_DIR}/config \
 	${OPENTHREAD_EFR32_PLATFORM_DIR}/platform-abstraction/efr32 \
 	${OPENTHREAD_EFR32_PLATFORM_DIR}/platform-abstraction/include \
-	${GMOS_SIMPLICITY_SDK_DIR}/util/third_party/mbedtls/include \
-	${GMOS_SIMPLICITY_SDK_DIR}/util/third_party/mbedtls/library \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/device_init/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/se_manager/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_psa_driver/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/config
+	${GMOS_SIMPLICITY_SDK_MBEDTLS}/include \
+	${GMOS_SIMPLICITY_SDK_MBEDTLS}/library \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/device_init/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/se_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sl_psa_driver/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sl_mbedtls_support/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sl_mbedtls_support/config
 
 # List all the header directories that are required to build the
 # platform specific OpenThread components.
@@ -89,34 +97,30 @@ OPENTHREAD_TARGET_HEADER_DIRS = \
 	${OPENTHREAD_IMPORT_PATH}/src/core \
 	${OPENTHREAD_IMPORT_PATH}/src/include \
 	${OPENTHREAD_IMPORT_PATH}/examples/platforms \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/common/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/nvm3/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/peripheral/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/mpu/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/sleeptimer/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/memory_manager/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/power_manager/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/mac/config \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/rail_lib/common \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/rail_lib/chip/efr32/efr32xg2x \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/rail_lib/protocol/ieee802154 \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/rail_lib/plugin/pa-conversions \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/rail_lib/plugin/rail_util_ieee802154 \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/se_manager/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/se_manager/src \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_psa_driver/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/config \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_protocol_crypto/src \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sli_psec_osal/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/util/plugin/security_manager \
-	${GMOS_SIMPLICITY_SDK_DIR}/util/silicon_labs/silabs_core/memory_manager \
-	${GMOS_SIMPLICITY_SDK_DIR}/util/silicon_labs/silabs_core/queue
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/emdrv/common/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/emdrv/nvm3/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/device_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/sleeptimer/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/memory_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/memory_manager/config \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/power_manager/inc \
+	${OPENTHREAD_EFR32_RAIL_LIB_DIR}/common \
+	${OPENTHREAD_EFR32_RAIL_LIB_DIR}/chip/efr32/efr32xg2x \
+	${OPENTHREAD_EFR32_RAIL_LIB_DIR}/protocol/ieee802154 \
+	${OPENTHREAD_EFR32_RAIL_LIB_DIR}/plugin/pa-conversions \
+	${OPENTHREAD_EFR32_RAIL_LIB_DIR}/plugin/sl_rail_util_compatible_pa \
+	${OPENTHREAD_EFR32_RAIL_LIB_DIR}/plugin/sl_rail_util_built_in_phys/${GMOS_TARGET_SILICON_FAMILY_XLC} \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sl_protocol_crypto/src \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sli_psec_osal/inc \
+	${OPENTHREAD_EFR32_IEEE802154_DIR}/mac/config \
+	${OPENTHREAD_EFR32_IEEE802154_DIR}/plugin/security_manager \
+	${GMOS_SIMPLICITY_SDK_UTIL}/silicon_labs/silabs_core/queue
 
 # List all the OpenThread object files that need to be built.
 OPENTHREAD_TARGET_OBJ_FILE_NAMES = \
 	gmos-openthread-ral.o \
 	gmos-openthread-cli.o \
+	ot-efr32-settings.o \
 	ot-efr32-system.o \
 	ot-efr32-misc.o \
 	ot-efr32-sleep.o \
@@ -124,9 +128,13 @@ OPENTHREAD_TARGET_OBJ_FILE_NAMES = \
 	ot-efr32-entropy.o \
 	ot-efr32-crypto.o \
 	ot-efr32-radio.o \
+	ot-efr32-radio_instance.o \
+	ot-efr32-radio_interface.o \
+	ot-efr32-radio_csl.o \
+	ot-efr32-radio_security.o \
 	ot-efr32-radio_power_manager.o \
+	ot-efr32-radio_energy_scan.o \
 	ot-efr32-mac_frame.o \
-	ot-efr32-flash.o \
 	ot-efr32-soft_source_match_table.o \
 	ot-efr32-sl_gp_interface.o \
 	ot-efr32-ieee802154-packet-utils.o \
@@ -183,36 +191,42 @@ ${LOCAL_DIR}/ot-efr32-%.o : ${OPENTHREAD_IMPORT_PATH}/examples/platforms/utils/%
 
 # Run the C compiler on the additional SDK radio library specific files
 # that are required by the OpenThread stack.
-${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/*/*/*/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/sdk-%.o : ${OPENTHREAD_EFR32_RAIL_LIB_DIR}/*/*/%.c | ${LOCAL_DIR}
+	${CC} ${CFLAGS} -DSL_COMPONENT_CATALOG_PRESENT \
+	${addprefix -I, ${OPENTHREAD_TARGET_HEADER_DIRS}} -o $@ $<
+
+# Run the C compiler on the additional SDK radio library specific files
+# that are required by the OpenThread stack.
+${LOCAL_DIR}/sdk-%.o : ${OPENTHREAD_EFR32_RAIL_LIB_DIR}/*/*/*/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} -DSL_COMPONENT_CATALOG_PRESENT \
 	${addprefix -I, ${OPENTHREAD_TARGET_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the additional SDK security library specific
 # files that are required by the OpenThread stack.
-${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/security/*/*/src/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_PLATFORM}/security/*/*/src/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} -DSL_COMPONENT_CATALOG_PRESENT -DMBEDTLS_CONFIG_FILE='"efr32-crypto-config.h"' \
 	${addprefix -I, ${OPENTHREAD_TARGET_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the additional SDK service files that are
 # required by the OpenThread stack.
-${LOCAL_DIR}/sdk-service-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/service/*/src/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/sdk-service-%.o : ${GMOS_SIMPLICITY_SDK_PLATFORM}/service/*/src/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} -DSL_COMPONENT_CATALOG_PRESENT \
 	${addprefix -I, ${OPENTHREAD_TARGET_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the additional SDK core utility files that are
 # required by the OpenThread stack.
-${LOCAL_DIR}/sdk-core-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/util/silicon_labs/silabs_core/*/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/sdk-core-%.o : ${GMOS_SIMPLICITY_SDK_UTIL}/silicon_labs/silabs_core/*/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} -DSL_COMPONENT_CATALOG_PRESENT -DCONFIGURATION_HEADER='"openthread-core-user-config.h"' \
 	${addprefix -I, ${OPENTHREAD_TARGET_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the additional SDK utility plugin files that are
 # required by the OpenThread stack.
-${LOCAL_DIR}/sdk-plugin-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/util/plugin/*/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/sdk-plugin-%.o : ${OPENTHREAD_EFR32_IEEE802154_DIR}/plugin/*/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} -DSL_COMPONENT_CATALOG_PRESENT -DMBEDTLS_CONFIG_FILE='"efr32-crypto-config.h"' \
 	${addprefix -I, ${OPENTHREAD_TARGET_HEADER_DIRS}} -o $@ $<
 
 # Copy the required RAIL target libraries to the build directory.
-${LOCAL_DIR}/lib/lib%.a : ${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/rail_lib/autogen/librail_release/lib%.a | ${LOCAL_DIR}/lib
+${LOCAL_DIR}/lib/lib%.a : ${OPENTHREAD_EFR32_RAIL_LIB_DIR}/autogen/librail_release/lib%.a | ${LOCAL_DIR}/lib
 	cp $< $@
 
 # Timestamp the local build object files.

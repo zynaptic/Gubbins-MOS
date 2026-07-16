@@ -63,11 +63,16 @@ ARM_GCC_TOOLCHAIN_DIR = /opt/arm-gnu-toolchain-15.2.rel1-x86_64-arm-none-eabi/
 endif
 
 # Specify the location of the Silicon Labs Simplicity SDK directory. By
-# default this assumes it has been downloaded to the Simplicity Studio
-# working directory.
+# default this assumes it has been downloaded using the Conan package
+# manager and then copied over to the vendors directory on the data drive.
 ifndef GMOS_SIMPLICITY_SDK_DIR
-GMOS_SIMPLICITY_SDK_DIR = /data/vendors/silicon-labs/simplicity_sdk
+GMOS_SIMPLICITY_SDK_DIR = /data/vendors/silicon-labs/simplicity_sdk-2026-6-0
 endif
+GMOS_SIMPLICITY_SDK_PLATFORM = ${GMOS_SIMPLICITY_SDK_DIR}/platform_core/platform
+GMOS_SIMPLICITY_SDK_UTIL = ${GMOS_SIMPLICITY_SDK_DIR}/platform_core/util
+GMOS_SIMPLICITY_SDK_BOOTLOADER = ${GMOS_SIMPLICITY_SDK_DIR}/bootloader/platform/bootloader
+GMOS_SIMPLICITY_SDK_CMSIS = ${GMOS_SIMPLICITY_SDK_DIR}/cmsis
+GMOS_SIMPLICITY_SDK_MBEDTLS = ${GMOS_SIMPLICITY_SDK_DIR}/mbedtls
 
 # Specify the location of the Silicon Labs Simplicity Commander
 # directory. By default this assumes it has been downloaded to the
@@ -78,7 +83,7 @@ endif
 
 # Specify device specific SDK file locations.
 GMOS_TARGET_DEVICE_FAMILY_DIR = \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/Device/SiliconLabs/${GMOS_TARGET_DEVICE_FAMILY}
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/Device/SiliconLabs/${GMOS_TARGET_DEVICE_FAMILY}
 
 # Specify that the platform layer provides the PSA cryptography library
 # and specify the path to the required API header directories, including
@@ -96,7 +101,7 @@ GMOS_PLATFORM_PSA_CRYPTO_API_DIRS = \
 # Specify that the platform layer provides the MbedTLS protocol library
 # and specify the path to the API header directory.
 GMOS_PLATFORM_MBEDTLS_API_DIRS = \
-	${GMOS_SIMPLICITY_SDK_DIR}/util/third_party/mbedtls/include
+	${GMOS_SIMPLICITY_SDK_MBEDTLS}/include
 
 # Specify that the platform layer provides a common MbedTLS
 # configuration file.

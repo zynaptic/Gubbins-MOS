@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2023-2025 Zynaptic Limited
+# Copyright 2023-2026 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,18 +28,21 @@ PLATFORM_CRYPTO_HEADER_DIRS = \
 	${GMOS_APP_DIR}/include \
 	${GMOS_GIT_DIR}/common/include \
 	${TARGET_PLATFORM_DIR}/include \
-	${GMOS_SIMPLICITY_SDK_DIR}/util/third_party/mbedtls/include \
-	${GMOS_SIMPLICITY_SDK_DIR}/util/third_party/mbedtls/library \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/common/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/emlib/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/common/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/nvm3/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/se_manager/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_psa_driver/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sli_psec_osal/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/config \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/CMSIS/Core/Include \
+	${GMOS_SIMPLICITY_SDK_MBEDTLS}/include \
+	${GMOS_SIMPLICITY_SDK_MBEDTLS}/library \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/common/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/emlib/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/emdrv/common/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/emdrv/nvm3/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/device_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/clock_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/se_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sl_psa_driver/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sli_psec_common/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sli_psec_osal/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sl_mbedtls_support/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sl_mbedtls_support/config \
+	${GMOS_SIMPLICITY_SDK_CMSIS}/Core/Include \
 	${GMOS_TARGET_DEVICE_FAMILY_DIR}/Include
 
 # List all the platform cryptography object files that need to be built.
@@ -140,11 +143,11 @@ PLATFORM_CRYPTO_OBJ_FILES = ${addprefix ${LOCAL_DIR}/, ${PLATFORM_CRYPTO_OBJ_FIL
 -include $(PLATFORM_CRYPTO_OBJ_FILES:.o=.d)
 
 # Run the C compiler on the SDK platform security files.
-${LOCAL_DIR}/crypto-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/security/*/*/src/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/crypto-%.o : ${GMOS_SIMPLICITY_SDK_PLATFORM}/security/*/*/src/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} -DMBEDTLS_CONFIG_FILE='"${GMOS_PLATFORM_MBEDTLS_CONFIG_FILE}"' \
 	${addprefix -I, ${PLATFORM_CRYPTO_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the MBedTLS source files.
-${LOCAL_DIR}/crypto-mbedtls-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/util/third_party/mbedtls/library/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/crypto-mbedtls-%.o : ${GMOS_SIMPLICITY_SDK_MBEDTLS}/library/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} -DMBEDTLS_CONFIG_FILE='"${GMOS_PLATFORM_MBEDTLS_CONFIG_FILE}"' \
 	${addprefix -I, ${PLATFORM_CRYPTO_HEADER_DIRS}} -o $@ $<

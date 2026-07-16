@@ -29,36 +29,39 @@ PLATFORM_HEADER_DIRS = \
 	${GMOS_GIT_DIR}/imports/printf \
 	${TARGET_PLATFORM_DIR}/include \
 	${TARGET_PLATFORM_DIR}/include/sdk-config \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/common/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/common/config \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/emlib/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/common/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/spidrv/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/dmadrv/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/dmadrv/inc/s2_signals \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/nvm3/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/nvm3/config \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/bootloader \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/bootloader/api \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/bootloader/config \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/bootloader/config/btl_interface \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/bootloader/core/flash \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/peripheral/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/driver/gpio/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/mpu/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/sleeptimer/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/device_init/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/device_manager/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/interrupt_manager/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/interrupt_manager/config \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/memory_manager/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/memory_manager/config \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/hfxo_manager/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/clock_manager/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/power_manager/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/power_manager/src/sleep_loop \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/se_manager/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/CMSIS/Core/Include \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/common/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/common/config \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/emlib/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/emdrv/common/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/emdrv/spidrv/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/emdrv/dmadrv/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/emdrv/dmadrv/inc/s2_signals \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/emdrv/nvm3/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/emdrv/nvm3/config \
+	${GMOS_SIMPLICITY_SDK_BOOTLOADER} \
+	${GMOS_SIMPLICITY_SDK_BOOTLOADER}/api \
+	${GMOS_SIMPLICITY_SDK_BOOTLOADER}/common/api \
+	${GMOS_SIMPLICITY_SDK_BOOTLOADER}/config \
+	${GMOS_SIMPLICITY_SDK_BOOTLOADER}/config/btl_interface \
+	${GMOS_SIMPLICITY_SDK_BOOTLOADER}/core/flash \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/peripheral/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/driver/gpio/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/driver/dma_channel/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/mpu/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/sleeptimer/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/device_init/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/device_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/interrupt_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/memory_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/memory_manager/config \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/memory_manager/config/legacy \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/dma_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/hfxo_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/clock_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/power_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/power_manager/src/common \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/power_manager/src/sleep_loop \
+	${GMOS_SIMPLICITY_SDK_CMSIS}/Core/Include \
 	${GMOS_TARGET_DEVICE_FAMILY_DIR}/Include
 
 # List all the platform object files that need to be built.
@@ -76,7 +79,6 @@ PLATFORM_OBJ_FILE_NAMES = \
 	efr32-driver-eeprom.o \
 	efr32-driver-flash.o \
 	sdk-em_system.o \
-	sdk-em_core.o \
 	sdk-em_emu.o \
 	sdk-em_cmu.o \
 	sdk-em_rmu.o \
@@ -101,7 +103,7 @@ PLATFORM_OBJ_FILE_NAMES = \
 	sdk-btl_interface.o \
 	sdk-btl_interface_storage.o \
 	sdk-btl_internal_flash.o \
-	sdk-sl_mpu.o \
+	sdk-sl_mpu_s2.o \
 	sdk-sl_core_cortexm.o \
 	sdk-sl_device_clock_${GMOS_TARGET_SILICON_FAMILY_XLC}.o \
 	sdk-sl_device_peripheral_hal_${GMOS_TARGET_SILICON_FAMILY_XLC}.o \
@@ -124,6 +126,7 @@ PLATFORM_OBJ_FILE_NAMES = \
 	sdk-sl_power_manager_em4.o \
 	sdk-sl_power_manager_hal_s2.o \
 	sdk-sl_hal_sysrtc.o \
+	sdk-sl_hal_sysrtc_subsystem.o \
 	sdk-sl_sleeptimer.o \
 	sdk-sl_sleeptimer_hal_burtc.o \
 	sdk-sl_sleeptimer_hal_sysrtc.o \
@@ -161,20 +164,24 @@ ${LOCAL_DIR}/sdk-%.o : ${GMOS_TARGET_DEVICE_FAMILY_DIR}/Source/%.c | ${LOCAL_DIR
 	${CC} ${CFLAGS} ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the SDK device library specific files.
-${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/*/*/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_PLATFORM}/*/*/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} -DSL_COMPONENT_CATALOG_PRESENT ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the SDK service library specific files.
-${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/*/*/*/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_PLATFORM}/*/*/*/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} -DSL_COMPONENT_CATALOG_PRESENT ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the SDK service library specific files.
-${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/*/*/*/*/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_PLATFORM}/*/*/*/*/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} -DSL_COMPONENT_CATALOG_PRESENT ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
 
-# Run the C compiler on the Silicon Labs core utilities files.
-${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/util/silicon_labs/*/*/%.c | ${LOCAL_DIR}
-	${CC} ${CFLAGS} ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
+# Run the C compiler on the SDK bootloader files.
+${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_BOOTLOADER}/*/%.c | ${LOCAL_DIR}
+	${CC} ${CFLAGS} -DSL_COMPONENT_CATALOG_PRESENT ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
+
+# Run the C compiler on the SDK bootloader files.
+${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_BOOTLOADER}/core/flash/%.c | ${LOCAL_DIR}
+	${CC} ${CFLAGS} -DSL_COMPONENT_CATALOG_PRESENT ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
 
 # Include the makefile fragment for building the platform specific
 # cryptography library.
