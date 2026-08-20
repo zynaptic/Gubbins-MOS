@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2025 Zynaptic Limited
+ * Copyright 2025-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -131,8 +131,8 @@ gmosTaskStatus_t gmosZigbeeRalEmberSleepyNodeTick (
             break;
 
         // Select the appropriate stack behaviour during joining. This
-        // will sleep during idle states and poll during key exchange
-        // handling.
+        // will sleep during idle states and poll without hibernating
+        // during link key update processing.
         case ZIGBEE_STACK_STATE_SLEEPING_NOT_JOINED :
             if (stackPhase == ZIGBEE_STACK_PHASE_JOINING) {
                 switch (stackState) {
@@ -147,6 +147,7 @@ gmosTaskStatus_t gmosZigbeeRalEmberSleepyNodeTick (
                         break;
                     case ZIGBEE_STACK_STATE_JOINING_KEY_UPDATE_CHECK :
                     case ZIGBEE_STACK_STATE_JOINING_LEAVE_NETWORK_CHECK :
+                        ralData->zigbeeNapCount = 0;
                         nextState = ZIGBEE_STACK_STATE_SLEEPING_DATA_POLL_REQ;
                         break;
                     default :

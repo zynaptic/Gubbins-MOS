@@ -47,6 +47,7 @@ PLATFORM_CRYPTO_HEADER_DIRS = \
 
 # List all the platform cryptography object files that need to be built.
 PLATFORM_CRYPTO_OBJ_FILE_NAMES = \
+	crypto-efr32-crypto-se.o \
 	crypto-sl_entropy_hardware.o \
 	crypto-sl_se_manager.o \
 	crypto-sl_se_manager_util.o \
@@ -141,6 +142,10 @@ PLATFORM_CRYPTO_OBJ_FILES = ${addprefix ${LOCAL_DIR}/, ${PLATFORM_CRYPTO_OBJ_FIL
 
 # Import generated dependency information if available.
 -include $(PLATFORM_CRYPTO_OBJ_FILES:.o=.d)
+
+# Run the C compiler with the standard options.
+${LOCAL_DIR}/crypto-%.o : ${TARGET_PLATFORM_DIR}/src/%.c | ${LOCAL_DIR}
+	${CC} ${CFLAGS} ${addprefix -I, ${PLATFORM_CRYPTO_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the SDK platform security files.
 ${LOCAL_DIR}/crypto-%.o : ${GMOS_SIMPLICITY_SDK_PLATFORM}/security/*/*/src/%.c | ${LOCAL_DIR}

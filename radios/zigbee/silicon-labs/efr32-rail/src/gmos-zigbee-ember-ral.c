@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2025 Zynaptic Limited
+ * Copyright 2025-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -28,12 +28,13 @@
 #include "gmos-config.h"
 #include "gmos-platform.h"
 #include "gmos-scheduler.h"
+#include "gmos-crypto.h"
 #include "gmos-zigbee-stack.h"
 #include "gmos-zigbee-ember-ral.h"
-#include "psa/crypto.h"
 #include "sl_zigbee.h"
 #include "sl_rail_util_pti.h"
 #include "pa_conversions_efr32.h"
+#include "sl_token_manager_api.h"
 
 /*
  * Only one instance of the EmberZNet stack can be running on a single
@@ -122,7 +123,6 @@ bool gmosZigbeeRalInit (gmosZigbeeStack_t* zigbeeStack)
 {
     gmosZigbeeRalState_t* ralData = zigbeeStack->ralData;
     sl_status_t slStatus;
-    psa_status_t psaStatus;
     bool initOk = true;
 
     // Only a single EmberZNet stack instance may be used per device.
@@ -137,8 +137,19 @@ bool gmosZigbeeRalInit (gmosZigbeeStack_t* zigbeeStack)
     // Zigbee protocol key storage. This function is safe to call
     // multiple times, so it does not matter if the PSA cryptography
     // library is also initialised elsewhere.
-    psaStatus = psa_crypto_init ();
-    if (psaStatus != PSA_SUCCESS) {
+    if (!gmosCryptoPalInit ()) {
+        initOk = false;
+        goto out;
+    }
+
+    // Initialise the legacy buffer manager component.
+    sli_legacy_buffer_manager_initialize_buffers ();
+
+    // Initialise the token manager.
+    slStatus = sl_token_manager_init ();
+    GMOS_LOG_FMT (LOG_INFO,
+        "EmberZNet initialised token manager with status 0x%04X.", slStatus);
+    if (slStatus != SL_STATUS_OK) {
         initOk = false;
         goto out;
     }

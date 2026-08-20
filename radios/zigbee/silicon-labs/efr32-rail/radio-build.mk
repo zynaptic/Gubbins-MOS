@@ -1,7 +1,7 @@
 #
 # The Gubbins Microcontroller Operating System
 #
-# Copyright 2024-2025 Zynaptic Limited
+# Copyright 2024-2026 Zynaptic Limited
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -27,6 +27,9 @@ ZIGBEE_COMMON_SRC_DIR = ${GMOS_GIT_DIR}/radios/zigbee/common
 ZIGBEE_COMMON_TEST_DIR = ${GMOS_GIT_DIR}/radios/zigbee/test
 ZIGBEE_TARGET_PATH = zigbee/silicon-labs/efr32-rail
 ZIGBEE_TARGET_SRC_DIR = ${GMOS_GIT_DIR}/radios/${ZIGBEE_TARGET_PATH}
+ZIGBEE_EFR32_PLATFORM_DIR = ${GMOS_SIMPLICITY_SDK_DIR}/zigbee
+ZIGBEE_EFR32_RAIL_LIB_DIR = ${GMOS_SIMPLICITY_SDK_DIR}/rail_library
+ZIGBEE_EFR32_IEEE802154_DIR = ${GMOS_SIMPLICITY_SDK_DIR}/common_15_4
 
 # Add the precompiled Zigbee libraries to the link stage.
 TSLIBS = \
@@ -37,8 +40,15 @@ TSLIBS = \
 # Custom PA curve configurations need to be compiled for the standalone
 # devices.
 ifeq (${GMOS_TARGET_DEVICE_FAMILY}, EFR32MG24)
-TSLIBS += rail_efr32xg24_gcc_release
-TSFILES = sdk-pa_curves_efr32.o
+TSLIBS += \
+	rail_efr32xg24_gcc_release \
+	rail_efr32xg24_gcc_secure
+TSFILES = \
+	sdk-pa_curves_efr32.o \
+	sdk-sl_rail_util_built_in_phys.o \
+	sdk-sl_rail_ieee802154_config_38M4Hz.o \
+	sdk-sl_rail_ieee802154_config_39MHz.o \
+	sdk-sl_rail_ieee802154_config_40MHz.o
 endif
 
 # Select the target specific RAIL libraries for MGM24 modules. Standard
@@ -60,40 +70,48 @@ LDFLAGS += -L${GMOS_BUILD_DIR}/radios/${ZIGBEE_TARGET_PATH}/lib
 # platform specific Zigbee components.
 ZIGBEE_TARGET_HEADER_DIRS = \
 	${GMOS_TARGET_DEVICE_FAMILY_DIR}/Include \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/common/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/emlib/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/CMSIS/Core/Include \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/common/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/emdrv/nvm3/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/driver/gpio/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/mac \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/mac/config \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/rail_lib/common \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/rail_lib/chip/efr32/efr32xg2x \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/rail_lib/protocol/ieee802154 \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/rail_lib/plugin \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/rail_lib/plugin/pa-conversions \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/rail_lib/plugin/rail_util_pti \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/rail_lib/plugin/rail_util_ieee802154 \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/sleeptimer/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/device_manager/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/power_manager/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/power_manager/config \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/legacy_hal/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/token_manager/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/service/token_manager/config \
-	${GMOS_SIMPLICITY_SDK_DIR}/protocol/zigbee \
-	${GMOS_SIMPLICITY_SDK_DIR}/protocol/zigbee/stack \
-	${GMOS_SIMPLICITY_SDK_DIR}/protocol/zigbee/stack/include \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/se_manager/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_psa_driver/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/config \
-	${GMOS_SIMPLICITY_SDK_DIR}/util/plugin/security_manager \
-	${GMOS_SIMPLICITY_SDK_DIR}/util/plugin/byte_utilities \
-	${GMOS_SIMPLICITY_SDK_DIR}/util/silicon_labs/silabs_core \
-	${GMOS_SIMPLICITY_SDK_DIR}/util/third_party/mbedtls/include \
-	${GMOS_SIMPLICITY_SDK_DIR}/util/third_party/mbedtls/library \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/common/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/emlib/inc \
+	${GMOS_SIMPLICITY_SDK_CMSIS}/Core/Include \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/emdrv/common/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/emdrv/nvm3/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/driver/gpio/inc \
+	${ZIGBEE_EFR32_PLATFORM_DIR}/platform/radio/mac \
+	${ZIGBEE_EFR32_IEEE802154_DIR}/mac/config \
+	${ZIGBEE_EFR32_RAIL_LIB_DIR}/common \
+	${ZIGBEE_EFR32_RAIL_LIB_DIR}/plugin \
+	${ZIGBEE_EFR32_RAIL_LIB_DIR}/chip/efr32/efr32xg2x \
+	${ZIGBEE_EFR32_RAIL_LIB_DIR}/protocol/ieee802154 \
+	${ZIGBEE_EFR32_RAIL_LIB_DIR}/plugin/pa-conversions \
+	${ZIGBEE_EFR32_RAIL_LIB_DIR}/plugin/sl_rail_util_compatible_pa \
+	${ZIGBEE_EFR32_RAIL_LIB_DIR}/plugin/sl_rail_util_pti \
+	${ZIGBEE_EFR32_RAIL_LIB_DIR}/plugin/sl_rail_util_ieee802154 \
+	${ZIGBEE_EFR32_RAIL_LIB_DIR}/plugin/sl_rail_util_built_in_phys/${GMOS_TARGET_SILICON_FAMILY_XLC} \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/sleeptimer/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/clock_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/device_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/power_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/power_manager/config \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/token_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/token_manager/config \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/token_manager/legacy/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/iostream/inc \
+	${ZIGBEE_EFR32_PLATFORM_DIR}/platform/service/legacy_hal/inc \
+	${ZIGBEE_EFR32_PLATFORM_DIR}/platform/service/legacy_hal_wdog/inc \
+	${ZIGBEE_EFR32_PLATFORM_DIR}/platform/service/legacy_hal_wdog/config \
+	${ZIGBEE_EFR32_PLATFORM_DIR} \
+	${ZIGBEE_EFR32_PLATFORM_DIR}/stack \
+	${ZIGBEE_EFR32_PLATFORM_DIR}/stack/core \
+	${ZIGBEE_EFR32_PLATFORM_DIR}/stack/include \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/se_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sl_psa_driver/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sl_mbedtls_support/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sl_mbedtls_support/config \
+	${ZIGBEE_EFR32_IEEE802154_DIR}/plugin/security_manager \
+	${ZIGBEE_EFR32_PLATFORM_DIR}/util/plugin/byte_utilities \
+	${ZIGBEE_EFR32_PLATFORM_DIR}/util/silicon_labs/silabs_core \
+	${GMOS_SIMPLICITY_SDK_MBEDTLS}/include \
+	${GMOS_SIMPLICITY_SDK_MBEDTLS}/library
 
 # List all the Zigbee stack files that need to be built.
 ZIGBEE_TARGET_OBJ_FILE_NAMES = \
@@ -114,6 +132,7 @@ ZIGBEE_TARGET_OBJ_FILE_NAMES = \
 	em-hal-crc.o \
 	em-hal-diagnostic.o \
 	em-hal-ember-phy.o \
+	em-hal-sl_legacy_hal_wdog.o \
 	em-stack-sl_zigbee_configuration.o \
 	em-stack-sl_zigbee_configuration_access.o \
 	em-stack-strong-random-api.o \
@@ -142,6 +161,13 @@ ZIGBEE_TARGET_OBJ_FILE_NAMES = \
 	em-stack-sl_token_def.o \
 	em-stack-sl_token_manager.o \
 	em-stack-sl_token_manufacturing.o \
+	em-stack-sl_token_manager_api.o \
+	em-stack-sl_token_manager_lock.o \
+	em-stack-sli_token_manager_internal.o \
+	em-stack-sli_token_manager_dynamic.o \
+	em-stack-sli_token_manager_manufacturing.o \
+	em-stack-sl_zigbee_token_legacy.o \
+	em-stack-sl_zigbee_token_baremetal_wrapper.o \
 	em-stack-message_baremetal_wrapper.o \
 	em-stack-message_baremetal_callbacks.o \
 	em-stack-child_baremetal_wrapper.o \
@@ -177,10 +203,14 @@ TSFLAGS = \
 SDKFLAGS = \
 	${TSFLAGS} \
 	-DUSE_NVM3 \
+	-DSL_TOKEN_MANAGER_BACKEND_INT_FLASH \
+	-DSL_COMMON_TOKEN_MANAGER_ENABLE_STATIC_TOKENS \
+	-DSL_COMMON_TOKEN_MANAGER_ENABLE_DYNAMIC_TOKENS \
 	-DSTACK_TYPES_HEADER='"sl_zigbee_types.h"' \
 	-DMBEDTLS_CONFIG_FILE='"efr32-crypto-config.h"' \
 	-Wno-unused-parameter \
 	-Wno-missing-field-initializers
+
 
 # Specify the local build directory.
 LOCAL_DIR = ${GMOS_BUILD_DIR}/radios/${ZIGBEE_TARGET_PATH}
@@ -213,15 +243,20 @@ ${LOCAL_DIR}/%.o : ${ZIGBEE_TARGET_SRC_DIR}/src/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} ${TSFLAGS} ${addprefix -I, ${ZIGBEE_TARGET_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the vendor Zigbee stack files.
-${LOCAL_DIR}/em-hal-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/service/legacy_hal/src/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/em-hal-%.o : ${ZIGBEE_EFR32_PLATFORM_DIR}/platform/service/*/src/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} ${SDKFLAGS} ${addprefix -I, ${ZIGBEE_TARGET_HEADER_DIRS}} -o $@ $<
-${LOCAL_DIR}/em-stack-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/protocol/zigbee/stack/*/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/em-stack-%.o : ${ZIGBEE_EFR32_PLATFORM_DIR}/stack/*/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} ${SDKFLAGS} ${addprefix -I, ${ZIGBEE_TARGET_HEADER_DIRS}} -o $@ $<
-${LOCAL_DIR}/em-stack-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/protocol/zigbee/stack/*/*/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/em-stack-%.o : ${ZIGBEE_EFR32_PLATFORM_DIR}/stack/*/*/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} ${SDKFLAGS} ${addprefix -I, ${ZIGBEE_TARGET_HEADER_DIRS}} -o $@ $<
-${LOCAL_DIR}/em-stack-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/protocol/zigbee/stack/*/*/*/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/em-stack-%.o : ${ZIGBEE_EFR32_PLATFORM_DIR}/stack/*/*/*/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} ${SDKFLAGS} ${addprefix -I, ${ZIGBEE_TARGET_HEADER_DIRS}} -o $@ $<
-${LOCAL_DIR}/em-stack-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/service/token_manager/src/%.c | ${LOCAL_DIR}
+
+# Run the C compiler on the additional token manager and debug support
+# files that are required by the Zigbee stack.
+${LOCAL_DIR}/em-stack-%.o : ${GMOS_SIMPLICITY_SDK_PLATFORM}/service/*/src/%.c | ${LOCAL_DIR}
+	${CC} ${CFLAGS} ${SDKFLAGS} ${addprefix -I, ${ZIGBEE_TARGET_HEADER_DIRS}} -o $@ $<
+${LOCAL_DIR}/em-stack-%.o : ${GMOS_SIMPLICITY_SDK_PLATFORM}/service/token_manager/legacy/src/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} ${SDKFLAGS} ${addprefix -I, ${ZIGBEE_TARGET_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the vendor Zigbee application utility files.
@@ -230,20 +265,24 @@ ${LOCAL_DIR}/em-util-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/protocol/zigbee/app/util/*
 
 # Run the C compiler on the additional SDK utility plugin files that are
 # required by the Zigbee stack.
-${LOCAL_DIR}/sdk-plugin-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/util/plugin/*/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/sdk-plugin-%.o : ${ZIGBEE_EFR32_PLATFORM_DIR}/util/plugin/*/%.c | ${LOCAL_DIR}
+	${CC} ${CFLAGS} ${SDKFLAGS} ${addprefix -I, ${ZIGBEE_TARGET_HEADER_DIRS}} -o $@ $<
+${LOCAL_DIR}/sdk-plugin-%.o : ${ZIGBEE_EFR32_IEEE802154_DIR}/plugin/*/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} ${SDKFLAGS} ${addprefix -I, ${ZIGBEE_TARGET_HEADER_DIRS}} -o $@ $<
 
-# Run the C compiler on the additional SDK rail plugin files that are
+# Run the C compiler on the additional RAIL plugin files that are
 # required by the Zigbee stack.
-${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/rail_lib/plugin/*/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/sdk-%.o : ${ZIGBEE_EFR32_RAIL_LIB_DIR}/plugin/*/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} ${SDKFLAGS} ${addprefix -I, ${ZIGBEE_TARGET_HEADER_DIRS}} -o $@ $<
-${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/rail_lib/plugin/*/*/*/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/sdk-%.o : ${ZIGBEE_EFR32_RAIL_LIB_DIR}/plugin/*/*/%.c | ${LOCAL_DIR}
+	${CC} ${CFLAGS} ${SDKFLAGS} ${addprefix -I, ${ZIGBEE_TARGET_HEADER_DIRS}} -o $@ $<
+${LOCAL_DIR}/sdk-%.o : ${ZIGBEE_EFR32_RAIL_LIB_DIR}/plugin/*/*/*/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} ${SDKFLAGS} ${addprefix -I, ${ZIGBEE_TARGET_HEADER_DIRS}} -o $@ $<
 
 # Copy the required target libraries to the build directory.
-${LOCAL_DIR}/lib/lib%.a : ${GMOS_SIMPLICITY_SDK_DIR}/protocol/zigbee/build/gcc/cortex-m33/*/release_singlenetwork/lib%.a | ${LOCAL_DIR}/lib
+${LOCAL_DIR}/lib/lib%.a : ${ZIGBEE_EFR32_PLATFORM_DIR}/libs/build/gcc/cortex-m33/*/release_singlenetwork/lib%.a | ${LOCAL_DIR}/lib
 	cp $< $@
-${LOCAL_DIR}/lib/lib%.a : ${GMOS_SIMPLICITY_SDK_DIR}/platform/radio/rail_lib/autogen/librail_release/lib%.a | ${LOCAL_DIR}/lib
+${LOCAL_DIR}/lib/lib%.a : ${ZIGBEE_EFR32_RAIL_LIB_DIR}/autogen/librail_release/lib%.a | ${LOCAL_DIR}/lib
 	cp $< $@
 
 # Timestamp the Zigbee stack object files.

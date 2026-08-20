@@ -59,7 +59,7 @@ ARCH_NAME = cortex-m33
 # assumes the Silicon Labs recommended ARM toolchain located in the /opt
 # directory.
 ifndef ARM_GCC_TOOLCHAIN_DIR
-ARM_GCC_TOOLCHAIN_DIR = /opt/arm-gnu-toolchain-15.2.rel1-x86_64-arm-none-eabi/
+ARM_GCC_TOOLCHAIN_DIR = /opt/arm-gnu-toolchain-14.2.rel1-x86_64-arm-none-eabi
 endif
 
 # Specify the location of the Silicon Labs Simplicity SDK directory. By

@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2022-2025 Zynaptic Limited
+ * Copyright 2022-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -88,7 +88,7 @@ gmosZigbeeStatus_t gmosZigbeeApsUnicastTransmit (
 {
     gmosZigbeeStatus_t stackStatus;
     uint8_t stackTag;
-    uint_fast8_t slot;
+    uint_fast8_t slot = 0;
 
     // Perform common validation checks on the transmit request.
     stackStatus = gmosZigbeeApsValidateRequest (zigbeeStack, txMsgApsFrame);
@@ -142,7 +142,7 @@ gmosZigbeeStatus_t gmosZigbeeApsBroadcastTransmit (
     gmosZigbeeStatus_t stackStatus;
     gmosZigbeeApsBroadcastType_t broadcastType;
     uint8_t stackTag;
-    uint_fast8_t slot;
+    uint_fast8_t slot = 0;
 
     // Perform common validation checks on the transmit request.
     stackStatus = gmosZigbeeApsValidateRequest (zigbeeStack, txMsgApsFrame);
