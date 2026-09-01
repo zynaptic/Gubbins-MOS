@@ -43,6 +43,13 @@
 #define CORE_INTERRUPT_DEFAULT_PRIORITY 5
 
 /*
+ * If required, report allocations for the heap.
+ */
+#if (GMOS_CONFIG_HEAP_SIZE > 0)
+#include "sl_memory_manager.h"
+#endif
+
+/*
  * Perform NVIC initialisation, setting all interrupts to the default
  * interrupt priority level.
  */
@@ -130,6 +137,22 @@ static inline void gmosPalClockSetup (void)
 }
 
 /*
+ * Reports the memory manager configuration.
+ */
+static inline void gmosPalMemoryManagerReport (void)
+{
+#if (GMOS_CONFIG_HEAP_SIZE > 0)
+    sl_memory_region_t memoryRegion;
+    memoryRegion = sl_memory_get_stack_region ();
+    GMOS_LOG_FMT (LOG_INFO, "Stack allocated : %08X->%08X",
+        memoryRegion.addr, memoryRegion.addr + memoryRegion.size);
+    memoryRegion = sl_memory_get_heap_region ();
+    GMOS_LOG_FMT (LOG_INFO, "Heap allocated  : %08X->%08X",
+        memoryRegion.addr, memoryRegion.addr + memoryRegion.size);
+#endif
+}
+
+/*
  * The device setup and scheduler loop are all implemented from the
  * main application entry point.
  */
@@ -154,6 +177,9 @@ int main(void)
 
     // Initialise the application code.
     gmosAppInit ();
+
+    // Report the Silicon Labs memory manager allocations.
+    gmosPalMemoryManagerReport ();
 
     // Enter the scheduler loop. This is implemented in the 'main'
     // function to avoid adding an extra stack frame.

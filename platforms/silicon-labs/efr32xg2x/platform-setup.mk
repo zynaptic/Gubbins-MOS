@@ -66,7 +66,7 @@ endif
 # default this assumes it has been downloaded using the Conan package
 # manager and then copied over to the vendors directory on the data drive.
 ifndef GMOS_SIMPLICITY_SDK_DIR
-GMOS_SIMPLICITY_SDK_DIR = /data/vendors/silicon-labs/simplicity_sdk-2026-6-0
+GMOS_SIMPLICITY_SDK_DIR = /data/vendors/silicon-labs/simplicity_sdk-2026-6-1
 endif
 GMOS_SIMPLICITY_SDK_PLATFORM = ${GMOS_SIMPLICITY_SDK_DIR}/platform_core/platform
 GMOS_SIMPLICITY_SDK_UTIL = ${GMOS_SIMPLICITY_SDK_DIR}/platform_core/util
@@ -130,17 +130,28 @@ CXXFLAGS += -gdwarf-2
 CXXFLAGS += -mcpu=${ARCH_NAME}
 CXXFLAGS += -mthumb
 CXXFLAGS += -D${GMOS_TARGET_DEVICE_VARIANT}=1
+CXXFLAGS += -DCORTEXM3=1
+CXXFLAGS += -DCORTEXM3_EFM32_MICRO=1
+CXXFLAGS += -DCORTEXM3_EFR32=1
+CXXFLAGS += -DCMSIS_NVIC_VIRTUAL=1
 CXXFLAGS += -Os
 CXXFLAGS += -Wall
 CXXFLAGS += -Wextra
 CXXFLAGS += -ffunction-sections
 CXXFLAGS += -fdata-sections
+CXXFLAGS += -fomit-frame-pointer
+CXXFLAGS += -fno-builtin-printf
+CXXFLAGS += -fno-builtin-sprintf
 CXXFLAGS += -mfpu=fpv5-sp-d16
 CXXFLAGS += -mfloat-abi=hard
 CXXFLAGS += -mcmse
 CXXFLAGS += --specs=nano.specs
 CXXFLAGS += -MMD
 CXXFLAGS += -MP
+
+# Link time optimisation is disabled until it can be properly tested.
+# CXXFLAGS += -fwhole-program
+# CXXFLAGS += -flto=auto
 
 # C specific compiler options.
 CFLAGS = ${CXXFLAGS}
@@ -160,6 +171,10 @@ LDFLAGS += -mfpu=fpv5-sp-d16
 LDFLAGS += -mfloat-abi=hard
 LDFLAGS += --specs=nano.specs
 LDFLAGS += -T${GMOS_BUILD_DIR}/platform/target.ld
+LDFLAGS += -Wl,--wrap=_free_r -Wl,--wrap=_malloc_r -Wl,--wrap=_calloc_r -Wl,--wrap=_realloc_r
+
+# Link time optimisation is disabled until it can be properly tested.
+# LDFLAGS += -flto
 
 # Required linker library names.
 LDLIBS += gcc

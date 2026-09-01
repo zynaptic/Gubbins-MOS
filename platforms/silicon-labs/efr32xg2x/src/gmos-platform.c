@@ -119,6 +119,11 @@ void gmosPalLogFmt (const char* fileName, uint32_t lineNo,
     va_list args;
     const char* levelString;
 
+    // Prevent inadvertent logging from ISR context callbacks.
+    if (CORE_InIrqContext ()) {
+        return;
+    }
+
     // Map the log level to the corresponding text.
     if (logLevel > LOG_ERROR) {
         logLevel = LOG_ERROR;

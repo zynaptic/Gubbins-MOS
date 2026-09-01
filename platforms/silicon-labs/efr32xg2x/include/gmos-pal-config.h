@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023-2025 Zynaptic Limited
+ * Copyright 2023-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,8 +17,8 @@
  */
 
 /*
- * This header defines the platform specific data structures used for
- * the Silicon Labs EFR32xG2x SPI driver implementation.
+ * This header defines the platform specific configuration options used
+ * for the Silicon Labs EFR32xG2x series devices.
  */
 
 #ifndef GMOS_PAL_CONFIG_H

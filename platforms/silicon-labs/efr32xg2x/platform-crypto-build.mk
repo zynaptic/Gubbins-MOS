@@ -36,6 +36,8 @@ PLATFORM_CRYPTO_HEADER_DIRS = \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/emdrv/nvm3/inc \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/device_manager/inc \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/clock_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/interrupt_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/interrupt_manager/inc/arm \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/se_manager/inc \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sl_psa_driver/inc \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sli_psec_common/inc \

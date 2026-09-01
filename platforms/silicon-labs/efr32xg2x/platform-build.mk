@@ -52,9 +52,9 @@ PLATFORM_HEADER_DIRS = \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/device_init/inc \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/device_manager/inc \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/interrupt_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/interrupt_manager/inc/arm \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/memory_manager/inc \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/memory_manager/config \
-	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/memory_manager/config/legacy \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/dma_manager/inc \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/hfxo_manager/inc \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/clock_manager/inc \
@@ -120,6 +120,7 @@ PLATFORM_OBJ_FILE_NAMES = \
 	sdk-sl_hfxo_manager_hal_s2.o \
 	sdk-sl_memory_manager.o \
 	sdk-sl_memory_manager_region.o \
+	sdk-sl_memory_manager_retarget.o \
 	sdk-sli_memory_manager_common.o \
 	sdk-sl_power_manager.o \
 	sdk-sl_power_manager_common.o \
@@ -161,7 +162,7 @@ ${LOCAL_DIR}/%.o : ${GMOS_GIT_DIR}/imports/*/%.c | ${LOCAL_DIR}
 
 # Run the C compiler on the SDK device family specific files.
 ${LOCAL_DIR}/sdk-%.o : ${GMOS_TARGET_DEVICE_FAMILY_DIR}/Source/%.c | ${LOCAL_DIR}
-	${CC} ${CFLAGS} ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
+	${CC} ${CFLAGS} -DSL_APP_PROPERTIES ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the SDK device library specific files.
 ${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_PLATFORM}/*/*/%.c | ${LOCAL_DIR}
