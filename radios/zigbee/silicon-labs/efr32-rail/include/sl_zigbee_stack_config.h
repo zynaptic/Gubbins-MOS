@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2025 Zynaptic Limited
+ * Copyright 2025-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,11 +27,8 @@
 #include "gmos-zigbee-config.h"
 
 /*
- * Specify the fixed device CPU and SoC options for the Zigbee stack.
+ * Specify the fixed PHY option for the Zigbee stack.
  */
-#define CORTEXM3
-#define CORTEXM3_EFR32
-#define CORTEXM3_EFM32_MICRO
 #define PHY_EFR32
 
 /*

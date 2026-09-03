@@ -41,14 +41,19 @@ TSLIBS = \
 # devices.
 ifeq (${GMOS_TARGET_DEVICE_FAMILY}, EFR32MG24)
 TSLIBS += \
-	rail_efr32xg24_gcc_release \
-	rail_efr32xg24_gcc_secure
+	rail_efr32xg24_gcc_release
 TSFILES = \
 	sdk-pa_curves_efr32.o \
 	sdk-sl_rail_util_built_in_phys.o \
 	sdk-sl_rail_ieee802154_config_38M4Hz.o \
 	sdk-sl_rail_ieee802154_config_39MHz.o \
-	sdk-sl_rail_ieee802154_config_40MHz.o
+	sdk-sl_rail_ieee802154_config_40MHz.o \
+	sdk-sl_rail_ble_config_38M4Hz.o \
+	sdk-sl_rail_ble_config_39MHz.o \
+	sdk-sl_rail_ble_config_40MHz.o \
+	sdk-sl_rail_rfsense_ook_config_38M4Hz.o \
+	sdk-sl_rail_rfsense_ook_config_39MHz.o \
+	sdk-sl_rail_rfsense_ook_config_40MHz.o
 endif
 
 # Select the target specific RAIL libraries for MGM24 modules. Standard
@@ -87,6 +92,8 @@ ZIGBEE_TARGET_HEADER_DIRS = \
 	${ZIGBEE_EFR32_RAIL_LIB_DIR}/plugin/sl_rail_util_pti \
 	${ZIGBEE_EFR32_RAIL_LIB_DIR}/plugin/sl_rail_util_ieee802154 \
 	${ZIGBEE_EFR32_RAIL_LIB_DIR}/plugin/sl_rail_util_built_in_phys/${GMOS_TARGET_SILICON_FAMILY_XLC} \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/interrupt_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/interrupt_manager/inc/arm \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/sleeptimer/inc \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/clock_manager/inc \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/device_manager/inc \
@@ -203,9 +210,10 @@ TSFLAGS = \
 SDKFLAGS = \
 	${TSFLAGS} \
 	-DUSE_NVM3 \
-	-DSL_TOKEN_MANAGER_BACKEND_INT_FLASH \
-	-DSL_COMMON_TOKEN_MANAGER_ENABLE_STATIC_TOKENS \
-	-DSL_COMMON_TOKEN_MANAGER_ENABLE_DYNAMIC_TOKENS \
+	-DSL_TOKEN_MANAGER_BACKEND_INT_FLASH=1 \
+	-DSL_TOKEN_MANAGER_FORMAT_LEGACY=1 \
+	-DSL_COMMON_TOKEN_MANAGER_ENABLE_STATIC_TOKENS=1 \
+	-DSL_COMMON_TOKEN_MANAGER_ENABLE_DYNAMIC_TOKENS=1 \
 	-DSTACK_TYPES_HEADER='"sl_zigbee_types.h"' \
 	-DMBEDTLS_CONFIG_FILE='"efr32-crypto-config.h"' \
 	-Wno-unused-parameter \

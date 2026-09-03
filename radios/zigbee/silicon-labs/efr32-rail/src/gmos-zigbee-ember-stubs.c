@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2025 Zynaptic Limited
+ * Copyright 2025-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@
  * to support the EmberZNet Zigbee stack implementation.
  */
 
+#include <stdint.h>
 #include <stdbool.h>
 
 #include "sl_zigbee_types.h"
