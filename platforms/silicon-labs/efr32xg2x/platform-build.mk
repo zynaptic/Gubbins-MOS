@@ -56,6 +56,7 @@ PLATFORM_HEADER_DIRS = \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/memory_manager/inc \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/memory_manager/config \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/dma_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/dma_manager/src \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/hfxo_manager/inc \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/clock_manager/inc \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/power_manager/inc \
@@ -126,6 +127,12 @@ PLATFORM_OBJ_FILE_NAMES = \
 	sdk-sl_power_manager_common.o \
 	sdk-sl_power_manager_em4.o \
 	sdk-sl_power_manager_hal_s2.o \
+	sdk-sl_dma_manager.o \
+	sdk-sl_dma_manager_hal_ldma.o \
+	sdk-sl_dma_channel.o \
+	sdk-sl_dma_descriptor_allocator.o \
+	sdk-sl_hal_ldma.o \
+	sdk-sl_device_dma_s2.o \
 	sdk-sl_hal_sysrtc.o \
 	sdk-sl_hal_sysrtc_subsystem.o \
 	sdk-sl_sleeptimer.o \
@@ -213,7 +220,59 @@ ${GMOS_BUILD_DIR}/firmware-crc.hex : ${GMOS_BUILD_DIR}/firmware.hex
 ${GMOS_BUILD_DIR}/firmware-crc.gbl : ${GMOS_BUILD_DIR}/firmware-crc.hex
 	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ --app $<
 
+# Ensure that the application certificates directory exists.
+${GMOS_APP_SIGNING_CERT_DIR} :
+	mkdir -p $@
+
+# Create a bootloader key pair if required. This should never overwrite an
+# existing bootloader private key.
+ifeq (,$(wildcard ${GMOS_APP_SIGNING_CERT_DIR}/bl_cert_key.pem))
+${GMOS_APP_SIGNING_CERT_DIR}/bl_cert_key.pem ${GMOS_APP_SIGNING_CERT_DIR}/bl_cert_pubkey.pem &: \
+		${GMOS_APP_SIGNING_CERT_DIR}
+	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander util genkey --type ecc-p256 \
+		--privkey ${GMOS_APP_SIGNING_CERT_DIR}/bl_cert_key.pem \
+		--pubkey ${GMOS_APP_SIGNING_CERT_DIR}/bl_cert_pubkey.pem \
+		--tokenfile ${GMOS_APP_SIGNING_CERT_DIR}/bl_cert_pubkey.txt
+endif
+
+# Create an application key pair if required. This should never overwite an
+# existing application private key.
+ifeq (,$(wildcard ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_key.pem))
+${GMOS_APP_SIGNING_CERT_DIR}/app_cert_key.pem ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_pubkey.pem &: \
+		${GMOS_APP_SIGNING_CERT_DIR}
+	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander util genkey --type ecc-p256 \
+		--privkey ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_key.pem \
+		--pubkey ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_pubkey.pem \
+		--tokenfile ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_pubkey.txt
+endif
+
+# Create an application certificate file if required. This should never
+# overwrite an existing certificate file.
+ifeq (,$(wildcard ${GMOS_APP_SIGNING_CERT_DIR}/app_cert.bin))
+${GMOS_APP_SIGNING_CERT_DIR}/app_cert.bin : \
+		${GMOS_APP_SIGNING_CERT_DIR}/app_cert_pubkey.pem \
+		${GMOS_APP_SIGNING_CERT_DIR}/bl_cert_key.pem
+	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander util gencert \
+		--cert-type secureboot --cert-version 1 \
+		--cert-pubkey ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_pubkey.pem \
+		--sign ${GMOS_APP_SIGNING_CERT_DIR}/bl_cert_key.pem --outfile $@
+endif
+
+# Add the application certificate to the Intel hex format file.
+${GMOS_BUILD_DIR}/firmware-signed.hex : ${GMOS_BUILD_DIR}/firmware.hex \
+		${GMOS_APP_SIGNING_CERT_DIR}/app_cert.bin \
+		${GMOS_APP_SIGNING_CERT_DIR}/app_cert_key.pem
+	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander convert $< --secureboot \
+		--certificate ${GMOS_APP_SIGNING_CERT_DIR}/app_cert.bin \
+		--keyfile ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_key.pem --outfile $@
+
+# Build the GBL3 file for the signed firmware image.
+${GMOS_BUILD_DIR}/firmware-signed.gbl : ${GMOS_BUILD_DIR}/firmware-signed.hex
+	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ --app $<
+
 # Include extended build artifact list.
 all : \
 	${GMOS_BUILD_DIR}/firmware-crc.hex \
-	${GMOS_BUILD_DIR}/firmware-crc.gbl
+	${GMOS_BUILD_DIR}/firmware-crc.gbl \
+	${GMOS_BUILD_DIR}/firmware-signed.hex \
+	${GMOS_BUILD_DIR}/firmware-signed.gbl

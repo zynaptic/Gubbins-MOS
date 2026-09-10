@@ -81,6 +81,12 @@ ifndef GMOS_SIMPLICITY_COMMANDER_DIR
 GMOS_SIMPLICITY_COMMANDER_DIR = /data/vendors/silicon-labs/commander
 endif
 
+# Specify the location of the Silicon Labs firmware image signing certificate
+# and keys directory.
+ifndef GMOS_APP_SIGNING_CERT_DIR
+GMOS_APP_SIGNING_CERT_DIR = ${GMOS_APP_DIR}/certificates
+endif
+
 # Specify device specific SDK file locations.
 GMOS_TARGET_DEVICE_FAMILY_DIR = \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/Device/SiliconLabs/${GMOS_TARGET_DEVICE_FAMILY}
@@ -89,13 +95,15 @@ GMOS_TARGET_DEVICE_FAMILY_DIR = \
 # and specify the path to the required API header directories, including
 # platform specific hardware support directories.
 GMOS_PLATFORM_PSA_CRYPTO_API_DIRS = \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/common/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/emlib/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/se_manager/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_psa_driver/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/inc \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/security/sl_component/sl_mbedtls_support/config \
-	${GMOS_SIMPLICITY_SDK_DIR}/platform/CMSIS/Core/Include \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/common/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/emlib/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/interrupt_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/service/interrupt_manager/inc/arm \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/se_manager/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sl_psa_driver/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sl_mbedtls_support/inc \
+	${GMOS_SIMPLICITY_SDK_PLATFORM}/security/sl_component/sl_mbedtls_support/config \
+	${GMOS_SIMPLICITY_SDK_CMSIS}/Core/Include \
 	${GMOS_TARGET_DEVICE_FAMILY_DIR}/Include
 
 # Specify that the platform layer provides the MbedTLS protocol library
