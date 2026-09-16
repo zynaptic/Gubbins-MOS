@@ -32,7 +32,7 @@
 #include "gmos-scheduler.h"
 #include "gmos-openthread.h"
 #include "gmos-openthread-resdir.h"
-#include "openthread/dns_client.h"
+#include "gmos-openthread-sddns.h"
 #include "openthread/coap.h"
 
 // Provide stringification macros.
@@ -48,18 +48,6 @@
 // integer value and option string representation.
 #define GMOS_OPENTHREAD_RESDIR_ENTRY_LIFETIME 300
 
-// Specify the initial SD-DNS request backoff delay as an integer number
-// of seconds.
-#define GMOS_OPENTHREAD_RESDIR_SDDNS_BACKOFF_INIT 8
-
-// Specify the maximum SD-DNS backoff delay. This must be an integer
-// number of seconds less than 255.
-#define GMOS_OPENTHREAD_RESDIR_SDDNS_BACKOFF_MAX 150
-
-// Specify the exponential SD-DNS backoff delay multiplier. The actual
-// value used is N/256.
-#define GMOS_OPENTHREAD_RESDIR_SDDNS_BACKOFF_MULT 352
-
 /*
  * Specify the state space for the OpenThread CoRE resource directory
  * client state machine.
@@ -67,9 +55,6 @@
 typedef enum {
     GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_INIT,
     GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_IDLE,
-    GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_SDDNS_BROWSE,
-    GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_SDDNS_CALLBACK,
-    GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_SDDNS_RETRY,
     GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_DISC_SEND,
     GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_DISC_CALLBACK,
     GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_DISC_RETRY,
@@ -105,157 +90,6 @@ static inline bool gmosOpenThreadResDirClientInitWait (
         }
     }
     return initOk;
-}
-
-/*
- * Implement callback handler for SD-DNS browse requests.
- */
-static void gmosOpenThreadResDirClientSdDnsCallback (otError otStatus,
-    const otDnsBrowseResponse *sdDnsResponse, void *callbackData)
-{
-    gmosOpenThreadResDirClient_t* resDirClient =
-        (gmosOpenThreadResDirClient_t*) callbackData;
-    char labelBuffer [sizeof (resDirClient->sdDnsLabel)];
-    otDnsServiceInfo serviceInfo;
-    uint32_t i;
-
-    // Drop responses received in an invalid state.
-    if (resDirClient->resDirClientState !=
-        GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_SDDNS_CALLBACK) {
-        return;
-    }
-
-    // On startup use the first entry in the response list. On
-    // subsequent requests the service label must match.
-    for (i = 0; otStatus == OT_ERROR_NONE; i++) {
-        otStatus = otDnsBrowseResponseGetServiceInstance (
-            sdDnsResponse, i, labelBuffer, sizeof (labelBuffer));
-        if (resDirClient->sdDnsLabel [0] == '\0') {
-            break;
-        }
-        if (strncmp (labelBuffer, resDirClient->sdDnsLabel,
-            sizeof (labelBuffer)) == 0) {
-            break;
-        }
-    }
-
-    // Get the service information for the selected entry. The host name
-    // and txt data are not required, so the buffers are set to NULL.
-    if (otStatus == OT_ERROR_NONE) {
-        serviceInfo.mHostNameBuffer = NULL;
-        serviceInfo.mTxtData = NULL;
-        otStatus = otDnsBrowseResponseGetServiceInfo (
-            sdDnsResponse, labelBuffer, &serviceInfo);
-    }
-
-    // Extract the IP address and port number for the resource
-    // directory.
-    if (otStatus == OT_ERROR_NONE) {
-        uint8_t* addrBytes = serviceInfo.mHostAddress.mFields.m8;
-        for (i = 0; i < 16; i++) {
-            resDirClient->resDirAddr [i] = addrBytes [i];
-        }
-        resDirClient->resDirPort = serviceInfo.mPort;
-
-        // Take a local copy of the service label if required.
-        if (resDirClient->sdDnsLabel [0] == '\0') {
-            memcpy (resDirClient->sdDnsLabel,
-                labelBuffer, sizeof (labelBuffer));
-        }
-
-        // Force DNS refresh at 80% of the service information TTL.
-        resDirClient->sdDnsTimeout = gmosPalGetTimer () +
-            GMOS_MS_TO_TICKS (serviceInfo.mTtl * 800);
-        resDirClient->resDirClientState =
-            GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_IDLE;
-
-        // Log new DNS information if required.
-        GMOS_LOG_FMT (LOG_DEBUG,
-            "OpenThread : SD-DNS browse found service '%s'.",
-                resDirClient->sdDnsLabel);
-        GMOS_LOG_FMT (LOG_VERBOSE,
-            "OpenThread : SD-DNS address [%02x%02x:%02x%02x:%02x%02x:"
-            "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x]:%d",
-            addrBytes [0], addrBytes [1], addrBytes [2], addrBytes [3],
-            addrBytes [4], addrBytes [5], addrBytes [6], addrBytes [7],
-            addrBytes [8], addrBytes [9], addrBytes [10], addrBytes [11],
-            addrBytes [12], addrBytes [13], addrBytes [14], addrBytes [15],
-            serviceInfo.mPort);
-        GMOS_LOG_FMT (LOG_VERBOSE,
-            "OpenThread : SD-DNS CoRE-RD service TTL %ds.", serviceInfo.mTtl);
-    }
-
-    // Attempt a retry if the request was not successful.
-    else {
-        GMOS_LOG_FMT (LOG_DEBUG,
-            "OpenThread : SD-DNS CoRE-RD browse callback failure status %d.",
-            otStatus);
-        resDirClient->resDirClientState =
-            GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_SDDNS_RETRY;
-    }
-
-    // Resume state machine task execution.
-    gmosSchedulerTaskResume (&(resDirClient->resDirTask));
-    return;
-}
-
-/*
- * Initiate an SD-DNS browse request to search for the CoRE Link
- * resource directory.
- */
-static inline bool gmosOpenThreadResDirClientSdDnsBrowse (
-    gmosOpenThreadResDirClient_t* resDirClient)
-{
-    otInstance* otStack = resDirClient->openThreadStack->otInstance;
-    otError otStatus;
-
-    // Issue the SD-DNS service browsing request.
-    otStatus = otDnsClientBrowse (
-        otStack, GMOS_OPENTHREAD_RESDIR_SERVICE_TYPE,
-        gmosOpenThreadResDirClientSdDnsCallback, resDirClient, NULL);
-
-    // Attempt a retry if the request was not successful.
-    if (otStatus != OT_ERROR_NONE) {
-        GMOS_LOG_FMT (LOG_DEBUG,
-            "OpenThread : SD-DNS CoRE-RD browse request failure status %d.",
-            otStatus);
-    }
-    return (otStatus == OT_ERROR_NONE) ? true : false;
-}
-
-/*
- * Calculate the SD-DNS request backoff delay.
- */
-static inline gmosTaskStatus_t gmosOpenThreadResDirClientSdDnsBackoff (
-    gmosOpenThreadResDirClient_t* resDirClient)
-{
-    uint32_t backoffDelay;
-    uint32_t nextDelay;
-
-    // Calculate the current backoff delay as the number of timer ticks.
-    GMOS_LOG_FMT (LOG_VERBOSE,
-        "OpenThread : SD-DNS CoRE-RD retry backoff delay %ds.",
-        resDirClient->sdDnsBackoffDelay);
-    backoffDelay = GMOS_MS_TO_TICKS (
-        ((uint32_t) resDirClient->sdDnsBackoffDelay) * 1000);
-
-    // Update the backoff delay for the next retry.
-    nextDelay = ((((uint32_t) resDirClient->sdDnsBackoffDelay) *
-        GMOS_OPENTHREAD_RESDIR_SDDNS_BACKOFF_MULT) / 256);
-    if (nextDelay <= GMOS_OPENTHREAD_RESDIR_SDDNS_BACKOFF_MAX) {
-        resDirClient->sdDnsBackoffDelay = (uint8_t) nextDelay;
-    }
-
-    // Randomise the backoff delay when it reaches the maximum value.
-    else {
-        uint8_t randomDelay = 0;
-        while ((randomDelay < GMOS_OPENTHREAD_RESDIR_SDDNS_BACKOFF_INIT) ||
-            (randomDelay > GMOS_OPENTHREAD_RESDIR_SDDNS_BACKOFF_MAX)) {
-            gmosPalGetRandomBytes (&randomDelay, 1);
-        }
-        resDirClient->sdDnsBackoffDelay = randomDelay;
-    }
-    return GMOS_TASK_RUN_LATER (backoffDelay);
 }
 
 /*
@@ -358,7 +192,7 @@ static void gmosOpenThreadResDirClientDiscCallback (void* callbackData,
         if (msgSize == msgLen) {
             msgBuf [msgLen] = '\0';
         } else {
-            otStatus = OT_ERROR_GENERIC;
+            otStatus = OT_ERROR_PARSE;
         }
     }
 
@@ -393,6 +227,8 @@ static inline bool gmosOpenThreadResDirClientDiscSend (
     gmosOpenThreadResDirClient_t* resDirClient)
 {
     otInstance* otStack = resDirClient->openThreadStack->otInstance;
+    uint8_t* resDirAddr = resDirClient->sdDnsClient.serviceAddr;
+    uint16_t resDirPort = resDirClient->sdDnsClient.servicePort;
     otMessage* coapMessage;
     otMessageInfo coapMessageInfo = { 0 };
     otError otStatus;
@@ -427,10 +263,9 @@ static inline bool gmosOpenThreadResDirClientDiscSend (
     // Set the CoAP message destination and send the request. All
     // additional options are left as zero to select the defaults.
     for (i = 0; i < 16; i++) {
-        coapMessageInfo.mPeerAddr.mFields.m8 [i] =
-            resDirClient->resDirAddr [i];
+        coapMessageInfo.mPeerAddr.mFields.m8 [i] = resDirAddr [i];
     }
-    coapMessageInfo.mPeerPort = OT_DEFAULT_COAP_PORT;
+    coapMessageInfo.mPeerPort = resDirPort;
     otStatus = otCoapSendRequest (otStack, coapMessage,
         &coapMessageInfo, gmosOpenThreadResDirClientDiscCallback,
         resDirClient);
@@ -553,6 +388,8 @@ static inline bool gmosOpenThreadResDirClientRegSend (
     gmosOpenThreadResDirClient_t* resDirClient)
 {
     otInstance* otStack = resDirClient->openThreadStack->otInstance;
+    uint8_t* resDirAddr = resDirClient->sdDnsClient.serviceAddr;
+    uint16_t resDirPort = resDirClient->sdDnsClient.servicePort;
     otMessage* coapMessage;
     otMessageInfo coapMessageInfo = { 0 };
     otError otStatus;
@@ -620,10 +457,9 @@ static inline bool gmosOpenThreadResDirClientRegSend (
     // additional options are left as zero to select the defaults.
     if (otStatus == OT_ERROR_NONE) {
         for (i = 0; i < 16; i++) {
-            coapMessageInfo.mPeerAddr.mFields.m8 [i] =
-                resDirClient->resDirAddr [i];
+            coapMessageInfo.mPeerAddr.mFields.m8 [i] = resDirAddr [i];
         }
-        coapMessageInfo.mPeerPort = OT_DEFAULT_COAP_PORT;
+        coapMessageInfo.mPeerPort = resDirPort;
         otStatus = otCoapSendRequest (otStack, coapMessage,
             &coapMessageInfo, gmosOpenThreadResDirClientRegCallback,
             resDirClient);
@@ -703,6 +539,8 @@ static inline bool gmosOpenThreadResDirClientUpdSend (
     gmosOpenThreadResDirClient_t* resDirClient)
 {
     otInstance* otStack = resDirClient->openThreadStack->otInstance;
+    uint8_t* resDirAddr = resDirClient->sdDnsClient.serviceAddr;
+    uint16_t resDirPort = resDirClient->sdDnsClient.servicePort;
     otMessage* coapMessage;
     otMessageInfo coapMessageInfo = { 0 };
     otError otStatus;
@@ -731,10 +569,9 @@ static inline bool gmosOpenThreadResDirClientUpdSend (
     // additional options are left as zero to select the defaults.
     if (otStatus == OT_ERROR_NONE) {
         for (i = 0; i < 16; i++) {
-            coapMessageInfo.mPeerAddr.mFields.m8 [i] =
-                resDirClient->resDirAddr [i];
+            coapMessageInfo.mPeerAddr.mFields.m8 [i] = resDirAddr [i];
         }
-        coapMessageInfo.mPeerPort = OT_DEFAULT_COAP_PORT;
+        coapMessageInfo.mPeerPort = resDirPort;
         otStatus = otCoapSendRequest (otStack, coapMessage,
             &coapMessageInfo, gmosOpenThreadResDirClientUpdCallback,
             resDirClient);
@@ -776,11 +613,9 @@ static inline gmosTaskStatus_t gmosOpenThreadResDirClientActionSelect (
 
     // Issue a service discovery DNS request if the local cached entry
     // is stale.
-    delay = (int32_t) (resDirClient->sdDnsTimeout - currentTime);
-    if (delay <= 0) {
-        resDirClient->sdDnsBackoffDelay =
-            GMOS_OPENTHREAD_RESDIR_SDDNS_BACKOFF_INIT;
-        *nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_SDDNS_BROWSE;
+    if (!gmosOpenThreadSdDnsClientDataValid (&(resDirClient->sdDnsClient))) {
+        return gmosOpenThreadSdDnsClientPoll (
+            resDirClient->openThreadStack, &(resDirClient->sdDnsClient));
     }
 
     // Issue a resource directory discovery request if the resource
@@ -822,9 +657,7 @@ static inline gmosTaskStatus_t gmosOpenThreadResDirClientRestart (
     resDirClient->resDirEntryPath [0] = '\0';
 
     // Reset the SD-DNS state and mark it as stale.
-    resDirClient->sdDnsTimeout = restartTimeout;
-    resDirClient->sdDnsLabel [0] = '\0';
-
+    gmosOpenThreadSdDnsClientReset (&(resDirClient->sdDnsClient));
     return GMOS_TASK_RUN_LATER (delay);
 }
 
@@ -854,29 +687,6 @@ static inline gmosTaskStatus_t gmosOpenThreadResDirClientTaskFn (
         case GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_IDLE :
             taskStatus = gmosOpenThreadResDirClientActionSelect (
                 resDirClient, &nextState);
-            break;
-
-        // Initiate an SD-DNS browse request to obtain the location of
-        // the CoRE link resource directory.
-        case GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_SDDNS_BROWSE :
-            if (gmosOpenThreadResDirClientSdDnsBrowse (resDirClient)) {
-                nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_SDDNS_CALLBACK;
-                taskStatus = GMOS_TASK_SUSPEND;
-            } else {
-                taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (1000));
-            }
-            break;
-
-        // Suspend task processing while the SD-DNS callbacks are being
-        // processed.
-        case GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_SDDNS_CALLBACK :
-            taskStatus = GMOS_TASK_SUSPEND;
-            break;
-
-        // Retry the SD-DNS request after a short delay.
-        case GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_SDDNS_RETRY :
-            nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_SDDNS_BROWSE;
-            taskStatus = gmosOpenThreadResDirClientSdDnsBackoff (resDirClient);
             break;
 
         // Send the CoRE-RD discovery request to the resource directory.
@@ -1001,9 +811,9 @@ bool gmosOpenThreadResDirClientInit (
     resDirClient->resDirRegPath [0] = '\0';
     resDirClient->resDirEntryPath [0] = '\0';
 
-    // Reset the SD-DNS state.
-    resDirClient->sdDnsTimeout = initTimeout;
-    resDirClient->sdDnsLabel [0] = '\0';
+    // Initialise the SD-DNS state.
+    gmosOpenThreadSdDnsClientInit (&(resDirClient->sdDnsClient),
+        GMOS_OPENTHREAD_RESDIR_SERVICE_TYPE);
 
     // Run the resource directory client task.
     gmosOpenThreadResDirClientTask_start (&(resDirClient->resDirTask),

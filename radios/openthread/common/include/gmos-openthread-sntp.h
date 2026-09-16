@@ -1,7 +1,7 @@
 /*
  * The Gubbins Microcontroller Operating System
  *
- * Copyright 2023-2025 Zynaptic Limited
+ * Copyright 2023-2026 Zynaptic Limited
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,7 +26,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "gmos-openthread.h"
+#include "gmos-scheduler.h"
+#include "gmos-openthread-sddns.h"
 
 /**
  * Defines the GubbinsMOS OpenThread SNTP client structure that is used
@@ -35,12 +36,16 @@
 typedef struct gmosOpenThreadSntpClient_t {
 
     // This is a pointer to the GubbinsMOS OpenThread stack instance
-    // that is to be used for communication with the NTP server.
+    // that is to be used for communication with the SNTP server.
     gmosOpenThreadStack_t* openThreadStack;
 
     // This is the GubbinsMOS scheduler task state that is used to
     // run the SNTP access task.
     gmosTaskState_t sntpTask;
+
+    // This is the SD-DNS client instance that is used for service
+    // discovery.
+    gmosOpenThreadSdDnsClient_t sdDnsClient;
 
     // This is the last NTP synchronisation time value.
     uint32_t lastNtpTime;
@@ -52,23 +57,9 @@ typedef struct gmosOpenThreadSntpClient_t {
     // cycle.
     uint32_t sntpSyncTimeout;
 
-    // This is the timeout that is used to force an SD-DNS refresh cycle
-    // when the SD-DNS entry is stale.
-    uint32_t sdDnsTimeout;
-
-    // This is the remote UDP port number to be used for accessing the
-    // NTP server.
-    uint16_t ntpPort;
-
-    // This is the IPv6 address to be used for accessing the NTP server.
-    uint8_t ntpAddr [16];
-
     // This is the current state of the OpenThread SNTP client state
     // machine.
     uint8_t sntpClientState;
-
-    // This specifies the current backoff delay for SD-DNS requests.
-    uint8_t sdDnsBackoffDelay;
 
 } gmosOpenThreadSntpClient_t;
 

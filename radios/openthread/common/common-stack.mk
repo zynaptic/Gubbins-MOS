@@ -40,6 +40,7 @@ OPENTHREAD_OBJ_FILE_NAMES = \
 	gmos-openthread.o \
 	gmos-openthread-gpio.o \
 	gmos-openthread-join.o \
+	gmos-openthread-sddns.o \
 	gmos-openthread-resdir.o \
 	gmos-openthread-sntp.o
 

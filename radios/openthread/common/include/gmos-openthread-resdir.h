@@ -26,7 +26,8 @@
 
 #include <stdint.h>
 #include <stdbool.h>
-#include "gmos-openthread.h"
+#include "gmos-scheduler.h"
+#include "gmos-openthread-sddns.h"
 
 /**
  * Defines the GubbinsMOS OpenThread resource directory client structure
@@ -41,6 +42,10 @@ typedef struct gmosOpenThreadResDirClient_t {
     // This is the GubbinsMOS scheduler task state that is used to
     // run the resource directory access task.
     gmosTaskState_t resDirTask;
+
+    // This is the SD-DNS client instance that is used for service
+    // discovery.
+    gmosOpenThreadSdDnsClient_t sdDnsClient;
 
     // This is the sector ID to be used when registering the device
     // with the resource directory.
@@ -60,21 +65,9 @@ typedef struct gmosOpenThreadResDirClient_t {
     // update cycle.
     uint32_t resDirEntryTimeout;
 
-    // This is the timeout that is used to force an SD-DNS refresh cycle
-    // when the SD-DNS entry is stale.
-    uint32_t sdDnsTimeout;
-
     // This specifies the size of the resource directory entry as an
     // integer number of bytes.
     uint16_t resDirEntrySize;
-
-    // This is the remote CoAP UDP port number to be used for accessing
-    // the resource directory.
-    uint16_t resDirPort;
-
-    // This is the IPv6 address to be used for accessing the resource
-    // directory.
-    uint8_t resDirAddr [16];
 
     // This is the URI path component of the resource directory
     // registration location.
@@ -83,11 +76,6 @@ typedef struct gmosOpenThreadResDirClient_t {
     // This is the URI path component for the resource directory entry
     // management location.
     char resDirEntryPath [32];
-
-    // This is the SD-DNS service label which is used to identify the
-    // correct SD-DNS service during refresh cycles (the first 63 octet
-    // label in the fully qualified service name).
-    char sdDnsLabel [64];
 
     // This is the current state of the OpenThread CoRE resource
     // directory client state machine.

@@ -30,7 +30,7 @@
 #include "gmos-scheduler.h"
 #include "gmos-openthread.h"
 #include "gmos-openthread-sntp.h"
-#include "openthread/dns_client.h"
+#include "gmos-openthread-sddns.h"
 #include "openthread/sntp.h"
 
 // Select the SD-DNS service type to use.
@@ -47,27 +47,12 @@
 // exponential backoff.
 #define GMOS_OPENTHREAD_SNTP_RETRY_INTERVAL 60
 
-// Specify the initial SD-DNS request backoff delay as an integer number
-// of seconds.
-#define GMOS_OPENTHREAD_SNTP_SDDNS_BACKOFF_INIT 8
-
-// Specify the maximum SD-DNS backoff delay. This must be an integer
-// number of seconds less than 255.
-#define GMOS_OPENTHREAD_SNTP_SDDNS_BACKOFF_MAX 150
-
-// Specify the exponential SD-DNS backoff delay multiplier. The actual
-// value used is N/256.
-#define GMOS_OPENTHREAD_SNTP_SDDNS_BACKOFF_MULT 352
-
 /*
  * Specify the state space for the OpenThread SNTP client state machine.
  */
 typedef enum {
     GMOS_OPENTHREAD_SNTP_CLIENT_STATE_INIT,
     GMOS_OPENTHREAD_SNTP_CLIENT_STATE_IDLE,
-    GMOS_OPENTHREAD_SNTP_CLIENT_STATE_SDDNS_BROWSE,
-    GMOS_OPENTHREAD_SNTP_CLIENT_STATE_SDDNS_CALLBACK,
-    GMOS_OPENTHREAD_SNTP_CLIENT_STATE_SDDNS_RETRY,
     GMOS_OPENTHREAD_SNTP_CLIENT_STATE_QUERY_SEND,
     GMOS_OPENTHREAD_SNTP_CLIENT_STATE_QUERY_CALLBACK,
     GMOS_OPENTHREAD_SNTP_CLIENT_STATE_FAILED
@@ -100,137 +85,6 @@ static inline bool gmosOpenThreadSntpClientInitWait (
     gmosOpenThreadStatus_t netStatus =
         gmosOpenThreadNetStatus (sntpClient->openThreadStack);
     return (netStatus == GMOS_OPENTHREAD_STATUS_SUCCESS) ? true : false;
-}
-
-/*
- * Implement callback handler for SD-DNS browse requests.
- */
-static void gmosOpenThreadSntpClientSdDnsCallback (otError otStatus,
-    const otDnsBrowseResponse *sdDnsResponse, void *callbackData)
-{
-    gmosOpenThreadSntpClient_t* sntpClient =
-        (gmosOpenThreadSntpClient_t*) callbackData;
-    otDnsServiceInfo serviceInfo;
-    char labelBuffer [64];
-    uint32_t i;
-
-    // Drop responses received in an invalid state.
-    if (sntpClient->sntpClientState !=
-        GMOS_OPENTHREAD_SNTP_CLIENT_STATE_SDDNS_CALLBACK) {
-        return;
-    }
-
-    // NTP requests are stateless, so just use the first entry in the
-    // response list.
-    otStatus = otDnsBrowseResponseGetServiceInstance (
-        sdDnsResponse, 0, labelBuffer, sizeof (labelBuffer));
-
-    // Get the service information for the selected entry. The host name
-    // and txt data are not required, so the buffers are set to NULL.
-    if (otStatus == OT_ERROR_NONE) {
-        serviceInfo.mHostNameBuffer = NULL;
-        serviceInfo.mTxtData = NULL;
-        otStatus = otDnsBrowseResponseGetServiceInfo (
-            sdDnsResponse, labelBuffer, &serviceInfo);
-    }
-
-    // Extract the IP address and port number for the NTP server.
-    if (otStatus == OT_ERROR_NONE) {
-        uint8_t* addrBytes = serviceInfo.mHostAddress.mFields.m8;
-        for (i = 0; i < 16; i++) {
-            sntpClient->ntpAddr [i] = addrBytes [i];
-        }
-        sntpClient->ntpPort = serviceInfo.mPort;
-
-        // Force DNS refresh at 80% of the service information TTL.
-        sntpClient->sdDnsTimeout = gmosPalGetTimer () +
-            GMOS_MS_TO_TICKS (serviceInfo.mTtl * 800);
-        sntpClient->sntpClientState =
-            GMOS_OPENTHREAD_SNTP_CLIENT_STATE_IDLE;
-
-        // Log new DNS information if required.
-        GMOS_LOG_FMT (LOG_VERBOSE,
-            "OpenThread : SD-DNS NTP server address [%02x%02x:%02x%02x:%02x%02x:"
-            "%02x%02x:%02x%02x:%02x%02x:%02x%02x:%02x%02x]:%d",
-            addrBytes [0], addrBytes [1], addrBytes [2], addrBytes [3],
-            addrBytes [4], addrBytes [5], addrBytes [6], addrBytes [7],
-            addrBytes [8], addrBytes [9], addrBytes [10], addrBytes [11],
-            addrBytes [12], addrBytes [13], addrBytes [14], addrBytes [15],
-            serviceInfo.mPort);
-        GMOS_LOG_FMT (LOG_VERBOSE,
-            "OpenThread : SD-DNS NTP server address TTL %ds.", serviceInfo.mTtl);
-    }
-
-    // Attempt a retry if the request was not successful.
-    else {
-        GMOS_LOG_FMT (LOG_DEBUG,
-            "OpenThread : SD-DNS NTP browse callback failure status %d.",
-            otStatus);
-        sntpClient->sntpClientState =
-            GMOS_OPENTHREAD_SNTP_CLIENT_STATE_SDDNS_RETRY;
-    }
-
-    // Resume state machine task execution.
-    gmosSchedulerTaskResume (&(sntpClient->sntpTask));
-    return;
-}
-
-/*
- * Initiate an SD-DNS browse request to search for local NTP server.
- */
-static inline bool gmosOpenThreadSntpClientSdDnsBrowse (
-    gmosOpenThreadSntpClient_t* sntpClient)
-{
-    otInstance* otStack = sntpClient->openThreadStack->otInstance;
-    otError otStatus;
-
-    // Issue the SD-DNS service browsing request.
-    otStatus = otDnsClientBrowse (
-        otStack, GMOS_OPENTHREAD_SNTP_SERVICE_TYPE,
-        gmosOpenThreadSntpClientSdDnsCallback, sntpClient, NULL);
-
-    // Attempt a retry if the request was not successful.
-    if (otStatus != OT_ERROR_NONE) {
-        GMOS_LOG_FMT (LOG_DEBUG,
-            "OpenThread : SD-DNS NTP browse request failure status %d.",
-            otStatus);
-    }
-    return (otStatus == OT_ERROR_NONE) ? true : false;
-}
-
-/*
- * Calculate the SD-DNS request backoff delay.
- */
-static inline gmosTaskStatus_t gmosOpenThreadSntpClientSdDnsBackoff (
-    gmosOpenThreadSntpClient_t* sntpClient)
-{
-    uint32_t backoffDelay;
-    uint32_t nextDelay;
-
-    // Calculate the current backoff delay as the number of timer ticks.
-    GMOS_LOG_FMT (LOG_VERBOSE,
-        "OpenThread : SD-DNS NTP retry backoff delay %ds.",
-        sntpClient->sdDnsBackoffDelay);
-    backoffDelay = GMOS_MS_TO_TICKS (
-        ((uint32_t) sntpClient->sdDnsBackoffDelay) * 1000);
-
-    // Update the backoff delay for the next retry.
-    nextDelay = ((((uint32_t) sntpClient->sdDnsBackoffDelay) *
-        GMOS_OPENTHREAD_SNTP_SDDNS_BACKOFF_MULT) / 256);
-    if (nextDelay <= GMOS_OPENTHREAD_SNTP_SDDNS_BACKOFF_MAX) {
-        sntpClient->sdDnsBackoffDelay = (uint8_t) nextDelay;
-    }
-
-    // Randomise the backoff delay when it reaches the maximum value.
-    else {
-        uint8_t randomDelay = 0;
-        while ((randomDelay < GMOS_OPENTHREAD_SNTP_SDDNS_BACKOFF_INIT) ||
-            (randomDelay > GMOS_OPENTHREAD_SNTP_SDDNS_BACKOFF_MAX)) {
-            gmosPalGetRandomBytes (&randomDelay, 1);
-        }
-        sntpClient->sdDnsBackoffDelay = randomDelay;
-    }
-    return GMOS_TASK_RUN_LATER (backoffDelay);
 }
 
 /*
@@ -278,6 +132,8 @@ static inline bool gmosOpenThreadSntpClientQuery (
     gmosOpenThreadSntpClient_t* sntpClient)
 {
     otInstance* otStack = sntpClient->openThreadStack->otInstance;
+    uint8_t* ntpAddr = sntpClient->sdDnsClient.serviceAddr;
+    uint16_t ntpPort = sntpClient->sdDnsClient.servicePort;
     otMessageInfo ntpAddrInfo = { 0 };
     otSntpQuery ntpQuery = { &ntpAddrInfo };
     otError otStatus;
@@ -285,9 +141,9 @@ static inline bool gmosOpenThreadSntpClientQuery (
 
     // Set the NTP server peer address.
     for (i = 0; i < 16; i++) {
-        ntpAddrInfo.mPeerAddr.mFields.m8 [i] = sntpClient->ntpAddr [i];
+        ntpAddrInfo.mPeerAddr.mFields.m8 [i] = ntpAddr [i];
     }
-    ntpAddrInfo.mPeerPort = sntpClient->ntpPort;
+    ntpAddrInfo.mPeerPort = ntpPort;
 
     // Issue the SNTP query to the NTP server address.
     otStatus = otSntpClientQuery (otStack, &ntpQuery,
@@ -320,11 +176,9 @@ static inline gmosTaskStatus_t gmosOpenThreadSntpClientActionSelect (
 
     // Issue a service discovery DNS request if the local cached entry
     // is stale.
-    delay = (int32_t) (sntpClient->sdDnsTimeout - currentTime);
-    if (delay <= 0) {
-        sntpClient->sdDnsBackoffDelay =
-            GMOS_OPENTHREAD_SNTP_SDDNS_BACKOFF_INIT;
-        *nextState = GMOS_OPENTHREAD_SNTP_CLIENT_STATE_SDDNS_BROWSE;
+    if (!gmosOpenThreadSdDnsClientDataValid (&(sntpClient->sdDnsClient))) {
+        return gmosOpenThreadSdDnsClientPoll (
+            sntpClient->openThreadStack, &(sntpClient->sdDnsClient));
     }
 
     // Issue an SNTP synchronisation request.
@@ -360,29 +214,6 @@ static inline gmosTaskStatus_t gmosOpenThreadSntpClientTaskFn (
         case GMOS_OPENTHREAD_SNTP_CLIENT_STATE_IDLE :
             taskStatus = gmosOpenThreadSntpClientActionSelect (
                 sntpClient, &nextState);
-            break;
-
-        // Initiate an SD-DNS browse request to obtain the location of
-        // the local NTP server.
-        case GMOS_OPENTHREAD_SNTP_CLIENT_STATE_SDDNS_BROWSE :
-            if (gmosOpenThreadSntpClientSdDnsBrowse (sntpClient)) {
-                nextState = GMOS_OPENTHREAD_SNTP_CLIENT_STATE_SDDNS_CALLBACK;
-                taskStatus = GMOS_TASK_SUSPEND;
-            } else {
-                taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (1000));
-            }
-            break;
-
-        // Suspend task processing while the SD-DNS callbacks are being
-        // processed.
-        case GMOS_OPENTHREAD_SNTP_CLIENT_STATE_SDDNS_CALLBACK :
-            taskStatus = GMOS_TASK_SUSPEND;
-            break;
-
-        // Retry the SD-DNS request after a short delay.
-        case GMOS_OPENTHREAD_SNTP_CLIENT_STATE_SDDNS_RETRY :
-            nextState = GMOS_OPENTHREAD_SNTP_CLIENT_STATE_SDDNS_BROWSE;
-            taskStatus = gmosOpenThreadSntpClientSdDnsBackoff (sntpClient);
             break;
 
         // Send the SNTP synchronisation request to the NTP server.
@@ -423,8 +254,6 @@ bool gmosOpenThreadSntpClientInit (
     gmosOpenThreadSntpClient_t* sntpClient,
     gmosOpenThreadStack_t* openThreadStack)
 {
-    uint32_t initTimeout = gmosPalGetTimer ();
-
     // Reset the SNTP synchronisation state.
     sntpClient->lastNtpTime = 0;
     sntpClient->lastNtpTimestamp = 0;
@@ -435,7 +264,8 @@ bool gmosOpenThreadSntpClientInit (
         GMOS_OPENTHREAD_SNTP_CLIENT_STATE_INIT;
 
     // Reset the SD-DNS state.
-    sntpClient->sdDnsTimeout = initTimeout;
+    gmosOpenThreadSdDnsClientInit (&(sntpClient->sdDnsClient),
+        GMOS_OPENTHREAD_SNTP_SERVICE_TYPE);
 
     // Run the SNTP client task.
     gmosOpenThreadSntpClientTask_start (&(sntpClient->sntpTask),
