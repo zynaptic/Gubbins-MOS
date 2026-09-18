@@ -28,6 +28,7 @@
 #include <stdbool.h>
 #include "gmos-scheduler.h"
 #include "gmos-openthread-sddns.h"
+#include "gmos-openthread-wkcreq.h"
 
 /**
  * Defines the GubbinsMOS OpenThread resource directory client structure
@@ -46,6 +47,10 @@ typedef struct gmosOpenThreadResDirClient_t {
     // This is the SD-DNS client instance that is used for service
     // discovery.
     gmosOpenThreadSdDnsClient_t sdDnsClient;
+
+    // This is the well-known CoRE request client instance that is used
+    // for service discovery.
+    gmosOpenThreadWkcReqClient_t wkcReqClient;
 
     // This is the sector ID to be used when registering the device
     // with the resource directory.
@@ -69,10 +74,6 @@ typedef struct gmosOpenThreadResDirClient_t {
     // integer number of bytes.
     uint16_t resDirEntrySize;
 
-    // This is the URI path component of the resource directory
-    // registration location.
-    char resDirRegPath [32];
-
     // This is the URI path component for the resource directory entry
     // management location.
     char resDirEntryPath [32];
@@ -80,9 +81,6 @@ typedef struct gmosOpenThreadResDirClient_t {
     // This is the current state of the OpenThread CoRE resource
     // directory client state machine.
     uint8_t resDirClientState;
-
-    // This specifies the current backoff delay for SD-DNS requests.
-    uint8_t sdDnsBackoffDelay;
 
 } gmosOpenThreadResDirClient_t;
 

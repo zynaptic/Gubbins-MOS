@@ -148,9 +148,8 @@ static void gmosOpenThreadSdDnsClientCallback (otError otStatus,
             GMOS_OPENTHREAD_SDDNS_CLIENT_STATE_RETRY;
     }
 
-    // Resume state machine task execution.
+    // Timestamp the transaction completion.
     sdDnsClient->sdDnsTimestamp = gmosPalGetTimer ();
-    return;
 }
 
 /*

@@ -41,6 +41,7 @@ OPENTHREAD_OBJ_FILE_NAMES = \
 	gmos-openthread-gpio.o \
 	gmos-openthread-join.o \
 	gmos-openthread-sddns.o \
+	gmos-openthread-wkcreq.o \
 	gmos-openthread-resdir.o \
 	gmos-openthread-sntp.o
 

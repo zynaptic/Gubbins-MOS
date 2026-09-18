@@ -33,6 +33,7 @@
 #include "gmos-openthread.h"
 #include "gmos-openthread-resdir.h"
 #include "gmos-openthread-sddns.h"
+#include "gmos-openthread-wkcreq.h"
 #include "openthread/coap.h"
 
 // Provide stringification macros.
@@ -43,6 +44,11 @@
 // uses plain CoAP accesses, but DTLS based CoAP would be preferable.
 #define GMOS_OPENTHREAD_RESDIR_SERVICE_TYPE \
     "_core-rd._udp.default.service.arpa"
+
+// Select the well-known CoRE request query string parameter which is
+// used to select the CoRE link registration path.
+#define GMOS_OPENTHREAD_RESDIR_WKCREQ_QUERY \
+    "rt=core.rd"
 
 // Specify the resource directory entry lifetime to be used as an
 // integer value and option string representation.
@@ -55,9 +61,6 @@
 typedef enum {
     GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_INIT,
     GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_IDLE,
-    GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_DISC_SEND,
-    GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_DISC_CALLBACK,
-    GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_DISC_RETRY,
     GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_REG_SEND,
     GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_REG_CALLBACK,
     GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_REG_RETRY,
@@ -90,199 +93,6 @@ static inline bool gmosOpenThreadResDirClientInitWait (
         }
     }
     return initOk;
-}
-
-/*
- * Parse the resource directory discovery message which is contained
- * in a null terminated string. Returns false on parsing failure.
- * This currently assumes that the resource directory performs attribute
- * filtering correctly and only returns the resource link of interest.
- * It could be made more robust by checking the contents of the 'ct' and
- * 'rt' attributes before accepting the resource link.
- */
-static otError gmosOpenThreadResDirClientDiscParse (
-    gmosOpenThreadResDirClient_t* resDirClient, uint8_t* msgBuf)
-{
-    uint8_t* msgPtr;
-    uint_fast8_t pathSize;
-
-    // The first two characters must always be the start of an absolute
-    // resource path on the server. The initial path separator is
-    // discarded prior to local storage.
-    msgPtr = msgBuf;
-    if ((*(msgPtr++) != '<') || ((*msgPtr++) != '/')) {
-        return OT_ERROR_PARSE;
-    }
-
-    // Find the end marker of the path component, which must be present.
-    pathSize = 0;
-    while (true) {
-        uint8_t pathChar = *(msgPtr++);
-        if (pathChar == '\0') {
-            return OT_ERROR_PARSE;
-        } else if (pathChar == '>') {
-            break;
-        } else {
-            pathSize += 1;
-        }
-    }
-
-    // Check that the resource path does not exceed the local allocated
-    // storage.
-    if (pathSize >= sizeof (resDirClient->resDirRegPath)) {
-        return OT_ERROR_NO_BUFS;
-    }
-
-    // Store the resource path component locally as a null terminated
-    // string.
-    memcpy (resDirClient->resDirRegPath, &(msgBuf [2]), pathSize);
-    resDirClient->resDirRegPath [pathSize] = '\0';
-    GMOS_LOG_FMT (LOG_DEBUG,
-        "OpenThread : CoRE-RD resource registration path : '%s'",
-        resDirClient->resDirRegPath);
-    return OT_ERROR_NONE;
-}
-
-/*
- * Callback handler for CoAP requests to discover the registration URI
- * on the resource directory.
- */
-static void gmosOpenThreadResDirClientDiscCallback (void* callbackData,
-    otMessage* coapMessage, const otMessageInfo* coapMessageInfo,
-    otError otStatus)
-{
-    gmosOpenThreadResDirClient_t* resDirClient =
-        (gmosOpenThreadResDirClient_t*) callbackData;
-    (void) coapMessageInfo;
-    otCoapCode coapStatus;
-    uint8_t msgBuf [sizeof (resDirClient->resDirRegPath) + 32];
-    uint_fast16_t msgOffset;
-    uint_fast16_t msgLen;
-    uint_fast16_t msgSize;
-
-    // Drop responses received in an invalid state.
-    if (resDirClient->resDirClientState !=
-        GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_DISC_CALLBACK) {
-        return;
-    }
-
-    // Check the CoAP return code. This should be 2.05 (content).
-    if (otStatus == OT_ERROR_NONE) {
-        coapStatus = otCoapMessageGetCode (coapMessage);
-        GMOS_LOG_FMT (LOG_DEBUG,
-            "OpenThread : CoRE-RD discovery CoAP status %d.%02d.",
-            (coapStatus >> 5) & 0x07, coapStatus & 0x1F);
-        if (coapStatus != OT_COAP_CODE_CONTENT) {
-            otStatus = OT_ERROR_REJECTED;
-        }
-    }
-
-    // Only process successful responses that can fit in the buffer.
-    if (otStatus == OT_ERROR_NONE) {
-        msgOffset = otMessageGetOffset (coapMessage);
-        msgLen = otMessageGetLength (coapMessage) - msgOffset;
-        if (msgLen >= sizeof (msgBuf)) {
-            otStatus = OT_ERROR_NO_BUFS;
-        }
-    }
-
-    // Read the data into the local buffer as a null terminated string.
-    if (otStatus == OT_ERROR_NONE) {
-        msgSize = otMessageRead (coapMessage, msgOffset, msgBuf, msgLen);
-        if (msgSize == msgLen) {
-            msgBuf [msgLen] = '\0';
-        } else {
-            otStatus = OT_ERROR_PARSE;
-        }
-    }
-
-    // Parse the resource directory discovery response.
-    if (otStatus == OT_ERROR_NONE) {
-        otStatus = gmosOpenThreadResDirClientDiscParse (
-            resDirClient, msgBuf);
-    }
-
-    // Attempt a retry if the request was not successful.
-    if (otStatus == OT_ERROR_NONE) {
-        resDirClient->resDirClientState =
-            GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_IDLE;
-    } else {
-        GMOS_LOG_FMT (LOG_DEBUG,
-            "OpenThread : CoRE-RD discovery callback failure status %d.",
-            otStatus);
-        resDirClient->resDirClientState =
-            GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_DISC_RETRY;
-    }
-
-    // Resume state machine task execution.
-    gmosSchedulerTaskResume (&(resDirClient->resDirTask));
-    return;
-}
-
-/*
- * Initiate a CoAP request to discover the registration URI on the
- * resource directory.
- */
-static inline bool gmosOpenThreadResDirClientDiscSend (
-    gmosOpenThreadResDirClient_t* resDirClient)
-{
-    otInstance* otStack = resDirClient->openThreadStack->otInstance;
-    uint8_t* resDirAddr = resDirClient->sdDnsClient.serviceAddr;
-    uint16_t resDirPort = resDirClient->sdDnsClient.servicePort;
-    otMessage* coapMessage;
-    otMessageInfo coapMessageInfo = { 0 };
-    otError otStatus;
-    uint_fast8_t i;
-
-    // Allocate memory for the new CoAP message.
-    coapMessage = otCoapNewMessage (otStack, NULL);
-    if (coapMessage == NULL) {
-        otStatus = OT_ERROR_NO_BUFS;
-        goto fail;
-    }
-
-    // Fill in the common CoAP header for CoRE requests.
-    otCoapMessageInit (coapMessage,
-        OT_COAP_TYPE_CONFIRMABLE, OT_COAP_CODE_GET);
-    otCoapMessageGenerateToken (coapMessage,
-        OT_COAP_DEFAULT_TOKEN_LENGTH);
-    otStatus = otCoapMessageAppendUriPathOptions (coapMessage,
-        ".well-known/core");
-    if (otStatus != OT_ERROR_NONE) {
-        goto fail;
-    }
-
-    // Add the query parameter to select the resource directory
-    // registration path.
-    otStatus = otCoapMessageAppendUriQueryOption (coapMessage,
-        "rt=core.rd");
-    if (otStatus != OT_ERROR_NONE) {
-        goto fail;
-    }
-
-    // Set the CoAP message destination and send the request. All
-    // additional options are left as zero to select the defaults.
-    for (i = 0; i < 16; i++) {
-        coapMessageInfo.mPeerAddr.mFields.m8 [i] = resDirAddr [i];
-    }
-    coapMessageInfo.mPeerPort = resDirPort;
-    otStatus = otCoapSendRequest (otStack, coapMessage,
-        &coapMessageInfo, gmosOpenThreadResDirClientDiscCallback,
-        resDirClient);
-    if (otStatus != OT_ERROR_NONE) {
-        goto fail;
-    }
-    return true;
-
-    // Release allocated memory on failure.
-fail :
-    GMOS_LOG_FMT (LOG_DEBUG,
-        "OpenThread : CoRE-RD discovery request failure status %d.",
-        otStatus);
-    if (coapMessage != NULL) {
-        otMessageFree (coapMessage);
-    }
-    return false;
 }
 
 /*
@@ -407,7 +217,7 @@ static inline bool gmosOpenThreadResDirClientRegSend (
     otCoapMessageGenerateToken (coapMessage,
         OT_COAP_DEFAULT_TOKEN_LENGTH);
     otStatus = otCoapMessageAppendUriPathOptions (coapMessage,
-        resDirClient->resDirRegPath);
+        resDirClient->wkcReqClient.uriPath);
 
     // Specify the CoRE Link data format for the payload encoding.
     if (otStatus == OT_ERROR_NONE) {
@@ -613,28 +423,33 @@ static inline gmosTaskStatus_t gmosOpenThreadResDirClientActionSelect (
 
     // Issue a service discovery DNS request if the local cached entry
     // is stale.
-    if (!gmosOpenThreadSdDnsClientDataValid (&(resDirClient->sdDnsClient))) {
+    if (!gmosOpenThreadSdDnsClientDataValid (
+        &(resDirClient->sdDnsClient))) {
         return gmosOpenThreadSdDnsClientPoll (
             resDirClient->openThreadStack, &(resDirClient->sdDnsClient));
     }
 
+    // Issue a resource directory refresh request.
+    else if (resDirClient->resDirEntryPath [0] != '\0') {
+        *nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_UPD_SEND;
+        return GMOS_TASK_RUN_IMMEDIATE;
+    }
+
     // Issue a resource directory discovery request if the resource
     // directory URI path component is not known.
-    else if (resDirClient->resDirRegPath [0] == '\0') {
-        *nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_DISC_SEND;
+    else if (!gmosOpenThreadWkcReqClientDataValid (
+        &(resDirClient->wkcReqClient))) {
+        return gmosOpenThreadWkcReqClientPoll (
+            resDirClient->openThreadStack, &(resDirClient->wkcReqClient),
+            &(resDirClient->sdDnsClient));
     }
 
     // Issue a resource directory registration request if the device
     // is not currently registered.
-    else if (resDirClient->resDirEntryPath [0] == '\0') {
-        *nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_REG_SEND;
-    }
-
-    // Issue a resource directory refresh request.
     else {
-        *nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_UPD_SEND;
+        *nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_REG_SEND;
+        return GMOS_TASK_RUN_IMMEDIATE;
     }
-    return GMOS_TASK_RUN_IMMEDIATE;
 }
 
 /*
@@ -653,11 +468,11 @@ static inline gmosTaskStatus_t gmosOpenThreadResDirClientRestart (
 
     // Reset the resource directory entry.
     resDirClient->resDirEntryTimeout = restartTimeout + delay;
-    resDirClient->resDirRegPath [0] = '\0';
     resDirClient->resDirEntryPath [0] = '\0';
 
-    // Reset the SD-DNS state and mark it as stale.
+    // Reset the SD-DNS state and the well-known CoRE request state.
     gmosOpenThreadSdDnsClientReset (&(resDirClient->sdDnsClient));
+    gmosOpenThreadWkcReqClientReset (&(resDirClient->wkcReqClient));
     return GMOS_TASK_RUN_LATER (delay);
 }
 
@@ -687,30 +502,6 @@ static inline gmosTaskStatus_t gmosOpenThreadResDirClientTaskFn (
         case GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_IDLE :
             taskStatus = gmosOpenThreadResDirClientActionSelect (
                 resDirClient, &nextState);
-            break;
-
-        // Send the CoRE-RD discovery request to the resource directory.
-        case GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_DISC_SEND :
-            if (gmosOpenThreadResDirClientDiscSend (resDirClient)) {
-                nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_DISC_CALLBACK;
-                taskStatus = GMOS_TASK_SUSPEND;
-            } else {
-                nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_IDLE;
-                taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (1000));
-            }
-            break;
-
-        // Suspend task processing while the resource directory
-        // discovery callbacks are being processed.
-        case GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_DISC_CALLBACK :
-            taskStatus = GMOS_TASK_SUSPEND;
-            break;
-
-        // Retry the CoRE-RD discovery request after a short delay. Fall
-        // back to DNS discovery if the DNS entry has expired.
-        case GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_DISC_RETRY :
-            nextState = GMOS_OPENTHREAD_RESDIR_CLIENT_STATE_IDLE;
-            taskStatus = GMOS_TASK_RUN_LATER (GMOS_MS_TO_TICKS (8000));
             break;
 
         // Send the registration data to the resource directory.
@@ -808,12 +599,15 @@ bool gmosOpenThreadResDirClientInit (
     resDirClient->resDirEntryData = NULL;
     resDirClient->resDirEntrySize = 0;
     resDirClient->resDirEntryTimeout = initTimeout;
-    resDirClient->resDirRegPath [0] = '\0';
     resDirClient->resDirEntryPath [0] = '\0';
 
     // Initialise the SD-DNS state.
     gmosOpenThreadSdDnsClientInit (&(resDirClient->sdDnsClient),
         GMOS_OPENTHREAD_RESDIR_SERVICE_TYPE);
+
+    // Initialise the well-known CoRE request state.
+    gmosOpenThreadWkcReqClientInit (&(resDirClient->wkcReqClient),
+        GMOS_OPENTHREAD_RESDIR_WKCREQ_QUERY);
 
     // Run the resource directory client task.
     gmosOpenThreadResDirClientTask_start (&(resDirClient->resDirTask),
