@@ -128,6 +128,9 @@ static void gmosOpenThreadWkcReqClientCallback (void* callbackData,
         (gmosOpenThreadWkcReqClient_t*) callbackData;
     (void) coapMessageInfo;
     otCoapCode coapStatus;
+    otCoapOptionIterator coapOptIter;
+    const otCoapOption* coapOpt;
+    uint64_t coapOptValue;
     uint8_t msgBuf [sizeof (wkcReqClient->uriPath) + 32];
     uint_fast16_t msgOffset;
     uint_fast16_t msgLen;
@@ -147,6 +150,27 @@ static void gmosOpenThreadWkcReqClientCallback (void* callbackData,
             (coapStatus >> 5) & 0x07, coapStatus & 0x1F);
         if (coapStatus != OT_COAP_CODE_CONTENT) {
             otStatus = OT_ERROR_REJECTED;
+        }
+    }
+
+    // Check for oversized blockwise transfers. These have a block 2
+    // option with the 'more blocks' flag set and are treated as an out
+    // of buffer memory error.
+    if (otStatus == OT_ERROR_NONE) {
+        otStatus = otCoapOptionIteratorInit (&coapOptIter, coapMessage);
+    }
+    if (otStatus == OT_ERROR_NONE) {
+        coapOpt = otCoapOptionIteratorGetFirstOptionMatching (
+            &coapOptIter, OT_COAP_OPTION_BLOCK2);
+        if (coapOpt != NULL) {
+            otStatus = otCoapOptionIteratorGetOptionUintValue (
+                &coapOptIter, &coapOptValue);
+            GMOS_LOG_FMT (LOG_DEBUG,
+                "OpenThread : CoRE discovery block option 0x%08X",
+                (uint32_t) coapOptValue);
+            if ((coapOptValue & 0x08) != 0) {
+                otStatus = OT_ERROR_NO_BUFS;
+            }
         }
     }
 
@@ -236,8 +260,15 @@ static inline bool gmosOpenThreadWkcReqClientSend (
 
     // Add the query parameter to select the resource directory
     // registration path.
-    otStatus = otCoapMessageAppendUriQueryOption (coapMessage,
+    otStatus = otCoapMessageAppendUriQueryOptions (coapMessage,
         wkcReqClient->queryString);
+    if (otStatus != OT_ERROR_NONE) {
+        goto fail;
+    }
+
+    // Add the acceptable data format parameter.
+    otStatus = otCoapMessageAppendUintOption (coapMessage,
+        OT_COAP_OPTION_ACCEPT, OT_COAP_OPTION_CONTENT_FORMAT_LINK_FORMAT);
     if (otStatus != OT_ERROR_NONE) {
         goto fail;
     }
