@@ -36,6 +36,7 @@
 #include "openthread/thread.h"
 #include "openthread/dataset.h"
 #include "openthread/joiner.h"
+#include "openthread/coap.h"
 #include "openthread/netdata.h"
 #include "openthread/dns_client.h"
 
@@ -59,6 +60,13 @@ typedef enum {
     GMOS_OPENTHREAD_JOIN_DISCONNECTED,
     GMOS_OPENTHREAD_JOIN_FAILED,
 } gmosOpenThreadJoinState_t;
+
+/*
+ * Specify the control and status flags used by the joiner state machine.
+ */
+typedef enum {
+    GMOS_OPENTHREAD_CONTROL_FLAG_COAP_STARTED = 0x01
+} gmosOpenThreadControlFlags_t;
 
 /*
  * Gets a random joining startup delay in the specified range.
@@ -386,6 +394,7 @@ bool gmosOpenThreadNetInit (gmosOpenThreadStack_t* openThreadStack)
 {
     // Reset the OpenThread network joining state machine.
     openThreadStack->netControlState = GMOS_OPENTHREAD_JOIN_STATE_INIT;
+    openThreadStack->netControlFlags = 0;
 
     // Run the OpenThread network joining task.
     gmosOpenThreadJoinTask_start (&(openThreadStack->netControlTask),
@@ -412,8 +421,47 @@ gmosOpenThreadStatus_t gmosOpenThreadNetStatus (
             status = GMOS_OPENTHREAD_STATUS_FAILED;
             break;
         default :
-            status = GMOS_OPENTHREAD_STATUS_NOT_READY;
+            status = GMOS_OPENTHREAD_STATUS_RETRY;
             break;
+    }
+    return status;
+}
+
+/*
+ * Determines the current status of the OpenThread CoAP client/server
+ * library. The OpenThread CoAP library is ready for use once this
+ * returns a successful status value.
+ */
+gmosOpenThreadStatus_t gmosOpenThreadCoapStatus (
+    gmosOpenThreadStack_t* openThreadStack)
+{
+    otInstance* otStack = openThreadStack->otInstance;
+    gmosOpenThreadStatus_t status;
+    otError otStatus;
+
+    // Indicate CoAP library started after the flag is set.
+    if ((openThreadStack->netControlFlags &
+        GMOS_OPENTHREAD_CONTROL_FLAG_COAP_STARTED) != 0) {
+        status = GMOS_OPENTHREAD_STATUS_SUCCESS;
+    }
+
+    // Start the CoAP library once the network is running.
+    else {
+        status = gmosOpenThreadNetStatus (openThreadStack);
+        if (status == GMOS_OPENTHREAD_STATUS_SUCCESS) {
+            otStatus = otCoapStart (otStack, OT_DEFAULT_COAP_PORT);
+            GMOS_LOG_FMT (LOG_DEBUG,
+                "OpenThread : CoAP startup status %d.", otStatus);
+            if (otStatus == OT_ERROR_NONE) {
+                openThreadStack->netControlFlags |=
+                    GMOS_OPENTHREAD_CONTROL_FLAG_COAP_STARTED;
+                status = GMOS_OPENTHREAD_STATUS_SUCCESS;
+            } else if (otStatus == OT_ERROR_PENDING) {
+                status = GMOS_OPENTHREAD_STATUS_RETRY;
+            } else {
+                status = GMOS_OPENTHREAD_STATUS_FAILED;
+            }
+        }
     }
     return status;
 }
@@ -443,7 +491,7 @@ gmosOpenThreadStatus_t gmosOpenThreadJoinStartJoiner (
             break;
         case GMOS_OPENTHREAD_JOIN_STATE_INIT :
         case GMOS_OPENTHREAD_JOIN_ENABLE_IPV6 :
-            return GMOS_OPENTHREAD_STATUS_NOT_READY;
+            return GMOS_OPENTHREAD_STATUS_RETRY;
         case GMOS_OPENTHREAD_JOIN_FAILED :
             return GMOS_OPENTHREAD_STATUS_FAILED;
         default :

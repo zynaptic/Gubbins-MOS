@@ -263,6 +263,27 @@
 #endif
 
 /**
+ * Specify the application firmware target identifier to be included in
+ * the firmware image. It is expressed as a string which is null padded
+ * to 16 characters (including the implicit null terminator).
+ */
+#ifndef GMOS_CONFIG_APP_FIRMWARE_TARGET_ID
+#define GMOS_CONFIG_APP_FIRMWARE_TARGET_ID "GubbinsMOS-0000"
+#endif
+
+/**
+ * Specify the application firmware version to be included in the
+ * firmware image. It is expressed as a 32-bit integer value where the
+ * major, minor and patch versions occupy the most significant bytes
+ * and the pre-release version occupies the least significant byte. A
+ * release version is indicated by setting the least significant byte
+ * to 0xFF.
+ */
+#ifndef GMOS_CONFIG_APP_FIRMWARE_VERSION
+#define GMOS_CONFIG_APP_FIRMWARE_VERSION 0x00000000
+#endif
+
+/**
  * Specify the size of the bootloader application image write data array
  * as an integer number of bytes.
  */

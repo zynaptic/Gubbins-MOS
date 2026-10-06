@@ -72,6 +72,24 @@
 #endif
 
 /**
+ * This configuration option sets the maximum length of the CoAP
+ * resource path used for accessing the OTA firmware image.
+ */
+#ifndef GMOS_CONFIG_OPENTHREAD_OTA_MAX_PATH_SIZE
+#define GMOS_CONFIG_OPENTHREAD_OTA_MAX_PATH_SIZE 40
+#endif
+
+/**
+ * This configuration option sets the maximum block size for over the
+ * air firmware image transfers. It uses the same block size exponent
+ * representation as the CoAP protocol. The default maximum block size
+ * of 128 will not normally need to be changed.
+ */
+#ifndef GMOS_CONFIG_OPENTHREAD_OTA_MAX_BLOCK_SIZE
+#define GMOS_CONFIG_OPENTHREAD_OTA_MAX_BLOCK_SIZE 3
+#endif
+
+/**
  * This configuration option is used to enable OpenThread CLI support
  * for interactive device debugging. This feature will not normally be
  * required.

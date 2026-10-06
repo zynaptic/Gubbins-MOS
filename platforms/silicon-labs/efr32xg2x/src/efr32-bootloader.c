@@ -76,13 +76,13 @@ const ApplicationProperties_t sl_app_properties = {
         .type = APPLICATION_TYPE_MCU,
 
         // Version number for this application.
-        .version = 0,
+        .version = GMOS_CONFIG_APP_FIRMWARE_VERSION,
 
         // Capabilities of this application.
         .capabilities = 0,
 
         // Unique ID for the product this application is built for.
-        .productId = {0}
+        .productId = GMOS_CONFIG_APP_FIRMWARE_TARGET_ID
 
     },
 
@@ -159,6 +159,8 @@ bool gmosBootloaderPalInit (void)
     uint32_t upgradeLocation;
     uint32_t signatureLocation;
     bool initOk = false;
+    uint32_t appVersion;
+    uint8_t firmwareTargetId [] = GMOS_CONFIG_APP_FIRMWARE_TARGET_ID;
 
     // On successful initialisation report the bootloader information.
     statusCode = bootloader_init ();
@@ -184,6 +186,27 @@ bool gmosBootloaderPalInit (void)
                 signatureLocation);
             initOk = true;
         }
+    }
+
+    // Indicate current firmware version.
+    appVersion = sl_app_properties.app.version;
+    if ((appVersion & 0xFF) == 0xFF) {
+        GMOS_LOG_FMT (LOG_DEBUG, "Current firmware version   = %d.%d.%d",
+            (appVersion >> 24) & 0xFF, (appVersion >> 16) & 0xFF,
+            (appVersion >> 8) & 0xFF);
+    } else {
+        GMOS_LOG_FMT (LOG_DEBUG, "Current firmware version   = %d.%d.%d-pre.%d",
+            (appVersion >> 24) & 0xFF, (appVersion >> 16) & 0xFF,
+            (appVersion >> 8) & 0xFF, appVersion & 0xFF);
+    }
+
+    // Check for valid firmware target identifier.
+    if (sizeof (firmwareTargetId) !=
+        sizeof (sl_app_properties.app.productId)) {
+        initOk = false;
+    } else {
+        GMOS_LOG_FMT (LOG_DEBUG, "Current firmware target ID = %s",
+            firmwareTargetId);
     }
 
     // Report failure condition.

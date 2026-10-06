@@ -57,14 +57,14 @@ typedef enum {
 } gmosOpenThreadResReqClientState_t;
 
 /*
- * From the initialisation state, wait for the OpenThread network to
- * come online.
+ * From the initialisation state, wait for the OpenThread network and
+ * CoAP client/server library to come online.
  */
 static inline bool gmosOpenThreadResReqClientInitWait (
     gmosOpenThreadResReqClient_t* resReqClient)
 {
     gmosOpenThreadStatus_t netStatus =
-        gmosOpenThreadNetStatus (resReqClient->openThreadStack);
+        gmosOpenThreadCoapStatus (resReqClient->openThreadStack);
     return (netStatus == GMOS_OPENTHREAD_STATUS_SUCCESS) ? true : false;
 }
 
@@ -598,7 +598,9 @@ static inline int32_t gmosOpenThreadResReqResultGetPath (
     uint_fast8_t i;
     int32_t newOffset;
 
-    // Read in the server path part.
+    // Read in the server path part. Skip the leading backslash
+    // character that should have been checked when parsing the port.
+    offset += 1;
     readSize = remotePathSize;
     sourceSize = gmosBufferGetSize (msgBuf) - offset;
     if (readSize > sourceSize) {

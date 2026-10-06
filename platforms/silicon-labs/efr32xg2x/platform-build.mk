@@ -40,6 +40,7 @@ PLATFORM_HEADER_DIRS = \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/emdrv/nvm3/config \
 	${GMOS_SIMPLICITY_SDK_BOOTLOADER} \
 	${GMOS_SIMPLICITY_SDK_BOOTLOADER}/api \
+	${GMOS_SIMPLICITY_SDK_BOOTLOADER}/common \
 	${GMOS_SIMPLICITY_SDK_BOOTLOADER}/common/api \
 	${GMOS_SIMPLICITY_SDK_BOOTLOADER}/config \
 	${GMOS_SIMPLICITY_SDK_BOOTLOADER}/config/btl_interface \
@@ -104,6 +105,7 @@ PLATFORM_OBJ_FILE_NAMES = \
 	sdk-btl_interface.o \
 	sdk-btl_interface_storage.o \
 	sdk-btl_internal_flash.o \
+	sdk-btl_storage_internal_flash_raw.o \
 	sdk-sl_mpu_s2.o \
 	sdk-sl_core_cortexm.o \
 	sdk-sl_device_clock_${GMOS_TARGET_SILICON_FAMILY_XLC}.o \
@@ -188,7 +190,7 @@ ${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_BOOTLOADER}/*/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} -DSL_COMPONENT_CATALOG_PRESENT ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
 
 # Run the C compiler on the SDK bootloader files.
-${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_BOOTLOADER}/core/flash/%.c | ${LOCAL_DIR}
+${LOCAL_DIR}/sdk-%.o : ${GMOS_SIMPLICITY_SDK_BOOTLOADER}/*/*/%.c | ${LOCAL_DIR}
 	${CC} ${CFLAGS} -DSL_COMPONENT_CATALOG_PRESENT ${addprefix -I, ${PLATFORM_HEADER_DIRS}} -o $@ $<
 
 # Include the makefile fragment for building the platform specific
@@ -212,67 +214,10 @@ ${GMOS_BUILD_DIR}/firmware.hex : ${GMOS_BUILD_DIR}/firmware.elf
 ${GMOS_BUILD_DIR}/firmware.bin : ${GMOS_BUILD_DIR}/firmware.elf
 	${OC} -S -O binary $< $@
 
-# Add the bootloader CRC to the Intel hex format file.
-${GMOS_BUILD_DIR}/firmware-crc.hex : ${GMOS_BUILD_DIR}/firmware.hex
-	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander convert $< --crc --outfile $@
+# Package the generated firmware file.
+include ${TARGET_PLATFORM_DIR}/platform-package.mk
 
-# Build the GBL3 file for the CRC protected firmware image.
-${GMOS_BUILD_DIR}/firmware-crc.gbl : ${GMOS_BUILD_DIR}/firmware-crc.hex
-	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ --app $<
-
-# Ensure that the application certificates directory exists.
-${GMOS_APP_SIGNING_CERT_DIR} :
-	mkdir -p $@
-
-# Create a bootloader key pair if required. This should never overwrite an
-# existing bootloader private key.
-ifeq (,$(wildcard ${GMOS_APP_SIGNING_CERT_DIR}/bl_cert_key.pem))
-${GMOS_APP_SIGNING_CERT_DIR}/bl_cert_key.pem ${GMOS_APP_SIGNING_CERT_DIR}/bl_cert_pubkey.pem &: \
-		${GMOS_APP_SIGNING_CERT_DIR}
-	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander util genkey --type ecc-p256 \
-		--privkey ${GMOS_APP_SIGNING_CERT_DIR}/bl_cert_key.pem \
-		--pubkey ${GMOS_APP_SIGNING_CERT_DIR}/bl_cert_pubkey.pem \
-		--tokenfile ${GMOS_APP_SIGNING_CERT_DIR}/bl_cert_pubkey.txt
-endif
-
-# Create an application key pair if required. This should never overwite an
-# existing application private key.
-ifeq (,$(wildcard ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_key.pem))
-${GMOS_APP_SIGNING_CERT_DIR}/app_cert_key.pem ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_pubkey.pem &: \
-		${GMOS_APP_SIGNING_CERT_DIR}
-	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander util genkey --type ecc-p256 \
-		--privkey ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_key.pem \
-		--pubkey ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_pubkey.pem \
-		--tokenfile ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_pubkey.txt
-endif
-
-# Create an application certificate file if required. This should never
-# overwrite an existing certificate file.
-ifeq (,$(wildcard ${GMOS_APP_SIGNING_CERT_DIR}/app_cert.bin))
-${GMOS_APP_SIGNING_CERT_DIR}/app_cert.bin : \
-		${GMOS_APP_SIGNING_CERT_DIR}/app_cert_pubkey.pem \
-		${GMOS_APP_SIGNING_CERT_DIR}/bl_cert_key.pem
-	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander util gencert \
-		--cert-type secureboot --cert-version 1 \
-		--cert-pubkey ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_pubkey.pem \
-		--sign ${GMOS_APP_SIGNING_CERT_DIR}/bl_cert_key.pem --outfile $@
-endif
-
-# Add the application certificate to the Intel hex format file.
-${GMOS_BUILD_DIR}/firmware-signed.hex : ${GMOS_BUILD_DIR}/firmware.hex \
-		${GMOS_APP_SIGNING_CERT_DIR}/app_cert.bin \
-		${GMOS_APP_SIGNING_CERT_DIR}/app_cert_key.pem
-	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander convert $< --secureboot \
-		--certificate ${GMOS_APP_SIGNING_CERT_DIR}/app_cert.bin \
-		--keyfile ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_key.pem --outfile $@
-
-# Build the GBL3 file for the signed firmware image.
-${GMOS_BUILD_DIR}/firmware-signed.gbl : ${GMOS_BUILD_DIR}/firmware-signed.hex
-	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ --app $<
-
-# Include extended build artifact list.
+# Specify the build artifact list.
 all : \
-	${GMOS_BUILD_DIR}/firmware-crc.hex \
-	${GMOS_BUILD_DIR}/firmware-crc.gbl \
-	${GMOS_BUILD_DIR}/firmware-signed.hex \
-	${GMOS_BUILD_DIR}/firmware-signed.gbl
+	${GMOS_BUILD_DIR}/firmware.hex \
+	${GMOS_BUILD_DIR}/firmware.bin

@@ -44,7 +44,8 @@ OPENTHREAD_OBJ_FILE_NAMES = \
 	gmos-openthread-wkcreq.o \
 	gmos-openthread-resdir.o \
 	gmos-openthread-resreq.o \
-	gmos-openthread-sntp.o
+	gmos-openthread-sntp.o \
+	gmos-openthread-ota.o
 
 # Add all the OpenThread API components to the build.
 OPENTHREAD_API_FILE_NAMES = \

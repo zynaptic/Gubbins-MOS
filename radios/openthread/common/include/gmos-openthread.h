@@ -36,10 +36,11 @@
  * error codes.
  */
 typedef enum {
-    GMOS_OPENTHREAD_STATUS_SUCCESS       = 0,  // OT_ERROR_NONE
-    GMOS_OPENTHREAD_STATUS_FAILED        = 1,  // OT_ERROR_FAILED
-    GMOS_OPENTHREAD_STATUS_INVALID_STATE = 13, // OT_ERROR_INVALID_STATE
-    GMOS_OPENTHREAD_STATUS_NOT_READY     = 36, // OT_ERROR_PENDING
+    GMOS_OPENTHREAD_STATUS_SUCCESS          = 0,  // OT_ERROR_NONE
+    GMOS_OPENTHREAD_STATUS_FAILED           = 1,  // OT_ERROR_FAILED
+    GMOS_OPENTHREAD_STATUS_ILLEGAL_ARGUMENT = 7,  // OT_ERROR_INVALID_ARGS
+    GMOS_OPENTHREAD_STATUS_INVALID_STATE    = 13, // OT_ERROR_INVALID_STATE
+    GMOS_OPENTHREAD_STATUS_RETRY            = 36, // OT_ERROR_PENDING
 } gmosOpenThreadStatus_t;
 
 /**
@@ -99,6 +100,10 @@ typedef struct gmosOpenThreadStack_t {
     // machine.
     uint8_t netControlState;
 
+    // This is the current set of status flags for the OpenThread
+    // network control state machine.
+    uint8_t netControlFlags;
+
 } gmosOpenThreadStack_t;
 
 /**
@@ -150,6 +155,18 @@ void gmosOpenThreadReset (gmosOpenThreadStack_t* openThreadStack,
  *     the network.
  */
 gmosOpenThreadStatus_t gmosOpenThreadNetStatus (
+    gmosOpenThreadStack_t* openThreadStack);
+
+/**
+ * Determines the current status of the OpenThread CoAP client/server
+ * library. The OpenThread CoAP library is ready for use once this
+ * returns a successful status value.
+ * @param openThreadStack This is the OpenThread stack data structure
+ *     that is being used for CoAP transactions.
+ * @return Returns a status value which indicates the current status of
+ *     the CoAP client/server library.
+ */
+gmosOpenThreadStatus_t gmosOpenThreadCoapStatus (
     gmosOpenThreadStack_t* openThreadStack);
 
 /**

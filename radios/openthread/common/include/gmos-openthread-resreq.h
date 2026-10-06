@@ -159,7 +159,7 @@ void gmosOpenThreadResReqResultReset (
  * @param remotePath This is a pointer to a character array which on
  *     successful completion will be populated with a null terminated
  *     string representing the resource path on the remote server,
- *     including the leading backslash character.
+ *     excluding the leading backslash character.
  * @param remotePathSize This specifies the size of the remote path
  *     character array.
  * @return Returns a boolean value which will be set to 'true' on

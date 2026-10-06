@@ -71,28 +71,15 @@ typedef enum {
 } gmosOpenThreadResDirClientState_t;
 
 /*
- * From the initialisation state, wait for the OpenThread network to
- * come online.
+ * From the initialisation state, wait for the OpenThread network and
+ * CoAP client/server library to come online.
  */
 static inline bool gmosOpenThreadResDirClientInitWait (
     gmosOpenThreadResDirClient_t* resDirClient)
 {
-    otInstance* otStack = resDirClient->openThreadStack->otInstance;
-    bool initOk = false;
     gmosOpenThreadStatus_t netStatus =
-        gmosOpenThreadNetStatus (resDirClient->openThreadStack);
-
-    // TODO: Attempt to start the CoAP process here for now. There will
-    // be a better place to do this.
-    if (netStatus == GMOS_OPENTHREAD_STATUS_SUCCESS) {
-        otError otStatus = otCoapStart (otStack, OT_DEFAULT_COAP_PORT);
-        GMOS_LOG_FMT (LOG_DEBUG,
-            "OpenThread : CoAP startup status %d.", otStatus);
-        if (otStatus == OT_ERROR_NONE) {
-            initOk = true;
-        }
-    }
-    return initOk;
+        gmosOpenThreadCoapStatus (resDirClient->openThreadStack);
+    return (netStatus == GMOS_OPENTHREAD_STATUS_SUCCESS) ? true : false;
 }
 
 /*

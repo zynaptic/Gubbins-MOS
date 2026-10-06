@@ -81,12 +81,6 @@ ifndef GMOS_SIMPLICITY_COMMANDER_DIR
 GMOS_SIMPLICITY_COMMANDER_DIR = /data/vendors/silicon-labs/commander
 endif
 
-# Specify the location of the Silicon Labs firmware image signing certificate
-# and keys directory.
-ifndef GMOS_APP_SIGNING_CERT_DIR
-GMOS_APP_SIGNING_CERT_DIR = ${GMOS_APP_DIR}/certificates
-endif
-
 # Specify device specific SDK file locations.
 GMOS_TARGET_DEVICE_FAMILY_DIR = \
 	${GMOS_SIMPLICITY_SDK_PLATFORM}/Device/SiliconLabs/${GMOS_TARGET_DEVICE_FAMILY}
