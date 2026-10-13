@@ -127,45 +127,59 @@ ${GMOS_BUILD_DIR}/bootloader-signed.hex : ${GMOS_BOOTLOADER_FILE} \
 
 # Build the GBL3 file for the CRC protected firmware image.
 ${GMOS_BUILD_DIR}/firmware-crc.gbl : ${GMOS_BUILD_DIR}/firmware-crc.hex
-	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ --app $<
-
-# Build the GBL3 file for the signed firmware image.
-${GMOS_BUILD_DIR}/firmware-signed.gbl : ${GMOS_BUILD_DIR}/firmware-signed.hex
-	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ --app $<
-
-# Build the GBL3 file for the signed bootloader image.
-${GMOS_BUILD_DIR}/bootloader-signed.gbl : ${GMOS_BUILD_DIR}/bootloader-signed.hex
-	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ --bootloader $<
+	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ \
+		--app $<
 
 # Build the GBL3 file for the CRC protected firmware image (compressed).
 ${GMOS_BUILD_DIR}/firmware-crc-lzma.gbl : ${GMOS_BUILD_DIR}/firmware-crc.hex
-	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ --compress lzma --app $<
+	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ --compress lzma \
+		--app $<
+
+# Build the GBL3 file for the signed firmware image.
+${GMOS_BUILD_DIR}/firmware-signed.gbl : ${GMOS_BUILD_DIR}/firmware-signed.hex
+	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ \
+		--certificate ${GMOS_APP_SIGNING_CERT_DIR}/app_cert.bin \
+		--sign ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_key.pem \
+		--app $<
 
 # Build the GBL3 file for the signed firmware image (compressed).
 ${GMOS_BUILD_DIR}/firmware-signed-lzma.gbl : ${GMOS_BUILD_DIR}/firmware-signed.hex
-	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ --compress lzma --app $<
-
-# Build the GBL3 file for the signed bootloader image (compressed).
-${GMOS_BUILD_DIR}/bootloader-signed-lzma.gbl : ${GMOS_BUILD_DIR}/bootloader-signed.hex
-	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ --compress lzma --bootloader $<
-
-# Build the GBL3 file for the CRC protected firmware image (compressed and encrypted).
-${GMOS_BUILD_DIR}/firmware-crc-aes.gbl : ${GMOS_BUILD_DIR}/firmware-crc.hex \
-		${GMOS_APP_SIGNING_CERT_DIR}/aes_key.txt
 	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ --compress lzma \
-		--encrypt ${GMOS_APP_SIGNING_CERT_DIR}/aes_key.txt --app $<
+		--certificate ${GMOS_APP_SIGNING_CERT_DIR}/app_cert.bin \
+		--sign ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_key.pem \
+		--app $<
 
 # Build the GBL3 file for the signed firmware image (compressed and encrypted).
 ${GMOS_BUILD_DIR}/firmware-signed-aes.gbl : ${GMOS_BUILD_DIR}/firmware-signed.hex \
 		${GMOS_APP_SIGNING_CERT_DIR}/aes_key.txt
 	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ --compress lzma \
-		--encrypt ${GMOS_APP_SIGNING_CERT_DIR}/aes_key.txt --app $<
+		--encrypt ${GMOS_APP_SIGNING_CERT_DIR}/aes_key.txt \
+		--certificate ${GMOS_APP_SIGNING_CERT_DIR}/app_cert.bin \
+		--sign ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_key.pem \
+		--app $<
+
+# Build the GBL3 file for the signed bootloader image.
+${GMOS_BUILD_DIR}/bootloader-signed.gbl : ${GMOS_BUILD_DIR}/bootloader-signed.hex
+	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ \
+		--certificate ${GMOS_APP_SIGNING_CERT_DIR}/app_cert.bin \
+		--sign ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_key.pem \
+		--bootloader $<
+
+# Build the GBL3 file for the signed bootloader image (compressed).
+${GMOS_BUILD_DIR}/bootloader-signed-lzma.gbl : ${GMOS_BUILD_DIR}/bootloader-signed.hex
+	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ --compress lzma \
+		--certificate ${GMOS_APP_SIGNING_CERT_DIR}/app_cert.bin \
+		--sign ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_key.pem \
+		--bootloader $<
 
 # Build the GBL3 file for the signed bootloader image (compressed and encrypted).
 ${GMOS_BUILD_DIR}/bootloader-signed-aes.gbl : ${GMOS_BUILD_DIR}/bootloader-signed.hex \
 		${GMOS_APP_SIGNING_CERT_DIR}/aes_key.txt
 	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ --compress lzma \
-		--encrypt ${GMOS_APP_SIGNING_CERT_DIR}/aes_key.txt --bootloader $<
+		--encrypt ${GMOS_APP_SIGNING_CERT_DIR}/aes_key.txt \
+		--certificate ${GMOS_APP_SIGNING_CERT_DIR}/app_cert.bin \
+		--sign ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_key.pem \
+		--bootloader $<
 
 # Build the GBL3 file for the signed firmware and bootloader image (compressed and encrypted).
 ${GMOS_BUILD_DIR}/firmware-bootloader-signed-aes.gbl : \
@@ -174,6 +188,8 @@ ${GMOS_BUILD_DIR}/firmware-bootloader-signed-aes.gbl : \
 		${GMOS_APP_SIGNING_CERT_DIR}/aes_key.txt
 	${GMOS_SIMPLICITY_COMMANDER_DIR}/commander gbl create $@ --compress lzma \
 		--encrypt ${GMOS_APP_SIGNING_CERT_DIR}/aes_key.txt \
+		--certificate ${GMOS_APP_SIGNING_CERT_DIR}/app_cert.bin \
+		--sign ${GMOS_APP_SIGNING_CERT_DIR}/app_cert_key.pem \
 		--bootloader ${GMOS_BUILD_DIR}/bootloader-signed.hex \
 		--app ${GMOS_BUILD_DIR}/firmware-signed.hex
 
@@ -181,7 +197,6 @@ ${GMOS_BUILD_DIR}/firmware-bootloader-signed-aes.gbl : \
 all : \
 	${GMOS_BUILD_DIR}/firmware-crc.gbl \
 	${GMOS_BUILD_DIR}/firmware-crc-lzma.gbl \
-	${GMOS_BUILD_DIR}/firmware-crc-aes.gbl \
 	${GMOS_BUILD_DIR}/firmware-signed.gbl \
 	${GMOS_BUILD_DIR}/firmware-signed-lzma.gbl \
 	${GMOS_BUILD_DIR}/firmware-signed-aes.gbl \
